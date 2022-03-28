@@ -46,6 +46,7 @@ import {
 import { AuthenticatedUser } from '../auth'
 import { BatchChangesProps } from '../batches'
 import { CodeIntelligenceProps } from '../codeintel'
+import { RepositoryMenu as CodeIntelRepositoryMenu } from '../codeintel/RepositoryMenu'
 import { BreadcrumbSetters, BreadcrumbsProps } from '../components/Breadcrumbs'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { HeroPage } from '../components/HeroPage'
@@ -426,6 +427,24 @@ export const RepoContainer: React.FunctionComponent<RepoContainerProps> = props 
                     />
                 )}
             </RepoHeaderContributionPortal>
+
+            <RepoHeaderContributionPortal
+                position="right"
+                priority={110}
+                id="code-intelligence-status"
+                {...repoHeaderContributionsLifecycleProps}
+            >
+                {({ actionType }) => (
+                    <CodeIntelRepositoryMenu
+                        key="code-intelligence-status"
+                        repoName={repoName}
+                        revision={rawRevision || 'HEAD'}
+                        filePath={filePath}
+                        actionType={actionType}
+                    />
+                )}
+            </RepoHeaderContributionPortal>
+
             <ErrorBoundary location={props.location}>
                 <Switch>
                     {[

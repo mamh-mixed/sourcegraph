@@ -27,7 +27,6 @@ import { Button, Icon, Popover, PopoverContent, PopoverTrigger, Position } from 
 import { AuthenticatedUser } from '../auth'
 import { BatchChangesProps } from '../batches'
 import { CodeIntelligenceProps } from '../codeintel'
-import { RepositoryMenu as CodeIntelRepositoryMenu } from '../codeintel/RepositoryMenu'
 import { BreadcrumbSetters } from '../components/Breadcrumbs'
 import { HeroPage } from '../components/HeroPage'
 import { ActionItemsBarProps } from '../extensions/components/ActionItemsBar'
@@ -303,14 +302,6 @@ export const RepoRevisionContainer: React.FunctionComponent<RepoRevisionContaine
                             {...context}
                         />
                     )}
-                </RepoHeaderContributionPortal>
-                <RepoHeaderContributionPortal
-                    position="right"
-                    priority={110}
-                    id="code-intel-status"
-                    repoHeaderContributionsLifecycleProps={props.repoHeaderContributionsLifecycleProps}
-                >
-                    {() => <CodeIntelRepositoryMenu />}
                 </RepoHeaderContributionPortal>
             </RepoRevisionWrapper>
         </>
