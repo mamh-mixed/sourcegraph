@@ -22,7 +22,6 @@ import { AbsoluteRepoFile, ModeSpec, parseQueryAndHash } from '@sourcegraph/shar
 import { Alert, Button, LoadingSpinner, useEventObservable } from '@sourcegraph/wildcard'
 
 import { AuthenticatedUser } from '../../auth'
-import { RepositoryMenu as CodeIntelRepositoryMenu } from '../../codeintel/RepositoryMenu'
 import { BreadcrumbSetters } from '../../components/Breadcrumbs'
 import { HeroPage } from '../../components/HeroPage'
 import { PageTitle } from '../../components/PageTitle'
@@ -246,14 +245,6 @@ export const BlobPage: React.FunctionComponent<Props> = props => {
                         history={props.history}
                     />
                 )}
-            </RepoHeaderContributionPortal>
-            <RepoHeaderContributionPortal
-                position="right"
-                priority={110}
-                id="code-intel-status"
-                repoHeaderContributionsLifecycleProps={props.repoHeaderContributionsLifecycleProps}
-            >
-                {() => <CodeIntelRepositoryMenu />}
             </RepoHeaderContributionPortal>
             {renderMode === 'code' && (
                 <RepoHeaderContributionPortal
