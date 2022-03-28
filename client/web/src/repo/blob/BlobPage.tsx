@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import classNames from 'classnames'
 import * as H from 'history'
 import AlertCircleIcon from 'mdi-react/AlertCircleIcon'
+import BrainIcon from 'mdi-react/BrainIcon'
 import MapSearchIcon from 'mdi-react/MapSearchIcon'
 import { Redirect } from 'react-router'
 import { Observable } from 'rxjs'
@@ -19,7 +20,18 @@ import { SettingsCascadeProps } from '@sourcegraph/shared/src/settings/settings'
 import { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryService'
 import { ThemeProps } from '@sourcegraph/shared/src/theme'
 import { AbsoluteRepoFile, ModeSpec, parseQueryAndHash } from '@sourcegraph/shared/src/util/url'
-import { Alert, Button, LoadingSpinner, useEventObservable } from '@sourcegraph/wildcard'
+import {
+    Alert,
+    Button,
+    Icon,
+    LoadingSpinner,
+    Menu,
+    MenuButton,
+    MenuDivider,
+    MenuHeader,
+    MenuList,
+    useEventObservable,
+} from '@sourcegraph/wildcard'
 
 import { AuthenticatedUser } from '../../auth'
 import { BreadcrumbSetters } from '../../components/Breadcrumbs'
@@ -244,6 +256,29 @@ export const BlobPage: React.FunctionComponent<Props> = props => {
                         location={props.location}
                         history={props.history}
                     />
+                )}
+            </RepoHeaderContributionPortal>
+            <RepoHeaderContributionPortal
+                position="right"
+                priority={110}
+                id="code-intel-status"
+                repoHeaderContributionsLifecycleProps={props.repoHeaderContributionsLifecycleProps}
+            >
+                {() => (
+                    <Menu className="btn-icon">
+                        <>
+                            <MenuButton className={classNames('text-decoration-none test-user-nav-item-toggle')}>
+                                <Icon as={BrainIcon} />
+                            </MenuButton>
+                            <MenuList>
+                                <MenuHeader>Code intelligence</MenuHeader>
+                                <MenuDivider />
+                                <div className="px-2 py-1">
+                                    <div className="d-flex align-items-center">Some stuff here?</div>
+                                </div>
+                            </MenuList>
+                        </>
+                    </Menu>
                 )}
             </RepoHeaderContributionPortal>
             {renderMode === 'code' && (
