@@ -1,6 +1,5 @@
 import React from 'react'
 
-import classNames from 'classnames'
 import BrainIcon from 'mdi-react/BrainIcon'
 
 import { Badge, Icon, Link, Menu, MenuButton, MenuDivider, MenuHeader, MenuList, Position } from '@sourcegraph/wildcard'
@@ -20,12 +19,12 @@ export const RepositoryMenu: React.FunctionComponent<RepositoryMenuProps> = ({
     filePath,
     actionType,
 }) =>
-    actionType == 'dropdown' ? (
-        <>CRAP</>
+    actionType === 'dropdown' ? (
+        <>TODO</>
     ) : (
         <Menu className="btn-icon">
             <>
-                <MenuButton className={classNames('text-decoration-none test-user-nav-item-toggle')}>
+                <MenuButton className="text-decoration-none">
                     <Icon as={BrainIcon} />
                 </MenuButton>
                 <MenuList position={Position.bottomEnd} className={styles.dropdownMenu}>
