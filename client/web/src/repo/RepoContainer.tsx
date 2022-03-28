@@ -439,7 +439,7 @@ export const RepoContainer: React.FunctionComponent<RepoContainerProps> = props 
                         key="code-intelligence-status"
                         repoName={repoName}
                         revision={rawRevision || 'HEAD'}
-                        filePath={filePath}
+                        filePath={filePath || ''}
                         actionType={actionType}
                     />
                 )}

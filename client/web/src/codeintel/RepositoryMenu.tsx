@@ -4,6 +4,8 @@ import BrainIcon from 'mdi-react/BrainIcon'
 
 import { Badge, Icon, Link, Menu, MenuButton, MenuDivider, MenuHeader, MenuList, Position } from '@sourcegraph/wildcard'
 
+import { useCodeIntelStatus } from './useCodeIntelStatus'
+
 import styles from './RepositoryMenu.module.scss'
 
 export interface RepositoryMenuProps {
@@ -18,8 +20,10 @@ export const RepositoryMenu: React.FunctionComponent<RepositoryMenuProps> = ({
     revision,
     filePath,
     actionType,
-}) =>
-    actionType === 'dropdown' ? (
+}) => {
+    const result = useCodeIntelStatus({ variables: { repository: repoName, commit: revision, path: filePath } })
+
+    return actionType === 'dropdown' ? (
         <>TODO</>
     ) : (
         <Menu className="btn-icon">
@@ -27,14 +31,17 @@ export const RepositoryMenu: React.FunctionComponent<RepositoryMenuProps> = ({
                 <MenuButton className="text-decoration-none">
                     <Icon as={BrainIcon} />
                 </MenuButton>
+
                 <MenuList position={Position.bottomEnd} className={styles.dropdownMenu}>
                     <MenuHeader>Code intelligence</MenuHeader>
+
                     <MenuDivider />
+
                     <div className="px-2 py-1">
                         <div className="d-flex align-items-center">
                             <div className="p-2 text-uppercase">
-                                {/* <Badge>Unavailable</Badge>
-                            <Badge variant="primary">Available</Badge> */}
+                                {/* <Badge>Unavailable</Badge> */}
+                                {/* <Badge variant="primary">Available</Badge> */}
                                 <Badge variant="success">Enabled</Badge>
                             </div>
                             <div className="p-2">
@@ -57,7 +64,44 @@ export const RepositoryMenu: React.FunctionComponent<RepositoryMenuProps> = ({
                             </div>
                         </div>
                     </div>
+
+                    <MenuDivider />
+
+                    <div className="px-2 py-1">
+                        <div className="d-flex align-items-center">
+                            <div className="p-2">
+                                {result.data?.preciseSupport.map((preciseSupport, index) => (
+                                    <React.Fragment key={index}>
+                                        <span>
+                                            <strong>Precise intelligence </strong> is available at level{' '}
+                                            {preciseSupport.supportLevel} and confidence {preciseSupport.confidence} via{' '}
+                                            {preciseSupport.indexers?.map((indexer, index) => (
+                                                <>
+                                                    {index !== 0 ? ', ' : ''}
+                                                    <span key={indexer.name}>
+                                                        <Link to={indexer.url}>{indexer.name}</Link>
+                                                    </span>
+                                                </>
+                                            ))}
+                                        </span>
+                                        <br />
+                                    </React.Fragment>
+                                ))}
+
+                                {result.data?.searchBasedSupport.map((searchSupport, index) => (
+                                    <React.Fragment key={index}>
+                                        <span>
+                                            <strong>Search-based intelligence</strong> for language{' '}
+                                            {searchSupport.language} is available at level {searchSupport.supportLevel}.
+                                        </span>
+                                        <br />
+                                    </React.Fragment>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
                 </MenuList>
             </>
         </Menu>
     )
+}
