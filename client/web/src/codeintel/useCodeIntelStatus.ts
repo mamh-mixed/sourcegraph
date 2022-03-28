@@ -33,6 +33,11 @@ const BLOB_AND_TREE_CODE_INTEL_STATUS_QUERY = gql`
                             confidence
                         }
                     }
+                    lsif {
+                        lsifUploads {
+                            id
+                        }
+                    }
                 }
                 blob(path: $path) {
                     codeIntelSupport {
@@ -46,6 +51,11 @@ const BLOB_AND_TREE_CODE_INTEL_STATUS_QUERY = gql`
                                 name
                                 url
                             }
+                        }
+                    }
+                    lsif {
+                        lsifUploads {
+                            id
                         }
                     }
                 }
@@ -69,6 +79,7 @@ interface UseCodeIntelStatusResult {
             indexers?: { name: string; url: string }[]
             confidence?: InferedPreciseSupportLevel
         }[]
+        uploadIds: string[]
     }
     error?: ApolloError
     loading: boolean
@@ -85,41 +96,43 @@ export const useCodeIntelStatus = ({ variables }: UseCodeIntelStatusParameters):
         errorPolicy: 'ignore', // TODO - necessary because tree OR blob will fail
     })
 
-    const treeSupport = rawData?.repository?.commit?.tree?.codeIntelInfo
-    const blobSupport = rawData?.repository?.commit?.blob?.codeIntelSupport
+    const tree = rawData?.repository?.commit?.tree
+    const blob = rawData?.repository?.commit?.blob
 
-    const data = treeSupport
+    const data = tree
         ? {
               searchBasedSupport:
-                  treeSupport?.searchBasedSupport?.map(support => ({
+                  tree.codeIntelInfo?.searchBasedSupport?.map(support => ({
                       supportLevel: support.support.supportLevel,
                       language: support.support.language || undefined,
                   })) || [],
               preciseSupport:
-                  treeSupport?.preciseSupport?.map(support => ({
+                  tree.codeIntelInfo?.preciseSupport?.map(support => ({
                       supportLevel: support.support.supportLevel,
                       indexers: support.support.indexers?.map(index => ({ name: index.name, url: index.url })) || [],
                       confidence: support.confidence,
                   })) || [],
+              uploadIds: tree.lsif?.lsifUploads.map(upload => upload.id) || [],
           }
-        : blobSupport
+        : blob
         ? {
               searchBasedSupport: [
                   {
-                      supportLevel: blobSupport.searchBasedSupport.supportLevel,
-                      language: blobSupport.searchBasedSupport.language || undefined,
+                      supportLevel: blob.codeIntelSupport.searchBasedSupport.supportLevel,
+                      language: blob.codeIntelSupport.searchBasedSupport.language || undefined,
                   },
               ],
               preciseSupport: [
                   {
-                      supportLevel: blobSupport.preciseSupport.supportLevel,
+                      supportLevel: blob.codeIntelSupport.preciseSupport.supportLevel,
                       indexers:
-                          blobSupport.preciseSupport.indexers?.map(index => ({
+                          blob.codeIntelSupport.preciseSupport.indexers?.map(index => ({
                               name: index.name,
                               url: index.url,
                           })) || undefined,
                   },
               ],
+              uploadIds: blob.lsif?.lsifUploads.map(upload => upload.id) || [],
           }
         : undefined
 
