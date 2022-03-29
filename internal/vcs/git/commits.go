@@ -537,12 +537,14 @@ type RepoCommit struct {
 func CommitsExist(ctx context.Context, db database.DB, repoCommits []RepoCommit, checker authz.SubRepoPermissionChecker) ([]bool, error) {
 	exists := make([]bool, len(repoCommits))
 	for i, rc := range repoCommits {
-		e, err := CommitExists(ctx, db, rc.Repo, rc.CommitID, checker)
+		c, err := getCommit(ctx, db, rc.Repo, rc.CommitID, ResolveRevisionOptions{NoEnsureRevision: true}, checker)
+		if errors.HasType(err, &gitdomain.RevisionNotFoundError{}) {
+			continue
+		}
 		if err != nil {
 			return nil, err
 		}
-
-		exists[i] = e
+		exists[i] = c != nil
 	}
 
 	return exists, nil
