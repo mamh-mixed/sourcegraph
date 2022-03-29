@@ -395,9 +395,13 @@ var runCommitLog = func(ctx context.Context, cmd *gitserver.Cmd, opt CommitsOpti
 		return nil, errors.WithMessage(err, fmt.Sprintf("git command %v failed (output: %q)", cmd.Args, data))
 	}
 
+	return parseCommitLogOutput(data, opt.NameOnly)
+}
+
+func parseCommitLogOutput(data []byte, nameOnly bool) ([]*wrappedCommit, error) {
 	allParts := bytes.Split(data, []byte{'\x00'})
 	partsPerCommit := partsPerCommitBasic
-	if opt.NameOnly {
+	if nameOnly {
 		partsPerCommit = partsPerCommitWithFileNames
 	}
 	numCommits := len(allParts) / partsPerCommit
