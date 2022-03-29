@@ -532,10 +532,27 @@ func CommitExists(ctx context.Context, db database.DB, repo api.RepoName, id api
 	return c != nil, nil
 }
 
-// CommitsExist determines if the given commits exists in the given repositories. This
-// function returns a slice of the same size as the input slice, true indicating that the
-// commit at the symmetric index exists.
+// CommitsExist determines if the given commits exists in the given repositories. This function returns
+// a slice of the same size as the input slice, true indicating that the commit at the symmetric index
+// exists.
 func CommitsExist(ctx context.Context, db database.DB, repoCommits []api.RepoCommit, checker authz.SubRepoPermissionChecker) ([]bool, error) {
+	commits, err := getCommits(ctx, db, repoCommits, checker)
+	if err != nil {
+		return nil, err
+	}
+
+	exists := make([]bool, len(commits))
+	for i, commit := range commits {
+		exists[i] = commit != nil
+	}
+
+	return exists, nil
+}
+
+// getCommits returns a git commit object describing each of the give repository and commit pairs. This
+// function returns a slice of the same size as the input slice. Values in the output slice may be nil if
+// their associated repository or commit are unresolvable.
+func getCommits(ctx context.Context, db database.DB, repoCommits []api.RepoCommit, checker authz.SubRepoPermissionChecker) ([]*gitdomain.Commit, error) {
 	// TODO - trace, honey
 
 	indexesByRepoCommit := make(map[api.RepoCommit]int, len(repoCommits))
@@ -558,7 +575,7 @@ func CommitsExist(ctx context.Context, db database.DB, repoCommits []api.RepoCom
 	// Create a slice with values populated in the callback defined below. Since the callback
 	// may be invoked concurrently inside BatchLog, we need to synchronize writes to this slice
 	// with this local mutex.
-	exists := make([]bool, len(repoCommits))
+	commits := make([]*gitdomain.Commit, len(repoCommits))
 	var mu sync.Mutex
 
 	callback := func(repoCommit api.RepoCommit, commitLogStdout string) error {
@@ -568,12 +585,11 @@ func CommitsExist(ctx context.Context, db database.DB, repoCommits []api.RepoCom
 		}
 
 		// Enforce sub-repository permissions
-		commits, err := filterCommits(ctx, wrappedCommits, repoCommit.Repo, checker)
+		filteredCommits, err := filterCommits(ctx, wrappedCommits, repoCommit.Repo, checker)
 		if err != nil {
 			return err
 		}
-
-		if len(commits) == 0 {
+		if len(filteredCommits) == 0 {
 			// Not found
 			return nil
 		}
@@ -581,7 +597,7 @@ func CommitsExist(ctx context.Context, db database.DB, repoCommits []api.RepoCom
 		mu.Lock()
 		defer mu.Unlock()
 		index := indexesByRepoCommit[repoCommit]
-		exists[index] = true
+		commits[index] = filteredCommits[0]
 		return nil
 	}
 
@@ -593,7 +609,7 @@ func CommitsExist(ctx context.Context, db database.DB, repoCommits []api.RepoCom
 		return nil, err
 	}
 
-	return exists, nil
+	return commits, nil
 }
 
 // Head determines the tip commit of the default branch for the given repository.
