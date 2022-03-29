@@ -342,6 +342,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/archive", s.handleArchive)
 	mux.HandleFunc("/exec", s.handleExec)
 	mux.HandleFunc("/search", s.handleSearch)
+	mux.HandleFunc("/batch-log", s.handleBatchLog)
 	mux.HandleFunc("/p4-exec", s.handleP4Exec)
 	mux.HandleFunc("/list", s.handleList)
 	mux.HandleFunc("/list-gitolite", s.handleListGitolite)
@@ -1131,6 +1132,47 @@ func matchCount(cm *protocol.CommitMatch) int {
 		return len(cm.Message.MatchedRanges)
 	}
 	return 1
+}
+
+func (s *Server) handleBatchLog(w http.ResponseWriter, r *http.Request) {
+	// TODO - trace, honey
+
+	var req protocol.BatchLogRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	ctx := r.Context()
+	var resp protocol.BatchLogResponse
+
+	for _, repoCommit := range req.RepoCommits {
+		dir := s.dir(repoCommit.Repo)
+
+		if !repoCloned(dir) {
+			// TODO - scope error to this input
+			continue
+		}
+
+		var buf bytes.Buffer
+		cmd := exec.CommandContext(ctx, "git", "log", req.Format, string(repoCommit.CommitID))
+		dir.Set(cmd)
+		cmd.Stdout = &buf
+
+		if _, err := runCommand(ctx, cmd); err != nil {
+			// TODO - scope error to this input
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		resp.Results = append(resp.Results, protocol.BatchLogResult{
+			RepoCommit: repoCommit,
+			Output:     buf.String(),
+		})
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(resp)
 }
 
 func (s *Server) handleExec(w http.ResponseWriter, r *http.Request) {

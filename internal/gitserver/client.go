@@ -136,6 +136,8 @@ type ClientImplementor struct {
 	db database.DB
 }
 
+type CommitLogCallback func(repoCommit api.RepoCommit, commitLogStdout string) error
+
 //go:generate ../../dev/mockgen.sh github.com/sourcegraph/sourcegraph/internal/gitserver -i Client -o mock_client.go
 type Client interface {
 	// AddrForRepo returns the gitserver address to use for the given repo name.
@@ -149,6 +151,8 @@ type Client interface {
 	// ArchiveURL returns a URL from which an archive of the given Git repository can
 	// be downloaded from.
 	ArchiveURL(context.Context, api.RepoName, ArchiveOptions) (*url.URL, error)
+
+	BatchLog(ctx context.Context, opts BatchLogOptions, callback CommitLogCallback) error
 
 	// Command creates a new Cmd. Command name must be 'git', otherwise it panics.
 	Command(name string, args ...string) *Cmd
@@ -319,6 +323,11 @@ type ArchiveOptions struct {
 	Treeish   string     // the tree or commit to produce an archive for
 	Format    string     // format of the resulting archive (usually "tar" or "zip")
 	Pathspecs []Pathspec // if nonempty, only include these pathspecs.
+}
+
+type BatchLogOptions struct {
+	RepoCommits []api.RepoCommit
+	Format      string
 }
 
 // Pathspec is a git term for a pattern that matches paths using glob-like syntax.
@@ -607,6 +616,97 @@ var deadlineExceededCounter = promauto.NewCounter(prometheus.CounterOpts{
 	Name: "src_gitserver_client_deadline_exceeded",
 	Help: "Times that Client.sendExec() returned context.DeadlineExceeded",
 })
+
+func (c *ClientImplementor) BatchLog(ctx context.Context, opts BatchLogOptions, commitLogCallback CommitLogCallback) error {
+	// TODO - trace, honey
+
+	// Find the gitserver shard each of the repositories referenced in the input belong to.
+	// We'll use these maps in the following to construct batches of requests with the correct
+	// mapping of repositories to shards.
+
+	addrsByName := make(map[api.RepoName]string, len(opts.RepoCommits))
+	for _, repoCommit := range opts.RepoCommits {
+		if _, ok := addrsByName[repoCommit.Repo]; ok {
+			// Already set
+			continue
+		}
+
+		addr, err := c.AddrForRepo(ctx, repoCommit.Repo)
+		if err != nil {
+			return err
+		}
+
+		addrsByName[repoCommit.Repo] = addr
+	}
+
+	// Construct batches of requests keyed by the address of the server that will receive the batch.
+	// The results from gitserver will have to be re-interlaced before returning to the client, so we
+	// don't need to be particularly concerned about order here.
+
+	batches := make(map[string][]api.RepoCommit, len(addrsByName))
+	for _, repoCommit := range opts.RepoCommits {
+		addr := addrsByName[repoCommit.Repo]
+
+		batches[addr] = append(batches[addr], api.RepoCommit{
+			Repo:     repoCommit.Repo,
+			CommitID: repoCommit.CommitID,
+		})
+	}
+
+	g := errors.Group{}
+	for addr, repoCommits := range batches {
+		addr, repoCommits := addr, repoCommits
+
+		g.Go(func() error {
+			request := protocol.BatchLogRequest{
+				RepoCommits: repoCommits,
+				Format:      opts.Format,
+			}
+
+			var buf bytes.Buffer
+			if err := json.NewEncoder(&buf).Encode(request); err != nil {
+				return err
+			}
+
+			// For nice tracing
+			repoNames := api.RepoName("<batch>")
+
+			uri := "http://" + addr + "/batch-log"
+			resp, err := c.do(ctx, repoNames, "POST", uri, buf.Bytes())
+			if err != nil {
+				return err
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != 200 {
+				return errors.Newf("unexpected status code")
+			}
+
+			content, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return err
+			}
+
+			var response protocol.BatchLogResponse
+			if err := json.NewDecoder(bytes.NewReader(content)).Decode(&response); err != nil {
+				return err
+			}
+			for _, result := range response.Results {
+				if err := commitLogCallback(result.RepoCommit, result.Output); err != nil {
+					return err
+				}
+			}
+
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
+	return nil
+}
 
 // Cmd represents a command to be executed remotely.
 type Cmd struct {

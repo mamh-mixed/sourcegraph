@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/opentracing/opentracing-go/log"
@@ -18,6 +19,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/gitserver"
 	"github.com/sourcegraph/sourcegraph/internal/gitserver/gitdomain"
+	"github.com/sourcegraph/sourcegraph/internal/gitserver/protocol"
 	"github.com/sourcegraph/sourcegraph/internal/honey"
 	"github.com/sourcegraph/sourcegraph/internal/lazyregexp"
 	"github.com/sourcegraph/sourcegraph/internal/trace"
@@ -534,16 +536,61 @@ func CommitExists(ctx context.Context, db database.DB, repo api.RepoName, id api
 // function returns a slice of the same size as the input slice, true indicating that the
 // commit at the symmetric index exists.
 func CommitsExist(ctx context.Context, db database.DB, repoCommits []api.RepoCommit, checker authz.SubRepoPermissionChecker) ([]bool, error) {
-	exists := make([]bool, len(repoCommits))
-	for i, rc := range repoCommits {
-		c, err := getCommit(ctx, db, rc.Repo, rc.CommitID, ResolveRevisionOptions{NoEnsureRevision: true}, checker)
-		if errors.HasType(err, &gitdomain.RevisionNotFoundError{}) {
-			continue
-		}
-		if err != nil {
+	// TODO - trace, honey
+
+	indexesByRepoCommit := make(map[api.RepoCommit]int, len(repoCommits))
+	for i, repoCommit := range repoCommits {
+		if err := checkSpecArgSafety(string(repoCommit.CommitID)); err != nil {
 			return nil, err
 		}
-		exists[i] = c != nil
+
+		// Ensure repository names are normalized. If do this in a lower layer, then we may
+		// not be able to compare the RepoCommit parameter in the callback below with the
+		// input values.
+		repoCommits[i].Repo = protocol.NormalizeRepo(repoCommit.Repo)
+
+		// Make it easy to look up the index to populate for a particular RepoCommit value.
+		// Note that we use the slice-indexed version as the key, not the local variable, which
+		// was not updated in the normalization phase above
+		indexesByRepoCommit[repoCommits[i]] = i
+	}
+
+	// Create a slice with values populated in the callback defined below. Since the callback
+	// may be invoked concurrently inside BatchLog, we need to synchronize writes to this slice
+	// with this local mutex.
+	exists := make([]bool, len(repoCommits))
+	var mu sync.Mutex
+
+	callback := func(repoCommit api.RepoCommit, commitLogStdout string) error {
+		wrappedCommits, err := parseCommitLogOutput([]byte(commitLogStdout), false)
+		if err != nil {
+			return err
+		}
+
+		// Enforce sub-repository permissions
+		commits, err := filterCommits(ctx, wrappedCommits, repoCommit.Repo, checker)
+		if err != nil {
+			return err
+		}
+
+		if len(commits) == 0 {
+			// Not found
+			return nil
+		}
+
+		mu.Lock()
+		defer mu.Unlock()
+		index := indexesByRepoCommit[repoCommit]
+		exists[index] = true
+		return nil
+	}
+
+	opts := gitserver.BatchLogOptions{
+		RepoCommits: repoCommits,
+		Format:      logFormatWithoutRefs,
+	}
+	if err := gitserver.NewClient(db).BatchLog(ctx, opts, callback); err != nil {
+		return nil, err
 	}
 
 	return exists, nil
