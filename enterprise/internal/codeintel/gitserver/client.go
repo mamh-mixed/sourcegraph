@@ -75,9 +75,9 @@ func (c *Client) CommitsExist(ctx context.Context, commits []RepositoryCommit) (
 		return nil, err
 	}
 
-	rcs := make([]git.RepoCommit, 0, len(commits))
+	rcs := make([]api.RepoCommit, 0, len(commits))
 	for _, rc := range commits {
-		rcs = append(rcs, git.RepoCommit{
+		rcs = append(rcs, api.RepoCommit{
 			Repo:     repositoryNames[rc.RepositoryID],
 			CommitID: api.CommitID(rc.Commit),
 		})

@@ -526,15 +526,10 @@ func CommitExists(ctx context.Context, db database.DB, repo api.RepoName, id api
 	return c != nil, nil
 }
 
-type RepoCommit struct {
-	Repo     api.RepoName
-	CommitID api.CommitID
-}
-
 // CommitsExist determines if the given commits exists in the given repositories. This
 // function returns a slice of the same size as the input slice, true indicating that the
 // commit at the symmetric index exists.
-func CommitsExist(ctx context.Context, db database.DB, repoCommits []RepoCommit, checker authz.SubRepoPermissionChecker) ([]bool, error) {
+func CommitsExist(ctx context.Context, db database.DB, repoCommits []api.RepoCommit, checker authz.SubRepoPermissionChecker) ([]bool, error) {
 	exists := make([]bool, len(repoCommits))
 	for i, rc := range repoCommits {
 		c, err := getCommit(ctx, db, rc.Repo, rc.CommitID, ResolveRevisionOptions{NoEnsureRevision: true}, checker)

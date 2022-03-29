@@ -39,6 +39,11 @@ func (c CommitID) Short() string {
 // the manpage gitrevisions(7).
 type RevSpec string
 
+type RepoCommit struct {
+	Repo     RepoName
+	CommitID CommitID
+}
+
 // Repo represents a source code repository.
 type Repo struct {
 	// ID is the unique numeric ID for this repository on Sourcegraph.
