@@ -75,22 +75,15 @@ func (c *Client) CommitsExist(ctx context.Context, commits []RepositoryCommit) (
 		return nil, err
 	}
 
-	exists := make([]bool, len(commits))
-	for i, rc := range commits {
-		name, ok := repositoryNames[rc.RepositoryID]
-		if !ok {
-			continue
-		}
-
-		e, err := git.CommitExists(ctx, c.db, name, api.CommitID(rc.Commit), authz.DefaultSubRepoPermsChecker)
-		if err != nil {
-			return nil, err
-		}
-
-		exists[i] = e
+	rcs := make([]git.RepoCommit, 0, len(commits))
+	for _, rc := range commits {
+		rcs = append(rcs, git.RepoCommit{
+			Repo:     repositoryNames[rc.RepositoryID],
+			CommitID: api.CommitID(rc.Commit),
+		})
 	}
 
-	return exists, nil
+	return git.CommitsExist(ctx, c.db, rcs, authz.DefaultSubRepoPermsChecker)
 }
 
 // Head determines the tip commit of the default branch for the given repository. If no HEAD revision exists

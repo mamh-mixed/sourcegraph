@@ -526,6 +526,28 @@ func CommitExists(ctx context.Context, db database.DB, repo api.RepoName, id api
 	return c != nil, nil
 }
 
+type RepoCommit struct {
+	Repo     api.RepoName
+	CommitID api.CommitID
+}
+
+// CommitsExist determines if the given commits exists in the given repositories. This
+// function returns a slice of the same size as the input slice, true indicating that the
+// commit at the symmetric index exists.
+func CommitsExist(ctx context.Context, db database.DB, repoCommits []RepoCommit, checker authz.SubRepoPermissionChecker) ([]bool, error) {
+	exists := make([]bool, len(repoCommits))
+	for i, rc := range repoCommits {
+		e, err := CommitExists(ctx, db, rc.Repo, rc.CommitID, checker)
+		if err != nil {
+			return nil, err
+		}
+
+		exists[i] = e
+	}
+
+	return exists, nil
+}
+
 // Head determines the tip commit of the default branch for the given repository.
 // If no HEAD revision exists for the given repository (which occurs with empty
 // repositories), a false-valued flag is returned along with a nil error and
