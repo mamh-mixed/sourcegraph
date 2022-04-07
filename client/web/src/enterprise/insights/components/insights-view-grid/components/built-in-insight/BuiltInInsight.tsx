@@ -3,7 +3,6 @@ import React, { Ref, useContext, useMemo, useRef, useState } from 'react'
 import { useMergeRefs } from 'use-callback-ref'
 
 import { isErrorLike } from '@sourcegraph/common'
-import { ConfirmationModal } from '@sourcegraph/shared/src/components/ConfirmationModal'
 import { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryService'
 
 import * as View from '../../../../../../views'
@@ -38,8 +37,6 @@ export function BuiltInInsight(props: BuiltInInsightProps): React.ReactElement {
     const { getBuiltInInsightData } = useContext(CodeInsightsBackendContext)
     const { dashboard } = useContext(DashboardInsightsContext)
 
-    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-
     const insightCardReference = useRef<HTMLDivElement>(null)
     const mergedInsightCardReference = useMergeRefs([insightCardReference, innerRef])
 
@@ -52,7 +49,7 @@ export function BuiltInInsight(props: BuiltInInsightProps): React.ReactElement {
 
     // Visual line chart settings
     const [zeroYAxisMin, setZeroYAxisMin] = useState(false)
-    const { delete: handleDelete, loading: isDeleting } = useDeleteInsight()
+    const { loading: isDeleting } = useDeleteInsight()
     const { loading: isRemoving } = useRemoveInsightFromDashboard()
 
     const { trackDatumClicks, trackMouseLeave, trackMouseEnter } = useCodeInsightViewPings({
@@ -73,7 +70,6 @@ export function BuiltInInsight(props: BuiltInInsightProps): React.ReactElement {
                         menuButtonClassName="ml-1 d-inline-flex"
                         zeroYAxisMin={zeroYAxisMin}
                         onToggleZeroYAxisMin={() => setZeroYAxisMin(!zeroYAxisMin)}
-                        onDelete={() => setShowDeleteConfirm(true)}
                     />
                 )
             }
@@ -92,17 +88,6 @@ export function BuiltInInsight(props: BuiltInInsightProps): React.ReactElement {
             ) : (
                 data.view && (
                     <LineChartSettingsContext.Provider value={{ zeroYAxisMin }}>
-                        <ConfirmationModal
-                            showModal={showDeleteConfirm}
-                            handleCancel={() => setShowDeleteConfirm(false)}
-                            handleConfirmation={() => handleDelete(insight)}
-                            header="Delete Insight?"
-                            message={
-                                <>
-                                    Are you sure you want to delete the insight <strong>{insight.title}</strong>?
-                                </>
-                            }
-                        />
                         <View.Content
                             content={data.view.content}
                             onDatumLinkClick={trackDatumClicks}
