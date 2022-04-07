@@ -53,7 +53,7 @@ export function BuiltInInsight(props: BuiltInInsightProps): React.ReactElement {
     // Visual line chart settings
     const [zeroYAxisMin, setZeroYAxisMin] = useState(false)
     const { delete: handleDelete, loading: isDeleting } = useDeleteInsight()
-    const { remove: handleRemove, loading: isRemoving } = useRemoveInsightFromDashboard()
+    const { loading: isRemoving } = useRemoveInsightFromDashboard()
 
     const { trackDatumClicks, trackMouseLeave, trackMouseEnter } = useCodeInsightViewPings({
         telemetryService,
@@ -73,8 +73,7 @@ export function BuiltInInsight(props: BuiltInInsightProps): React.ReactElement {
                         menuButtonClassName="ml-1 d-inline-flex"
                         zeroYAxisMin={zeroYAxisMin}
                         onToggleZeroYAxisMin={() => setZeroYAxisMin(!zeroYAxisMin)}
-                        onRemoveFromDashboard={dashboard => handleRemove({ insight, dashboard })}
-                        onDelete={() => handleDelete(insight)}
+                        onDelete={() => setShowDeleteConfirm(true)}
                     />
                 )
             }
