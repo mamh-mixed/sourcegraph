@@ -4,6 +4,7 @@ import classNames from 'classnames'
 import { useMergeRefs } from 'use-callback-ref'
 
 import { asError, isErrorLike } from '@sourcegraph/common'
+import { ConfirmationModal } from '@sourcegraph/shared/src/components/ConfirmationModal'
 import { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryService'
 import { useDebounce, Alert } from '@sourcegraph/wildcard'
 
@@ -46,6 +47,8 @@ export const BackendInsightView: React.FunctionComponent<BackendInsightProps> = 
 
     const { dashboard } = useContext(DashboardInsightsContext)
     const { getBackendInsightData, createInsight, updateInsight } = useContext(CodeInsightsBackendContext)
+
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
     // Visual line chart settings
     const [zeroYAxisMin, setZeroYAxisMin] = useState(false)
@@ -164,7 +167,7 @@ export const BackendInsightView: React.FunctionComponent<BackendInsightProps> = 
                             zeroYAxisMin={zeroYAxisMin}
                             onToggleZeroYAxisMin={() => setZeroYAxisMin(!zeroYAxisMin)}
                             onRemoveFromDashboard={dashboard => handleRemove({ insight, dashboard })}
-                            onDelete={() => handleDelete(insight)}
+                            onDelete={() => setShowDeleteConfirm(true)}
                         />
                     </>
                 )
@@ -193,6 +196,17 @@ export const BackendInsightView: React.FunctionComponent<BackendInsightProps> = 
             ) : (
                 data && (
                     <LineChartSettingsContext.Provider value={{ zeroYAxisMin }}>
+                        <ConfirmationModal
+                            showModal={showDeleteConfirm}
+                            handleCancel={() => setShowDeleteConfirm(false)}
+                            handleConfirmation={() => handleDelete(insight)}
+                            header="Delete Insight?"
+                            message={
+                                <>
+                                    Are you sure you want to delete the insight <strong>{insight.title}</strong>?
+                                </>
+                            }
+                        />
                         <View.Content
                             content={data.view.content}
                             alert={
