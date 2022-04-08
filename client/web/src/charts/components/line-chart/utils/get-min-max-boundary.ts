@@ -1,5 +1,7 @@
 import { LineChartSeriesWithData } from './data-series-processing'
 
+const MIN_RANGE = 5
+
 interface MinMaxBoundariesInput<D> {
     dataSeries: LineChartSeriesWithData<D>[]
     xAxisKey: keyof D
@@ -38,6 +40,14 @@ export function getMinMaxBoundaries<D>(props: MinMaxBoundariesInput<D>): Boundar
 
     // Expand range for better ticks looking in case if we got a flat data series dataset
     ;[minY, maxY] = minY === maxY ? [maxY - maxY / 2, maxY + maxY / 2] : [minY, maxY]
+
+    // If the range is too small expand the range for a better looking chart
+    // If possible pad above and below range
+    const range = maxY-minY
+    if (range < MIN_RANGE) {
+        const pad = (MIN_RANGE - range)/2
+        ;[minY, maxY] = minY >= pad ? [minY -= pad, maxY += pad + ((MIN_RANGE - range)%2)] : [minY, maxY += (MIN_RANGE-range)]
+    }
 
     return { minX, minY, maxX, maxY }
 }

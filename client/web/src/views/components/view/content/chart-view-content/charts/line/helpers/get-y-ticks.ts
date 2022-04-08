@@ -15,7 +15,7 @@ const HEIGHT_PER_TICK = 40
  */
 export function getYTicks(scale: AnyD3Scale, height: number): number[] {
     // Generate max density ticks (d3 scale generation)
-    const ticks: number[] = getTicks(scale).filter(Number.isInteger) as number[]
+    const ticks: number[] = getTicks(scale) as number[]
 
     if (ticks.length <= 2) {
         return ticks

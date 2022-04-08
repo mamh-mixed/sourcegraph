@@ -58,7 +58,7 @@ export function getYScaleTicks(input: GetScaleTicksInput): number[] {
     const { scale, space, pixelsPerTick = 40 } = input
 
     // Generate max density ticks (d3 scale generation)
-    const ticks = getTicks(scale).filter(Number.isInteger) as number[]
+    const ticks = getTicks(scale) as number[]
 
     if (ticks.length <= 2) {
         return ticks
