@@ -54,8 +54,8 @@ func TestSandboxMaxTimeout(t *testing.T) {
 	defer sandbox.Close()
 
 	script := `
-			while true do end
-		`
+		while true do end
+	`
 	if _, err := sandbox.RunScript(ctx, RunOptions{Timeout: time.Millisecond}, script); err == nil {
 		t.Fatalf("expected error running script")
 	} else if !strings.Contains(err.Error(), context.DeadlineExceeded.Error()) {
