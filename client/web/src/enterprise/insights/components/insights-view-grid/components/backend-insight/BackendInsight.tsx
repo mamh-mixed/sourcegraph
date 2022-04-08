@@ -13,9 +13,7 @@ import { LockedChart } from '../../../../../../views/components/view/content/cha
 import { CodeInsightsBackendContext } from '../../../../core/backend/code-insights-backend-context'
 import { InsightInProcessError } from '../../../../core/backend/utils/errors'
 import { BackendInsight, InsightFilters } from '../../../../core/types'
-import { useDeleteInsight } from '../../../../hooks/use-delete-insight'
 import { useDistinctValue } from '../../../../hooks/use-distinct-value'
-import { useRemoveInsightFromDashboard } from '../../../../hooks/use-remove-insight'
 import { DashboardInsightsContext } from '../../../../pages/dashboards/dashboard-page/components/dashboards-content/components/dashboard-inisghts/DashboardInsightsContext'
 import { useCodeInsightViewPings, getTrackingTypeByInsightType } from '../../../../pings'
 import { FORM_ERROR, SubmissionErrors } from '../../../form/hooks/useForm'
@@ -83,8 +81,6 @@ export const BackendInsightView: React.FunctionComponent<BackendInsightProps> = 
     )
 
     // Handle insight delete and remove actions
-    const { loading: isDeleting, delete: handleDelete } = useDeleteInsight()
-    const { loading: isRemoving } = useRemoveInsightFromDashboard()
 
     const handleFilterSave = async (filters: InsightFilters): Promise<SubmissionErrors> => {
         try {
@@ -174,10 +170,8 @@ export const BackendInsightView: React.FunctionComponent<BackendInsightProps> = 
         >
             {resizing ? (
                 <View.Banner>Resizing</View.Banner>
-            ) : loading || isDeleting || !isVisible ? (
-                <View.LoadingContent text={isDeleting ? 'Deleting code insight' : 'Loading code insight'} />
-            ) : isRemoving ? (
-                <View.LoadingContent text="Removing insight from the dashboard" />
+            ) : loading || !isVisible ? (
+                <View.LoadingContent text="Loading code insight" />
             ) : isErrorLike(error) ? (
                 <View.ErrorContent error={error} title={insight.id}>
                     {error instanceof InsightInProcessError ? (

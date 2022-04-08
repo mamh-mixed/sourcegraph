@@ -12,6 +12,8 @@ interface RemoveInsightInput {
     dashboard: Pick<InsightDashboard, 'id' | 'title'>
 }
 
+const sleep = (milliseconds: number): Promise<void> => new Promise(resolve => setTimeout(resolve, milliseconds))
+
 export interface useRemoveInsightFromDashboardAPI {
     remove: (insight: RemoveInsightInput) => Promise<void>
     loading: boolean
@@ -37,6 +39,7 @@ export function useRemoveInsightFromDashboard(): useRemoveInsightFromDashboardAP
             setError(undefined)
 
             try {
+                await sleep(5000)
                 await removeInsightFromDashboard({
                     insightId: insight.id,
                     dashboardId: dashboard.id,
