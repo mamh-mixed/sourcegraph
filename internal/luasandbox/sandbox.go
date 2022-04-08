@@ -6,6 +6,7 @@ import (
 	"time"
 
 	lua "github.com/yuin/gopher-lua"
+	luar "layeh.com/gopher-luar"
 
 	"github.com/sourcegraph/sourcegraph/internal/observation"
 )
@@ -37,6 +38,59 @@ func (s *Sandbox) RunScript(ctx context.Context, opts RunOptions, script string)
 		}
 
 		retValue = s.state.Get(lua.MultRet)
+		return nil
+	}
+	err = s.run(ctx, opts, f)
+	return
+}
+
+// TODO - document
+func (s *Sandbox) Call(ctx context.Context, opts RunOptions, luaFunction *lua.LFunction, args ...interface{}) (retValue lua.LValue, err error) {
+	ctx, endObservation := s.operations.call.With(ctx, &err, observation.Args{})
+	defer endObservation(1, observation.Args{})
+
+	f := func() error {
+		s.state.Push(luaFunction)
+		for _, arg := range args {
+			s.state.Push(luar.New(s.state, arg))
+		}
+
+		if err := s.state.PCall(len(args), lua.MultRet, nil); err != nil {
+			return err
+		}
+
+		retValue = s.state.Get(lua.MultRet)
+		return nil
+	}
+	err = s.run(ctx, opts, f)
+	return
+}
+
+// TODO - document
+func (s *Sandbox) CallGenerator(ctx context.Context, opts RunOptions, luaFunction *lua.LFunction, args ...interface{}) (retValues []lua.LValue, err error) {
+	ctx, endObservation := s.operations.callGenerator.With(ctx, &err, observation.Args{})
+	defer endObservation(1, observation.Args{})
+
+	f := func() error {
+		co, _ := s.state.NewThread()
+
+	loop:
+		for {
+			state, err, yieldedValues := s.state.Resume(co, luaFunction)
+			switch state {
+			case lua.ResumeError:
+				return err
+
+			case lua.ResumeYield:
+				retValues = append(retValues, yieldedValues...)
+				continue
+
+			case lua.ResumeOK:
+				retValues = append(retValues, yieldedValues...)
+				break loop
+			}
+		}
+
 		return nil
 	}
 	err = s.run(ctx, opts, f)
