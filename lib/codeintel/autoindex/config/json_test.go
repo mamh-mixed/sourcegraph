@@ -31,8 +31,8 @@ const jsonTestInput = `
 		},
 		{
 			"root": "web/",
-			"indexer": "lsif-tsc",
-			"indexer_args": ["-p", "."],
+			"indexer": "lsif-typescript",
+			"indexer_args": ["index", "--yarn-workspaces"],
 			"outfile": "lsif.dump",
 		},
 	]
@@ -68,8 +68,8 @@ func TestUnmarshalJSON(t *testing.T) {
 			{
 				Steps:       nil,
 				Root:        "web/",
-				Indexer:     "lsif-tsc",
-				IndexerArgs: []string{"-p", "."},
+				Indexer:     "lsif-typescript",
+				IndexerArgs: []string{"index", "--yarn-workspaces"},
 				Outfile:     "lsif.dump",
 			},
 		},
