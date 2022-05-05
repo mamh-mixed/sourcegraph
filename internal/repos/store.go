@@ -25,9 +25,6 @@ import (
 type Store interface {
 	// RepoStore returns a database.RepoStore using the same database handle.
 	RepoStore() database.RepoStore
-	// GitserverReposStore returns a database.GitserverReposStore using the same
-	// database handle.
-	GitserverReposStore() database.GitserverRepoStore
 	// ExternalServiceStore returns a database.ExternalServiceStore using the same
 	// database handle.
 	ExternalServiceStore() database.ExternalServiceStore
@@ -109,7 +106,6 @@ type store struct {
 	Tracer trace.Tracer
 
 	repoStore            database.RepoStore
-	gitserverReposStore  database.GitserverRepoStore
 	externalServiceStore database.ExternalServiceStore
 
 	txtrace *trace.Trace
@@ -122,7 +118,6 @@ func NewStore(db database.DB, txOpts sql.TxOptions) Store {
 	return &store{
 		Store:                s,
 		repoStore:            db.Repos(),
-		gitserverReposStore:  db.GitserverRepos(),
 		externalServiceStore: db.ExternalServices(),
 		Log:                  log15.Root(),
 		Tracer:               trace.Tracer{Tracer: opentracing.GlobalTracer()},
@@ -131,10 +126,6 @@ func NewStore(db database.DB, txOpts sql.TxOptions) Store {
 
 func (s *store) RepoStore() database.RepoStore {
 	return s.repoStore
-}
-
-func (s *store) GitserverReposStore() database.GitserverRepoStore {
-	return s.gitserverReposStore
 }
 
 func (s *store) ExternalServiceStore() database.ExternalServiceStore {
@@ -149,7 +140,6 @@ func (s *store) With(other basestore.ShareableStore) Store {
 	return &store{
 		Store:                s.Store.With(other),
 		repoStore:            s.repoStore.With(other),
-		gitserverReposStore:  s.gitserverReposStore.With(other),
 		externalServiceStore: s.externalServiceStore.With(other),
 		Log:                  s.Log,
 		Metrics:              s.Metrics,
