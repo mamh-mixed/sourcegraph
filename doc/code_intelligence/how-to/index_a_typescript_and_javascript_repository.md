@@ -30,13 +30,11 @@ jobs:
           curl -L https://sourcegraph.com/.api/src-cli/src_linux_amd64 -o /usr/local/bin/src
           chmod +x /usr/local/bin/src
       - name: Upload index
-        run: src lsif upload -github-token='${{ secrets.GITHUB_TOKEN }}' -no-progress
+        # ignore upload failures to avoid disrupting CI with non-critical error
+        run: src lsif upload -github-token='${{ secrets.GITHUB_TOKEN }}' -no-progress -ignore-upload-failure
         env:
           SRC_ENDPOINT: https://sourcegraph.com/
 ```
-
-> NOTE: `src-cli` ignores index upload failures by default, to avoid disrupting CI pipelines
-> with non-critical errors.
 
 On CI providers other than GitHub Actions,
 you may need an explicitly install [Node.js](https://nodejs.org/) as a first step.
@@ -80,7 +78,8 @@ jobs:
       - name: Generate LSIF data
         run: lsif-typescript index
       - name: Upload LSIF data
-        run: src lsif upload -github-token=${{ secrets.GITHUB_TOKEN }} -no-progress
+        # ignore upload failures to avoid disrupting CI with non-critical error
+        run: src lsif upload -github-token=${{ secrets.GITHUB_TOKEN }} -no-progress -ignore-upload-failure
         env:
           SRC_ENDPOINT: https://sourcegraph.com/
 ```
