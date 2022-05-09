@@ -1,7 +1,5 @@
 package precise
 
-import "github.com/sourcegraph/sourcegraph/lib/codeintel/lsif/protocol"
-
 type ID string
 
 // MetaData contains data describing the overall structure of a bundle.
@@ -33,7 +31,6 @@ type RangeData struct {
 	ReferenceResultID      ID   // possibly empty
 	ImplementationResultID ID   // possibly empty
 	HoverResultID          ID   // possibly empty
-	DocumentationResultID  ID   // possibly empty
 	MonikerIDs             []ID // possibly empty
 }
 
@@ -136,74 +133,6 @@ type IndexedResultChunkData struct {
 	ResultChunk ResultChunkData
 }
 
-// DocumentationNodeChild represents a child of a node.
-type DocumentationNodeChild struct {
-	// Node is non-nil if this child is another (non-new-page) node.
-	Node *DocumentationNode `json:"node,omitempty"`
-
-	// PathID is a non-empty string if this child is itself a new page.
-	PathID string `json:"pathID,omitempty"`
-}
-
-// DocumentationNode describes one node in a tree of hierarchial documentation.
-type DocumentationNode struct {
-	// PathID is the path ID of this node itself.
-	PathID        string                   `json:"pathID"`
-	Documentation protocol.Documentation   `json:"documentation"`
-	Label         protocol.MarkupContent   `json:"label"`
-	Detail        protocol.MarkupContent   `json:"detail"`
-	Children      []DocumentationNodeChild `json:"children"`
-}
-
-// DocumentationPageData describes a single page of documentation.
-type DocumentationPageData struct {
-	Tree *DocumentationNode
-}
-
-// DocumentationPathInfoData describes a single documentation path, what is located there and what
-// pages are below it.
-type DocumentationPathInfoData struct {
-	// The pathID for this entry.
-	PathID string `json:"pathID"`
-
-	// IsIndex tells if the page at this path is an empty index page whose only purpose is to describe
-	// all the pages below it.
-	IsIndex bool `json:"isIndex"`
-
-	// Children is a list of the children page paths immediately below this one.
-	Children []string `json:"children,omitempty"`
-}
-
-// DocumentationMapping maps a documentationResult vertex ID to its path IDs, which are unique in
-// the context of a bundle.
-type DocumentationMapping struct {
-	// ResultID is the documentationResult vertex ID.
-	ResultID uint64 `json:"resultID"`
-
-	// PathID is the path ID corresponding to the documentationResult vertex ID.
-	PathID string `json:"pathID"`
-
-	// The file path corresponding to the documentationResult vertex ID, or nil if there is no
-	// associated file.
-	FilePath *string `json:"filePath"`
-}
-
-// DocumentationSearchResult describes a single documentation search result, from the
-// lsif_data_docs_search_public or lsif_data_docs_search_private table.
-type DocumentationSearchResult struct {
-	ID        int64
-	RepoID    int32
-	DumpID    int32
-	DumpRoot  string
-	PathID    string
-	Detail    string
-	Lang      string
-	RepoName  string
-	Tags      []string
-	SearchKey string
-	Label     string
-}
-
 // Package pairs a package name and the dump that provides it.
 type Package struct {
 	Scheme  string
@@ -223,17 +152,14 @@ type PackageReference struct {
 // and parallelizing the work, while the Maps version can be modified for e.g. local development
 // via the REPL or patching for incremental indexing.
 type GroupedBundleDataChans struct {
-	Meta                  MetaData
-	Documents             chan KeyedDocumentData
-	ResultChunks          chan IndexedResultChunkData
-	Definitions           chan MonikerLocations
-	References            chan MonikerLocations
-	Implementations       chan MonikerLocations
-	Packages              []Package
-	PackageReferences     []PackageReference
-	DocumentationPages    chan *DocumentationPageData
-	DocumentationPathInfo chan *DocumentationPathInfoData
-	DocumentationMappings chan DocumentationMapping
+	Meta              MetaData
+	Documents         chan KeyedDocumentData
+	ResultChunks      chan IndexedResultChunkData
+	Definitions       chan MonikerLocations
+	References        chan MonikerLocations
+	Implementations   chan MonikerLocations
+	Packages          []Package
+	PackageReferences []PackageReference
 }
 
 type GroupedBundleDataMaps struct {

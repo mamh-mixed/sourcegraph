@@ -110,14 +110,6 @@ func (h *handler) handle(ctx context.Context, logger log.Logger, upload store.Up
 		return requeued, err
 	}
 
-	// Determine if the upload is for the default Git branch.
-	isDefaultBranch, err := h.gitserverClient.DefaultBranchContains(ctx, upload.RepositoryID, upload.Commit)
-	if err != nil {
-		return false, errors.Wrap(err, "gitserver.DefaultBranchContains")
-	}
-
-	trace.Log(otlog.Bool("defaultBranch", isDefaultBranch))
-
 	getChildren := func(ctx context.Context, dirnames []string) (map[string][]string, error) {
 		directoryChildren, err := h.gitserverClient.DirectoryChildren(ctx, upload.RepositoryID, upload.Commit, dirnames)
 		if err != nil {
@@ -134,7 +126,7 @@ func (h *handler) handle(ctx context.Context, logger log.Logger, upload store.Up
 
 		// Note: this is writing to a different database than the block below, so we need to use a
 		// different transaction context (managed by the writeData function).
-		if err := writeData(ctx, h.lsifStore, upload, repo, isDefaultBranch, groupedBundleData, trace); err != nil {
+		if err := writeData(ctx, h.lsifStore, upload, groupedBundleData, trace); err != nil {
 			if isUniqueConstraintViolation(err) {
 				// If this is a unique constraint violation, then we've previously processed this same
 				// upload record up to this point, but failed to perform the transaction below. We can
@@ -298,14 +290,7 @@ func withUploadData(ctx context.Context, logger log.Logger, uploadStore uploadst
 }
 
 // writeData transactionally writes the given grouped bundle data into the given LSIF store.
-func writeData(ctx context.Context, lsifStore LSIFStore, upload store.Upload, repo *types.Repo, isDefaultBranch bool, groupedBundleData *precise.GroupedBundleDataChans, trace observation.TraceLogger) (err error) {
-	// Upsert values used for documentation search that have high contention. We do this with the raw LSIF store
-	// instead of in the transaction below because the rows being upserted tend to have heavy contention.
-	repositoryNameID, languageNameID, err := lsifStore.WriteDocumentationSearchPrework(ctx, upload, repo, isDefaultBranch)
-	if err != nil {
-		return errors.Wrap(err, "store.WriteDocumentationSearchPrework")
-	}
-
+func writeData(ctx context.Context, lsifStore LSIFStore, upload store.Upload, groupedBundleData *precise.GroupedBundleDataChans, trace observation.TraceLogger) (err error) {
 	tx, err := lsifStore.Transact(ctx)
 	if err != nil {
 		return err
@@ -344,24 +329,6 @@ func writeData(ctx context.Context, lsifStore LSIFStore, upload store.Upload, re
 		return errors.Wrap(err, "store.WriteImplementations")
 	}
 	trace.Log(otlog.Uint32("numImplementations", count))
-
-	count, err = tx.WriteDocumentationPages(ctx, upload, repo, isDefaultBranch, groupedBundleData.DocumentationPages, repositoryNameID, languageNameID)
-	if err != nil {
-		return errors.Wrap(err, "store.WriteDocumentationPages")
-	}
-	trace.Log(otlog.Uint32("numDocPages", count))
-
-	count, err = tx.WriteDocumentationPathInfo(ctx, upload.ID, groupedBundleData.DocumentationPathInfo)
-	if err != nil {
-		return errors.Wrap(err, "store.WriteDocumentationPathInfo")
-	}
-	trace.Log(otlog.Uint32("numDocPathInfo", count))
-
-	count, err = tx.WriteDocumentationMappings(ctx, upload.ID, groupedBundleData.DocumentationMappings)
-	if err != nil {
-		return errors.Wrap(err, "store.WriteDocumentationMappings")
-	}
-	trace.Log(otlog.Uint32("numDocMappings", count))
 
 	return nil
 }

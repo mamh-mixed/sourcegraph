@@ -11,7 +11,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
-const slowRangesRequestThreshold = time.Second
+const slowRangesRequestThreshold = time.Second + time.Nanosecond
 
 // Ranges returns code intelligence for the ranges that fall within the given range of lines. These
 // results are partial and do not include references outside the current file, or any location that
@@ -91,11 +91,10 @@ func (r *queryResolver) adjustCodeIntelligenceRange(ctx context.Context, upload 
 	}
 
 	return AdjustedCodeIntelligenceRange{
-		Range:               adjustedRange,
-		Definitions:         adjustedDefinitions,
-		References:          adjustedReferences,
-		Implementations:     adjustedImplementations,
-		HoverText:           rn.HoverText,
-		DocumentationPathID: rn.DocumentationPathID,
+		Range:           adjustedRange,
+		Definitions:     adjustedDefinitions,
+		References:      adjustedReferences,
+		Implementations: adjustedImplementations,
+		HoverText:       rn.HoverText,
 	}, true, nil
 }

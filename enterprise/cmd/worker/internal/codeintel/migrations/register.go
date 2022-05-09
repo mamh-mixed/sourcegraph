@@ -4,7 +4,6 @@ import (
 	"github.com/sourcegraph/sourcegraph/enterprise/cmd/worker/internal/codeintel"
 	dbmigrations "github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/stores/dbstore/migration"
 	lsifmigrations "github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/stores/lsifstore/migration"
-	"github.com/sourcegraph/sourcegraph/internal/conf"
 	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/oobmigration"
 )
@@ -29,8 +28,6 @@ func RegisterMigrations(db database.DB, outOfBandMigrationRunner *oobmigration.R
 	if err != nil {
 		return err
 	}
-
-	repoStore := database.Repos(dbStore.Handle().DB())
 
 	if err := outOfBandMigrationRunner.Register(
 		lsifmigrations.DiagnosticsCountMigrationID, // 1
@@ -62,22 +59,6 @@ func RegisterMigrations(db database.DB, outOfBandMigrationRunner *oobmigration.R
 		oobmigration.MigratorOptions{Interval: config.DocumentColumnSplitMigrationBatchInterval},
 	); err != nil {
 		return err
-	}
-
-	if conf.APIDocsSearchIndexingEnabled() {
-		if err := outOfBandMigrationRunner.Register(
-			lsifmigrations.APIDocsSearchMigrationID, // 12
-			lsifmigrations.NewAPIDocsSearchMigrator(
-				lsifStore,
-				dbStore,
-				repoStore,
-				gitserverClient,
-				config.APIDocsSearchMigrationBatchSize,
-			),
-			oobmigration.MigratorOptions{Interval: config.APIDocsSearchMigrationBatchInterval},
-		); err != nil {
-			return err
-		}
 	}
 
 	if err := outOfBandMigrationRunner.Register(
