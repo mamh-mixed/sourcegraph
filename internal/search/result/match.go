@@ -33,6 +33,7 @@ var (
 	_ Match = (*FileMatch)(nil)
 	_ Match = (*RepoMatch)(nil)
 	_ Match = (*CommitMatch)(nil)
+	_ Match = (*CommitDiffMatch)(nil)
 )
 
 // Match ranks are used for sorting the different match types.
@@ -72,6 +73,11 @@ type Key struct {
 	// Path is the path of the file the match belongs to.
 	// Empty if there is no file associated with the match (e.g. RepoMatch or CommitMatch)
 	Path string
+
+	// PathMode is whether a file path has been created, modified or
+	// removed. Applies to, e.g., CommitDiffMatch. Empty if no there is no
+	// associated path mode
+	PathStatus PathStatus
 
 	// TypeRank is the sorting rank of the type this key belongs to.
 	TypeRank int
