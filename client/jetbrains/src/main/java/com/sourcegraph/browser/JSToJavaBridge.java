@@ -30,14 +30,17 @@ public class JSToJavaBridge implements Disposable {
         browser.getJBCefClient().addLoadHandler(new CefLoadHandler() {
             @Override
             public void onLoadingStateChange(CefBrowser cefBrowser, boolean isLoading, boolean canGoBack, boolean canGoForward) {
+                System.out.println("Loading state changed: " + isLoading);
             }
 
             @Override
             public void onLoadStart(CefBrowser cefBrowser, CefFrame frame, CefRequest.TransitionType transitionType) {
+                System.out.println("Loading started");
             }
 
             @Override
             public void onLoadEnd(CefBrowser cefBrowser, CefFrame frame, int httpStatusCode) {
+                System.out.println("Loading ended");
                 // In case of a failure, Java returns two arguments, so must use an intermediate function.
                 // (source: https://dploeger.github.io/intellij-api-doc/com/intellij/ui/jcef/JBCefJSQuery.html#:~:text=onFailureCallback%20%2D%20JS%20callback%20in%20format%3A%20function(error_code%2C%20error_message)%20%7B%7D)
                 cefBrowser.executeJavaScript(
@@ -59,6 +62,7 @@ public class JSToJavaBridge implements Disposable {
 
             @Override
             public void onLoadError(CefBrowser cefBrowser, CefFrame frame, ErrorCode errorCode, String errorText, String failedUrl) {
+                System.out.println("Loading error: " + errorText);
             }
         }, browser.getCefBrowser());
 
