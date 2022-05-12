@@ -52,11 +52,6 @@ var (
 		Name:            "codeintel",
 		MigrationsTable: "codeintel_schema_migrations",
 		CountTables: []string{
-			"lsif_data_apidocs_num_dumps",
-			"lsif_data_apidocs_num_dumps_indexed",
-			"lsif_data_apidocs_num_pages",
-			"lsif_data_apidocs_num_search_results_private",
-			"lsif_data_apidocs_num_search_results_public",
 			"rockskip_ancestry",
 		},
 		FS: getFSForPath("codeintel"),

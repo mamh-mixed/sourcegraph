@@ -1,7 +1,6 @@
 import React from 'react'
 
 import AccountIcon from 'mdi-react/AccountIcon'
-import BookOpenBlankVariantIcon from 'mdi-react/BookOpenBlankVariantIcon'
 import BrainIcon from 'mdi-react/BrainIcon'
 import HistoryIcon from 'mdi-react/HistoryIcon'
 import SettingsIcon from 'mdi-react/SettingsIcon'
@@ -15,7 +14,6 @@ import { Button, ButtonGroup, Icon, Link } from '@sourcegraph/wildcard'
 
 import { RepoBatchChangesButton } from '../../batches/RepoBatchChangesButton'
 import { TreePageRepositoryFields } from '../../graphql-operations'
-import { useExperimentalFeatures } from '../../stores'
 
 interface TreeNavigationProps {
     repo: TreePageRepositoryFields
@@ -31,17 +29,8 @@ export const TreeNavigation: React.FunctionComponent<React.PropsWithChildren<Tre
     tree,
     codeIntelligenceEnabled,
     batchChangesEnabled,
-}) => {
-    // eslint-disable-next-line unicorn/prevent-abbreviations
-    const enableAPIDocs = useExperimentalFeatures(features => features.apiDocs)
-
-    return (
+}) => (
         <ButtonGroup>
-            {enableAPIDocs && (
-                <Button to={`${tree.url}/-/docs`} variant="secondary" outline={true} as={Link}>
-                    <Icon as={BookOpenBlankVariantIcon} /> API docs
-                </Button>
-            )}
             <Button to={`${tree.url}/-/commits`} variant="secondary" outline={true} as={Link}>
                 <Icon as={SourceCommitIcon} /> Commits
             </Button>
@@ -99,4 +88,3 @@ export const TreeNavigation: React.FunctionComponent<React.PropsWithChildren<Tre
             )}
         </ButtonGroup>
     )
-}
