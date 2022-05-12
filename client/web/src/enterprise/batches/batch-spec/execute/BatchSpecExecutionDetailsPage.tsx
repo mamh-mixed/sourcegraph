@@ -99,6 +99,7 @@ export const BatchSpecExecutionDetailsPage: React.FunctionComponent<
                     {
                         icon: BatchChangesIcon,
                         to: '/batch-changes',
+                        ariaLabel: 'Batch Changes Icon'
                     },
                     {
                         to: `${batchSpec.namespace.url}/batch-changes`,
@@ -228,7 +229,7 @@ const BatchSpecActions: React.FunctionComponent<React.PropsWithChildren<BatchSpe
 
     return (
         <div className="d-flex">
-            <span className="align-self-center mr-2">
+            <span className="align-self-center mr-2" aria-label="Batch Spec status">
                 <BatchSpecStateBadge state={batchSpec.state} />
             </span>
             {batchSpec.startedAt && (
@@ -240,24 +241,24 @@ const BatchSpecActions: React.FunctionComponent<React.PropsWithChildren<BatchSpe
             {workspacesStats && (
                 <>
                     <div className={styles.workspacesStat}>
-                        <Icon as={AlertCircleIcon} className="text-danger" />
-                        {workspacesStats.errored} {pluralize('error', workspacesStats.errored)}
+                        <Icon as={AlertCircleIcon} className="text-danger" role="presentation" />
+                        {`${workspacesStats.errored} ${pluralize('error', workspacesStats.errored)}`}
                     </div>
                     <div className={styles.workspacesStat}>
-                        <Icon as={CheckBoldIcon} className="text-success" />
-                        {workspacesStats.completed} complete
+                        <Icon as={CheckBoldIcon} className="text-success" role="presentation" />
+                        {`${workspacesStats.completed} complete`}
                     </div>
                     <div className={styles.workspacesStat}>
-                        <Icon as={TimerSandIcon} />
-                        {workspacesStats.processing} working
+                        <Icon as={TimerSandIcon} role="presentation" />
+                        {`${workspacesStats.processing} working`}
                     </div>
                     <div className={styles.workspacesStat}>
-                        <Icon as={TimelineClockOutlineIcon} />
-                        {workspacesStats.queued} queued
+                        <Icon as={TimelineClockOutlineIcon} role="presentation" />
+                        {`${workspacesStats.queued} queued`}
                     </div>
                     <div className={styles.workspacesStat}>
-                        <Icon as={CircleOffOutlineIcon} />
-                        {workspacesStats.ignored} ignored
+                        <Icon as={CircleOffOutlineIcon} role="presentation" />
+                        {`${workspacesStats.ignored} ignored`}
                     </div>
                 </>
             )}
