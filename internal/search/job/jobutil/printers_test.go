@@ -219,6 +219,7 @@ func TestPrettyJSON(t *testing.T) {
           ],
           "MinusRepoFilters": null,
           "Dependencies": null,
+          "Dependents": null,
           "CaseSensitiveRepoFilters": false,
           "SearchContextSpec": "",
           "CommitAfter": "",
