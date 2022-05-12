@@ -198,6 +198,16 @@ func (p Parameters) Dependencies() (dependencies []string) {
 	return dependencies
 }
 
+func (p Parameters) Dependents() (dependents []string) {
+	VisitPredicate(toNodes(p), func(field, name, value string) {
+		if field == FieldRepo && (name == "revdeps" || name == "dependents") {
+			dependents = append(dependents, value)
+		}
+	})
+	fmt.Printf("dependents=%+v\n", dependents)
+	return dependents
+}
+
 func (p Parameters) MaxResults(defaultLimit int) int {
 	if count := p.Count(); count != nil {
 		return *count
@@ -426,6 +436,15 @@ func (q Q) Dependencies() (dependencies []string) {
 		}
 	})
 	return dependencies
+}
+
+func (q Q) Dependents() (dependents []string) {
+	VisitPredicate(q, func(field, name, value string) {
+		if field == FieldRepo && (name == "dependencies" || name == "deps") {
+			dependents = append(dependents, value)
+		}
+	})
+	return dependents
 }
 
 func (q Q) MaxResults(defaultLimit int) int {
