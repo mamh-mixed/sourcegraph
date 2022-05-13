@@ -1,18 +1,30 @@
 package com.sourcegraph.browser;
 
 import com.google.gson.JsonObject;
+import com.intellij.openapi.project.Project;
 import com.intellij.ui.jcef.JBCefJSQuery;
+import com.sourcegraph.config.ConfigUtil;
 import com.sourcegraph.config.ThemeUtil;
 
 import javax.annotation.Nullable;
 
 public class JSToJavaBridgeRequestHandler {
+    private final Project project;
+
+    public JSToJavaBridgeRequestHandler(Project project) {
+        this.project = project;
+    }
+
     public JBCefJSQuery.Response handle(JsonObject request) {
         String action = request.get("action").getAsString();
         // JsonObject arguments = request.getAsJsonObject("arguments");
         if (action.equals("getTheme")) {
             JsonObject currentThemeAsJson = ThemeUtil.getCurrentThemeAsJson();
             return createResponse(currentThemeAsJson);
+        } else if (action.equals("getConfig")) {
+            JsonObject configAsJson = new JsonObject();
+            configAsJson.addProperty("instanceURL", ConfigUtil.getSourcegraphUrl(this.project));
+            return createResponse(configAsJson);
         } else {
             return createResponse(2, "Unknown action: " + action, null);
         }

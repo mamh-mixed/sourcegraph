@@ -38,7 +38,7 @@ public class FindPopupPanel extends JBPanel<FindPopupPanel> implements Disposabl
         add(splitter, BorderLayout.CENTER);
 
         JBPanel<JBPanelWithEmptyText> jcefPanel = new JBPanelWithEmptyText(new BorderLayout()).withEmptyText("Unfortunately, the browser is not available on your system. Try running the IDE with the default OpenJDK.");
-        browser = JBCefApp.isSupported() ? new SourcegraphJBCefBrowser() : null;
+        browser = JBCefApp.isSupported() ? new SourcegraphJBCefBrowser(project) : null;
         if (browser != null) {
             jcefPanel.add(browser.getComponent(), BorderLayout.CENTER);
         }

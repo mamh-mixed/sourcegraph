@@ -1,5 +1,6 @@
 package com.sourcegraph.browser;
 
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.ui.jcef.JBCefBrowser;
 import com.sourcegraph.config.ThemeUtil;
@@ -8,15 +9,15 @@ import org.cef.CefApp;
 public class SourcegraphJBCefBrowser extends JBCefBrowser {
     private final JSToJavaBridge jsToJavaBridge;
 
-    public SourcegraphJBCefBrowser() {
+    public SourcegraphJBCefBrowser(Project project) {
         super("http://sourcegraph/html/index.html");
         // Create and set up JCEF browser
         CefApp.getInstance().registerSchemeHandlerFactory("http", "sourcegraph", new HttpSchemeHandlerFactory());
         this.setPageBackgroundColor(ThemeUtil.getPanelBackgroundColorHexString());
 
         // Create bridge, set up handlers, then run init function
-        String initJSCode = "window.initializeSourcegraph(" + (ThemeUtil.isDarkTheme() ? "true" : "false") + ");";
-        jsToJavaBridge = new JSToJavaBridge(this, new JSToJavaBridgeRequestHandler(), initJSCode);
+        String initJSCode = "window.initializeSourcegraph();";
+        jsToJavaBridge = new JSToJavaBridge(this, new JSToJavaBridgeRequestHandler(project), initJSCode);
         Disposer.register(this, jsToJavaBridge);
     }
 

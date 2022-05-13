@@ -32,6 +32,8 @@ function handleRequest(
                 labelBackground: 'gray',
             })
         )
+    } else if (request.action === 'getConfig') {
+        onSuccessCallback(JSON.stringify({ instanceURL: 'https://sourcegraph.com' }))
     } else {
         onFailureCallback(2, `Unknown action: ${request.action}`)
     }
