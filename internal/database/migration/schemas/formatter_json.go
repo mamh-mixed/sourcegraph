@@ -25,7 +25,7 @@ func (f jsonFormatter) Format(schemaDescription SchemaDescription) string {
 	sortTables(schemaDescription.Tables)
 	sortViews(schemaDescription.Views)
 
-	serialized, _ := json.MarshalIndent(schemaDescription, "", "    ")
+	serialized, _ := json.MarshalIndent(schemaDescription, "", "  ")
 	return string(serialized)
 }
 
