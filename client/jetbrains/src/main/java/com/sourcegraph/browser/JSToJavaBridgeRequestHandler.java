@@ -18,13 +18,13 @@ public class JSToJavaBridgeRequestHandler {
     public JBCefJSQuery.Response handle(JsonObject request) {
         String action = request.get("action").getAsString();
         // JsonObject arguments = request.getAsJsonObject("arguments");
-        if (action.equals("getTheme")) {
-            JsonObject currentThemeAsJson = ThemeUtil.getCurrentThemeAsJson();
-            return createResponse(currentThemeAsJson);
-        } else if (action.equals("getConfig")) {
+        if (action.equals("getConfig")) {
             JsonObject configAsJson = new JsonObject();
             configAsJson.addProperty("instanceURL", ConfigUtil.getSourcegraphUrl(this.project));
             return createResponse(configAsJson);
+        } else if (action.equals("getTheme")) {
+            JsonObject currentThemeAsJson = ThemeUtil.getCurrentThemeAsJson();
+            return createResponse(currentThemeAsJson);
         } else {
             return createResponse(2, "Unknown action: " + action, null);
         }
