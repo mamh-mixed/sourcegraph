@@ -562,11 +562,11 @@
         },
         {
             "Name": "hstore",
-            "Definition": "CREATE OR REPLACE FUNCTION public.hstore(text[], text[])\n RETURNS hstore\n LANGUAGE c\n IMMUTABLE PARALLEL SAFE\nAS '$libdir/hstore', $function$hstore_from_arrays$function$\n"
+            "Definition": "CREATE OR REPLACE FUNCTION public.hstore(text, text)\n RETURNS hstore\n LANGUAGE c\n IMMUTABLE PARALLEL SAFE\nAS '$libdir/hstore', $function$hstore_from_text$function$\n"
         },
         {
             "Name": "hstore",
-            "Definition": "CREATE OR REPLACE FUNCTION public.hstore(text, text)\n RETURNS hstore\n LANGUAGE c\n IMMUTABLE PARALLEL SAFE\nAS '$libdir/hstore', $function$hstore_from_text$function$\n"
+            "Definition": "CREATE OR REPLACE FUNCTION public.hstore(text[], text[])\n RETURNS hstore\n LANGUAGE c\n IMMUTABLE PARALLEL SAFE\nAS '$libdir/hstore', $function$hstore_from_arrays$function$\n"
         },
         {
             "Name": "hstore",
@@ -738,7 +738,7 @@
         },
         {
             "Name": "pgp_pub_decrypt_bytea",
-            "Definition": "CREATE OR REPLACE FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea, text)\n RETURNS bytea\n LANGUAGE c\n IMMUTABLE PARALLEL SAFE STRICT\nAS '$libdir/pgcrypto', $function$pgp_pub_decrypt_bytea$function$\n"
+            "Definition": "CREATE OR REPLACE FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea)\n RETURNS bytea\n LANGUAGE c\n IMMUTABLE PARALLEL SAFE STRICT\nAS '$libdir/pgcrypto', $function$pgp_pub_decrypt_bytea$function$\n"
         },
         {
             "Name": "pgp_pub_decrypt_bytea",
@@ -746,7 +746,7 @@
         },
         {
             "Name": "pgp_pub_decrypt_bytea",
-            "Definition": "CREATE OR REPLACE FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea)\n RETURNS bytea\n LANGUAGE c\n IMMUTABLE PARALLEL SAFE STRICT\nAS '$libdir/pgcrypto', $function$pgp_pub_decrypt_bytea$function$\n"
+            "Definition": "CREATE OR REPLACE FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea, text)\n RETURNS bytea\n LANGUAGE c\n IMMUTABLE PARALLEL SAFE STRICT\nAS '$libdir/pgcrypto', $function$pgp_pub_decrypt_bytea$function$\n"
         },
         {
             "Name": "pgp_pub_encrypt",
@@ -1744,16 +1744,6 @@
             ],
             "Indexes": [
                 {
-                    "Name": "access_tokens_lookup",
-                    "IsPrimaryKey": false,
-                    "IsUnique": false,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE INDEX access_tokens_lookup ON access_tokens USING hash (value_sha256) WHERE deleted_at IS NULL",
-                    "ConstraintType": "",
-                    "ConstraintDefinition": ""
-                },
-                {
                     "Name": "access_tokens_pkey",
                     "IsPrimaryKey": true,
                     "IsUnique": true,
@@ -1772,6 +1762,16 @@
                     "IndexDefinition": "CREATE UNIQUE INDEX access_tokens_value_sha256_key ON access_tokens USING btree (value_sha256)",
                     "ConstraintType": "u",
                     "ConstraintDefinition": "UNIQUE (value_sha256)"
+                },
+                {
+                    "Name": "access_tokens_lookup",
+                    "IsPrimaryKey": false,
+                    "IsUnique": false,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE INDEX access_tokens_lookup ON access_tokens USING hash (value_sha256) WHERE deleted_at IS NULL",
+                    "ConstraintType": "",
+                    "ConstraintDefinition": ""
                 }
             ],
             "Constraints": [
@@ -1955,26 +1955,6 @@
             ],
             "Indexes": [
                 {
-                    "Name": "batch_changes_namespace_org_id",
-                    "IsPrimaryKey": false,
-                    "IsUnique": false,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE INDEX batch_changes_namespace_org_id ON batch_changes USING btree (namespace_org_id)",
-                    "ConstraintType": "",
-                    "ConstraintDefinition": ""
-                },
-                {
-                    "Name": "batch_changes_namespace_user_id",
-                    "IsPrimaryKey": false,
-                    "IsUnique": false,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE INDEX batch_changes_namespace_user_id ON batch_changes USING btree (namespace_user_id)",
-                    "ConstraintType": "",
-                    "ConstraintDefinition": ""
-                },
-                {
                     "Name": "batch_changes_pkey",
                     "IsPrimaryKey": true,
                     "IsUnique": true,
@@ -2001,6 +1981,26 @@
                     "IsExclusion": false,
                     "IsDeferrable": false,
                     "IndexDefinition": "CREATE UNIQUE INDEX batch_changes_unique_user_id ON batch_changes USING btree (name, namespace_user_id) WHERE namespace_user_id IS NOT NULL",
+                    "ConstraintType": "",
+                    "ConstraintDefinition": ""
+                },
+                {
+                    "Name": "batch_changes_namespace_org_id",
+                    "IsPrimaryKey": false,
+                    "IsUnique": false,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE INDEX batch_changes_namespace_org_id ON batch_changes USING btree (namespace_org_id)",
+                    "ConstraintType": "",
+                    "ConstraintDefinition": ""
+                },
+                {
+                    "Name": "batch_changes_namespace_user_id",
+                    "IsPrimaryKey": false,
+                    "IsUnique": false,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE INDEX batch_changes_namespace_user_id ON batch_changes USING btree (namespace_user_id)",
                     "ConstraintType": "",
                     "ConstraintDefinition": ""
                 }
@@ -2161,16 +2161,6 @@
             ],
             "Indexes": [
                 {
-                    "Name": "batch_changes_site_credentials_credential_idx",
-                    "IsPrimaryKey": false,
-                    "IsUnique": false,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE INDEX batch_changes_site_credentials_credential_idx ON batch_changes_site_credentials USING btree ((encryption_key_id = ANY (ARRAY[''::text, 'previously-migrated'::text])))",
-                    "ConstraintType": "",
-                    "ConstraintDefinition": ""
-                },
-                {
                     "Name": "batch_changes_site_credentials_pkey",
                     "IsPrimaryKey": true,
                     "IsUnique": true,
@@ -2187,6 +2177,16 @@
                     "IsExclusion": false,
                     "IsDeferrable": false,
                     "IndexDefinition": "CREATE UNIQUE INDEX batch_changes_site_credentials_unique ON batch_changes_site_credentials USING btree (external_service_type, external_service_id)",
+                    "ConstraintType": "",
+                    "ConstraintDefinition": ""
+                },
+                {
+                    "Name": "batch_changes_site_credentials_credential_idx",
+                    "IsPrimaryKey": false,
+                    "IsUnique": false,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE INDEX batch_changes_site_credentials_credential_idx ON batch_changes_site_credentials USING btree ((encryption_key_id = ANY (ARRAY[''::text, 'previously-migrated'::text])))",
                     "ConstraintType": "",
                     "ConstraintDefinition": ""
                 }
@@ -2804,16 +2804,6 @@
             ],
             "Indexes": [
                 {
-                    "Name": "batch_spec_workspace_execution_jobs_cancel",
-                    "IsPrimaryKey": false,
-                    "IsUnique": false,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE INDEX batch_spec_workspace_execution_jobs_cancel ON batch_spec_workspace_execution_jobs USING btree (cancel)",
-                    "ConstraintType": "",
-                    "ConstraintDefinition": ""
-                },
-                {
                     "Name": "batch_spec_workspace_execution_jobs_pkey",
                     "IsPrimaryKey": true,
                     "IsUnique": true,
@@ -2822,6 +2812,16 @@
                     "IndexDefinition": "CREATE UNIQUE INDEX batch_spec_workspace_execution_jobs_pkey ON batch_spec_workspace_execution_jobs USING btree (id)",
                     "ConstraintType": "p",
                     "ConstraintDefinition": "PRIMARY KEY (id)"
+                },
+                {
+                    "Name": "batch_spec_workspace_execution_jobs_cancel",
+                    "IsPrimaryKey": false,
+                    "IsUnique": false,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE INDEX batch_spec_workspace_execution_jobs_cancel ON batch_spec_workspace_execution_jobs USING btree (cancel)",
+                    "ConstraintType": "",
+                    "ConstraintDefinition": ""
                 }
             ],
             "Constraints": [
@@ -3716,16 +3716,6 @@
             ],
             "Indexes": [
                 {
-                    "Name": "changeset_jobs_bulk_group_idx",
-                    "IsPrimaryKey": false,
-                    "IsUnique": false,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE INDEX changeset_jobs_bulk_group_idx ON changeset_jobs USING btree (bulk_group)",
-                    "ConstraintType": "",
-                    "ConstraintDefinition": ""
-                },
-                {
                     "Name": "changeset_jobs_pkey",
                     "IsPrimaryKey": true,
                     "IsUnique": true,
@@ -3734,6 +3724,16 @@
                     "IndexDefinition": "CREATE UNIQUE INDEX changeset_jobs_pkey ON changeset_jobs USING btree (id)",
                     "ConstraintType": "p",
                     "ConstraintDefinition": "PRIMARY KEY (id)"
+                },
+                {
+                    "Name": "changeset_jobs_bulk_group_idx",
+                    "IsPrimaryKey": false,
+                    "IsUnique": false,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE INDEX changeset_jobs_bulk_group_idx ON changeset_jobs USING btree (bulk_group)",
+                    "ConstraintType": "",
+                    "ConstraintDefinition": ""
                 },
                 {
                     "Name": "changeset_jobs_state_idx",
@@ -3980,6 +3980,16 @@
             ],
             "Indexes": [
                 {
+                    "Name": "changeset_specs_pkey",
+                    "IsPrimaryKey": true,
+                    "IsUnique": true,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE UNIQUE INDEX changeset_specs_pkey ON changeset_specs USING btree (id)",
+                    "ConstraintType": "p",
+                    "ConstraintDefinition": "PRIMARY KEY (id)"
+                },
+                {
                     "Name": "changeset_specs_external_id",
                     "IsPrimaryKey": false,
                     "IsUnique": false,
@@ -3998,16 +4008,6 @@
                     "IndexDefinition": "CREATE INDEX changeset_specs_head_ref ON changeset_specs USING btree (head_ref)",
                     "ConstraintType": "",
                     "ConstraintDefinition": ""
-                },
-                {
-                    "Name": "changeset_specs_pkey",
-                    "IsPrimaryKey": true,
-                    "IsUnique": true,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE UNIQUE INDEX changeset_specs_pkey ON changeset_specs USING btree (id)",
-                    "ConstraintType": "p",
-                    "ConstraintDefinition": "PRIMARY KEY (id)"
                 },
                 {
                     "Name": "changeset_specs_rand_id",
@@ -4569,6 +4569,26 @@
             ],
             "Indexes": [
                 {
+                    "Name": "changesets_pkey",
+                    "IsPrimaryKey": true,
+                    "IsUnique": true,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE UNIQUE INDEX changesets_pkey ON changesets USING btree (id)",
+                    "ConstraintType": "p",
+                    "ConstraintDefinition": "PRIMARY KEY (id)"
+                },
+                {
+                    "Name": "changesets_repo_external_id_unique",
+                    "IsPrimaryKey": false,
+                    "IsUnique": true,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE UNIQUE INDEX changesets_repo_external_id_unique ON changesets USING btree (repo_id, external_id)",
+                    "ConstraintType": "u",
+                    "ConstraintDefinition": "UNIQUE (repo_id, external_id)"
+                },
+                {
                     "Name": "changesets_batch_change_ids",
                     "IsPrimaryKey": false,
                     "IsUnique": false,
@@ -4599,16 +4619,6 @@
                     "ConstraintDefinition": ""
                 },
                 {
-                    "Name": "changesets_pkey",
-                    "IsPrimaryKey": true,
-                    "IsUnique": true,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE UNIQUE INDEX changesets_pkey ON changesets USING btree (id)",
-                    "ConstraintType": "p",
-                    "ConstraintDefinition": "PRIMARY KEY (id)"
-                },
-                {
                     "Name": "changesets_publication_state_idx",
                     "IsPrimaryKey": false,
                     "IsUnique": false,
@@ -4627,16 +4637,6 @@
                     "IndexDefinition": "CREATE INDEX changesets_reconciler_state_idx ON changesets USING btree (reconciler_state)",
                     "ConstraintType": "",
                     "ConstraintDefinition": ""
-                },
-                {
-                    "Name": "changesets_repo_external_id_unique",
-                    "IsPrimaryKey": false,
-                    "IsUnique": true,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE UNIQUE INDEX changesets_repo_external_id_unique ON changesets USING btree (repo_id, external_id)",
-                    "ConstraintType": "u",
-                    "ConstraintDefinition": "UNIQUE (repo_id, external_id)"
                 }
             ],
             "Constraints": [
@@ -5772,16 +5772,6 @@
             ],
             "Indexes": [
                 {
-                    "Name": "cm_slack_webhooks_monitor",
-                    "IsPrimaryKey": false,
-                    "IsUnique": false,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE INDEX cm_slack_webhooks_monitor ON cm_slack_webhooks USING btree (monitor)",
-                    "ConstraintType": "",
-                    "ConstraintDefinition": ""
-                },
-                {
                     "Name": "cm_slack_webhooks_pkey",
                     "IsPrimaryKey": true,
                     "IsUnique": true,
@@ -5790,6 +5780,16 @@
                     "IndexDefinition": "CREATE UNIQUE INDEX cm_slack_webhooks_pkey ON cm_slack_webhooks USING btree (id)",
                     "ConstraintType": "p",
                     "ConstraintDefinition": "PRIMARY KEY (id)"
+                },
+                {
+                    "Name": "cm_slack_webhooks_monitor",
+                    "IsPrimaryKey": false,
+                    "IsUnique": false,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE INDEX cm_slack_webhooks_monitor ON cm_slack_webhooks USING btree (monitor)",
+                    "ConstraintType": "",
+                    "ConstraintDefinition": ""
                 }
             ],
             "Constraints": [
@@ -6184,16 +6184,6 @@
             ],
             "Indexes": [
                 {
-                    "Name": "cm_webhooks_monitor",
-                    "IsPrimaryKey": false,
-                    "IsUnique": false,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE INDEX cm_webhooks_monitor ON cm_webhooks USING btree (monitor)",
-                    "ConstraintType": "",
-                    "ConstraintDefinition": ""
-                },
-                {
                     "Name": "cm_webhooks_pkey",
                     "IsPrimaryKey": true,
                     "IsUnique": true,
@@ -6202,6 +6192,16 @@
                     "IndexDefinition": "CREATE UNIQUE INDEX cm_webhooks_pkey ON cm_webhooks USING btree (id)",
                     "ConstraintType": "p",
                     "ConstraintDefinition": "PRIMARY KEY (id)"
+                },
+                {
+                    "Name": "cm_webhooks_monitor",
+                    "IsPrimaryKey": false,
+                    "IsUnique": false,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE INDEX cm_webhooks_monitor ON cm_webhooks USING btree (monitor)",
+                    "ConstraintType": "",
+                    "ConstraintDefinition": ""
                 }
             ],
             "Constraints": [
@@ -6491,16 +6491,6 @@
             ],
             "Indexes": [
                 {
-                    "Name": "codeintel_lockfiles_codeintel_lockfile_reference_ids",
-                    "IsPrimaryKey": false,
-                    "IsUnique": false,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE INDEX codeintel_lockfiles_codeintel_lockfile_reference_ids ON codeintel_lockfiles USING gin (codeintel_lockfile_reference_ids gin__int_ops)",
-                    "ConstraintType": "",
-                    "ConstraintDefinition": ""
-                },
-                {
                     "Name": "codeintel_lockfiles_pkey",
                     "IsPrimaryKey": true,
                     "IsUnique": true,
@@ -6517,6 +6507,16 @@
                     "IsExclusion": false,
                     "IsDeferrable": false,
                     "IndexDefinition": "CREATE UNIQUE INDEX codeintel_lockfiles_repository_id_commit_bytea ON codeintel_lockfiles USING btree (repository_id, commit_bytea)",
+                    "ConstraintType": "",
+                    "ConstraintDefinition": ""
+                },
+                {
+                    "Name": "codeintel_lockfiles_codeintel_lockfile_reference_ids",
+                    "IsPrimaryKey": false,
+                    "IsUnique": false,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE INDEX codeintel_lockfiles_codeintel_lockfile_reference_ids ON codeintel_lockfiles USING gin (codeintel_lockfile_reference_ids gin__int_ops)",
                     "ConstraintType": "",
                     "ConstraintDefinition": ""
                 }
@@ -6812,16 +6812,6 @@
             ],
             "Indexes": [
                 {
-                    "Name": "discussion_comments_author_user_id_idx",
-                    "IsPrimaryKey": false,
-                    "IsUnique": false,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE INDEX discussion_comments_author_user_id_idx ON discussion_comments USING btree (author_user_id)",
-                    "ConstraintType": "",
-                    "ConstraintDefinition": ""
-                },
-                {
                     "Name": "discussion_comments_pkey",
                     "IsPrimaryKey": true,
                     "IsUnique": true,
@@ -6830,6 +6820,16 @@
                     "IndexDefinition": "CREATE UNIQUE INDEX discussion_comments_pkey ON discussion_comments USING btree (id)",
                     "ConstraintType": "p",
                     "ConstraintDefinition": "PRIMARY KEY (id)"
+                },
+                {
+                    "Name": "discussion_comments_author_user_id_idx",
+                    "IsPrimaryKey": false,
+                    "IsUnique": false,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE INDEX discussion_comments_author_user_id_idx ON discussion_comments USING btree (author_user_id)",
+                    "ConstraintType": "",
+                    "ConstraintDefinition": ""
                 },
                 {
                     "Name": "discussion_comments_reports_array_length_idx",
@@ -7078,16 +7078,6 @@
             ],
             "Indexes": [
                 {
-                    "Name": "discussion_threads_author_user_id_idx",
-                    "IsPrimaryKey": false,
-                    "IsUnique": false,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE INDEX discussion_threads_author_user_id_idx ON discussion_threads USING btree (author_user_id)",
-                    "ConstraintType": "",
-                    "ConstraintDefinition": ""
-                },
-                {
                     "Name": "discussion_threads_pkey",
                     "IsPrimaryKey": true,
                     "IsUnique": true,
@@ -7096,6 +7086,16 @@
                     "IndexDefinition": "CREATE UNIQUE INDEX discussion_threads_pkey ON discussion_threads USING btree (id)",
                     "ConstraintType": "p",
                     "ConstraintDefinition": "PRIMARY KEY (id)"
+                },
+                {
+                    "Name": "discussion_threads_author_user_id_idx",
+                    "IsPrimaryKey": false,
+                    "IsUnique": false,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE INDEX discussion_threads_author_user_id_idx ON discussion_threads USING btree (author_user_id)",
+                    "ConstraintType": "",
+                    "ConstraintDefinition": ""
                 }
             ],
             "Constraints": [
@@ -7493,6 +7493,16 @@
             ],
             "Indexes": [
                 {
+                    "Name": "event_logs_pkey",
+                    "IsPrimaryKey": true,
+                    "IsUnique": true,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE UNIQUE INDEX event_logs_pkey ON event_logs USING btree (id)",
+                    "ConstraintType": "p",
+                    "ConstraintDefinition": "PRIMARY KEY (id)"
+                },
+                {
                     "Name": "event_logs_anonymous_user_id",
                     "IsPrimaryKey": false,
                     "IsUnique": false,
@@ -7511,16 +7521,6 @@
                     "IndexDefinition": "CREATE INDEX event_logs_name ON event_logs USING btree (name)",
                     "ConstraintType": "",
                     "ConstraintDefinition": ""
-                },
-                {
-                    "Name": "event_logs_pkey",
-                    "IsPrimaryKey": true,
-                    "IsUnique": true,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE UNIQUE INDEX event_logs_pkey ON event_logs USING btree (id)",
-                    "ConstraintType": "p",
-                    "ConstraintDefinition": "PRIMARY KEY (id)"
                 },
                 {
                     "Name": "event_logs_source",
@@ -7866,6 +7866,16 @@
             ],
             "Indexes": [
                 {
+                    "Name": "external_service_repos_repo_id_external_service_id_unique",
+                    "IsPrimaryKey": false,
+                    "IsUnique": true,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE UNIQUE INDEX external_service_repos_repo_id_external_service_id_unique ON external_service_repos USING btree (repo_id, external_service_id)",
+                    "ConstraintType": "u",
+                    "ConstraintDefinition": "UNIQUE (repo_id, external_service_id)"
+                },
+                {
                     "Name": "external_service_repos_clone_url_idx",
                     "IsPrimaryKey": false,
                     "IsUnique": false,
@@ -7894,16 +7904,6 @@
                     "IndexDefinition": "CREATE INDEX external_service_repos_org_id_idx ON external_service_repos USING btree (org_id) WHERE org_id IS NOT NULL",
                     "ConstraintType": "",
                     "ConstraintDefinition": ""
-                },
-                {
-                    "Name": "external_service_repos_repo_id_external_service_id_unique",
-                    "IsPrimaryKey": false,
-                    "IsUnique": true,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE UNIQUE INDEX external_service_repos_repo_id_external_service_id_unique ON external_service_repos USING btree (repo_id, external_service_id)",
-                    "ConstraintType": "u",
-                    "ConstraintDefinition": "UNIQUE (repo_id, external_service_id)"
                 },
                 {
                     "Name": "external_service_user_repos_idx",
@@ -8373,6 +8373,26 @@
             ],
             "Indexes": [
                 {
+                    "Name": "external_services_pkey",
+                    "IsPrimaryKey": true,
+                    "IsUnique": true,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE UNIQUE INDEX external_services_pkey ON external_services USING btree (id)",
+                    "ConstraintType": "p",
+                    "ConstraintDefinition": "PRIMARY KEY (id)"
+                },
+                {
+                    "Name": "kind_cloud_default",
+                    "IsPrimaryKey": false,
+                    "IsUnique": true,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE UNIQUE INDEX kind_cloud_default ON external_services USING btree (kind, cloud_default) WHERE cloud_default = true AND deleted_at IS NULL",
+                    "ConstraintType": "",
+                    "ConstraintDefinition": ""
+                },
+                {
                     "Name": "external_services_has_webhooks_idx",
                     "IsPrimaryKey": false,
                     "IsUnique": false,
@@ -8399,26 +8419,6 @@
                     "IsExclusion": false,
                     "IsDeferrable": false,
                     "IndexDefinition": "CREATE INDEX external_services_namespace_user_id_idx ON external_services USING btree (namespace_user_id)",
-                    "ConstraintType": "",
-                    "ConstraintDefinition": ""
-                },
-                {
-                    "Name": "external_services_pkey",
-                    "IsPrimaryKey": true,
-                    "IsUnique": true,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE UNIQUE INDEX external_services_pkey ON external_services USING btree (id)",
-                    "ConstraintType": "p",
-                    "ConstraintDefinition": "PRIMARY KEY (id)"
-                },
-                {
-                    "Name": "kind_cloud_default",
-                    "IsPrimaryKey": false,
-                    "IsUnique": true,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE UNIQUE INDEX kind_cloud_default ON external_services USING btree (kind, cloud_default) WHERE cloud_default = true AND deleted_at IS NULL",
                     "ConstraintType": "",
                     "ConstraintDefinition": ""
                 }
@@ -8553,16 +8553,6 @@
             ],
             "Indexes": [
                 {
-                    "Name": "feature_flag_overrides_org_id",
-                    "IsPrimaryKey": false,
-                    "IsUnique": false,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE INDEX feature_flag_overrides_org_id ON feature_flag_overrides USING btree (namespace_org_id) WHERE namespace_org_id IS NOT NULL",
-                    "ConstraintType": "",
-                    "ConstraintDefinition": ""
-                },
-                {
                     "Name": "feature_flag_overrides_unique_org_flag",
                     "IsPrimaryKey": false,
                     "IsUnique": true,
@@ -8581,6 +8571,16 @@
                     "IndexDefinition": "CREATE UNIQUE INDEX feature_flag_overrides_unique_user_flag ON feature_flag_overrides USING btree (namespace_user_id, flag_name)",
                     "ConstraintType": "u",
                     "ConstraintDefinition": "UNIQUE (namespace_user_id, flag_name)"
+                },
+                {
+                    "Name": "feature_flag_overrides_org_id",
+                    "IsPrimaryKey": false,
+                    "IsUnique": false,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE INDEX feature_flag_overrides_org_id ON feature_flag_overrides USING btree (namespace_org_id) WHERE namespace_org_id IS NOT NULL",
+                    "ConstraintType": "",
+                    "ConstraintDefinition": ""
                 },
                 {
                     "Name": "feature_flag_overrides_user_id",
@@ -9097,6 +9097,16 @@
             ],
             "Indexes": [
                 {
+                    "Name": "gitserver_repos_pkey",
+                    "IsPrimaryKey": true,
+                    "IsUnique": true,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE UNIQUE INDEX gitserver_repos_pkey ON gitserver_repos USING btree (repo_id)",
+                    "ConstraintType": "p",
+                    "ConstraintDefinition": "PRIMARY KEY (repo_id)"
+                },
+                {
                     "Name": "gitserver_repos_cloned_status_idx",
                     "IsPrimaryKey": false,
                     "IsUnique": false,
@@ -9135,16 +9145,6 @@
                     "IndexDefinition": "CREATE INDEX gitserver_repos_not_cloned_status_idx ON gitserver_repos USING btree (repo_id) WHERE clone_status = 'not_cloned'::text",
                     "ConstraintType": "",
                     "ConstraintDefinition": ""
-                },
-                {
-                    "Name": "gitserver_repos_pkey",
-                    "IsPrimaryKey": true,
-                    "IsUnique": true,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE UNIQUE INDEX gitserver_repos_pkey ON gitserver_repos USING btree (repo_id)",
-                    "ConstraintType": "p",
-                    "ConstraintDefinition": "PRIMARY KEY (repo_id)"
                 },
                 {
                     "Name": "gitserver_repos_shard_id",
@@ -9455,16 +9455,6 @@
             ],
             "Indexes": [
                 {
-                    "Name": "insights_query_runner_jobs_cost_idx",
-                    "IsPrimaryKey": false,
-                    "IsUnique": false,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE INDEX insights_query_runner_jobs_cost_idx ON insights_query_runner_jobs USING btree (cost)",
-                    "ConstraintType": "",
-                    "ConstraintDefinition": ""
-                },
-                {
                     "Name": "insights_query_runner_jobs_pkey",
                     "IsPrimaryKey": true,
                     "IsUnique": true,
@@ -9473,6 +9463,16 @@
                     "IndexDefinition": "CREATE UNIQUE INDEX insights_query_runner_jobs_pkey ON insights_query_runner_jobs USING btree (id)",
                     "ConstraintType": "p",
                     "ConstraintDefinition": "PRIMARY KEY (id)"
+                },
+                {
+                    "Name": "insights_query_runner_jobs_cost_idx",
+                    "IsPrimaryKey": false,
+                    "IsUnique": false,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE INDEX insights_query_runner_jobs_cost_idx ON insights_query_runner_jobs USING btree (cost)",
+                    "ConstraintType": "",
+                    "ConstraintDefinition": ""
                 },
                 {
                     "Name": "insights_query_runner_jobs_priority_idx",
@@ -9554,16 +9554,6 @@
             ],
             "Indexes": [
                 {
-                    "Name": "insights_query_runner_jobs_dependencies_job_id_fk_idx",
-                    "IsPrimaryKey": false,
-                    "IsUnique": false,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE INDEX insights_query_runner_jobs_dependencies_job_id_fk_idx ON insights_query_runner_jobs_dependencies USING btree (job_id)",
-                    "ConstraintType": "",
-                    "ConstraintDefinition": ""
-                },
-                {
                     "Name": "insights_query_runner_jobs_dependencies_pkey",
                     "IsPrimaryKey": true,
                     "IsUnique": true,
@@ -9572,6 +9562,16 @@
                     "IndexDefinition": "CREATE UNIQUE INDEX insights_query_runner_jobs_dependencies_pkey ON insights_query_runner_jobs_dependencies USING btree (id)",
                     "ConstraintType": "p",
                     "ConstraintDefinition": "PRIMARY KEY (id)"
+                },
+                {
+                    "Name": "insights_query_runner_jobs_dependencies_job_id_fk_idx",
+                    "IsPrimaryKey": false,
+                    "IsUnique": false,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE INDEX insights_query_runner_jobs_dependencies_job_id_fk_idx ON insights_query_runner_jobs_dependencies USING btree (job_id)",
+                    "ConstraintType": "",
+                    "ConstraintDefinition": ""
                 }
             ],
             "Constraints": [
@@ -10988,16 +10988,6 @@
             ],
             "Indexes": [
                 {
-                    "Name": "lsif_indexes_commit_last_checked_at",
-                    "IsPrimaryKey": false,
-                    "IsUnique": false,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE INDEX lsif_indexes_commit_last_checked_at ON lsif_indexes USING btree (commit_last_checked_at) WHERE state \u003c\u003e 'deleted'::text",
-                    "ConstraintType": "",
-                    "ConstraintDefinition": ""
-                },
-                {
                     "Name": "lsif_indexes_pkey",
                     "IsPrimaryKey": true,
                     "IsUnique": true,
@@ -11006,6 +10996,16 @@
                     "IndexDefinition": "CREATE UNIQUE INDEX lsif_indexes_pkey ON lsif_indexes USING btree (id)",
                     "ConstraintType": "p",
                     "ConstraintDefinition": "PRIMARY KEY (id)"
+                },
+                {
+                    "Name": "lsif_indexes_commit_last_checked_at",
+                    "IsPrimaryKey": false,
+                    "IsUnique": false,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE INDEX lsif_indexes_commit_last_checked_at ON lsif_indexes USING btree (commit_last_checked_at) WHERE state \u003c\u003e 'deleted'::text",
+                    "ConstraintType": "",
+                    "ConstraintDefinition": ""
                 },
                 {
                     "Name": "lsif_indexes_repository_id_commit",
@@ -11354,16 +11354,6 @@
             ],
             "Indexes": [
                 {
-                    "Name": "lsif_packages_dump_id",
-                    "IsPrimaryKey": false,
-                    "IsUnique": false,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE INDEX lsif_packages_dump_id ON lsif_packages USING btree (dump_id)",
-                    "ConstraintType": "",
-                    "ConstraintDefinition": ""
-                },
-                {
                     "Name": "lsif_packages_pkey",
                     "IsPrimaryKey": true,
                     "IsUnique": true,
@@ -11372,6 +11362,16 @@
                     "IndexDefinition": "CREATE UNIQUE INDEX lsif_packages_pkey ON lsif_packages USING btree (id)",
                     "ConstraintType": "p",
                     "ConstraintDefinition": "PRIMARY KEY (id)"
+                },
+                {
+                    "Name": "lsif_packages_dump_id",
+                    "IsPrimaryKey": false,
+                    "IsUnique": false,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE INDEX lsif_packages_dump_id ON lsif_packages USING btree (dump_id)",
+                    "ConstraintType": "",
+                    "ConstraintDefinition": ""
                 },
                 {
                     "Name": "lsif_packages_scheme_name_version_dump_id",
@@ -11480,16 +11480,6 @@
             ],
             "Indexes": [
                 {
-                    "Name": "lsif_references_dump_id",
-                    "IsPrimaryKey": false,
-                    "IsUnique": false,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE INDEX lsif_references_dump_id ON lsif_references USING btree (dump_id)",
-                    "ConstraintType": "",
-                    "ConstraintDefinition": ""
-                },
-                {
                     "Name": "lsif_references_pkey",
                     "IsPrimaryKey": true,
                     "IsUnique": true,
@@ -11498,6 +11488,16 @@
                     "IndexDefinition": "CREATE UNIQUE INDEX lsif_references_pkey ON lsif_references USING btree (id)",
                     "ConstraintType": "p",
                     "ConstraintDefinition": "PRIMARY KEY (id)"
+                },
+                {
+                    "Name": "lsif_references_dump_id",
+                    "IsPrimaryKey": false,
+                    "IsUnique": false,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE INDEX lsif_references_dump_id ON lsif_references USING btree (dump_id)",
+                    "ConstraintType": "",
+                    "ConstraintDefinition": ""
                 },
                 {
                     "Name": "lsif_references_scheme_name_version_dump_id",
@@ -11982,6 +11982,26 @@
             ],
             "Indexes": [
                 {
+                    "Name": "lsif_uploads_pkey",
+                    "IsPrimaryKey": true,
+                    "IsUnique": true,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE UNIQUE INDEX lsif_uploads_pkey ON lsif_uploads USING btree (id)",
+                    "ConstraintType": "p",
+                    "ConstraintDefinition": "PRIMARY KEY (id)"
+                },
+                {
+                    "Name": "lsif_uploads_repository_id_commit_root_indexer",
+                    "IsPrimaryKey": false,
+                    "IsUnique": true,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE UNIQUE INDEX lsif_uploads_repository_id_commit_root_indexer ON lsif_uploads USING btree (repository_id, commit, root, indexer) WHERE state = 'completed'::text",
+                    "ConstraintType": "",
+                    "ConstraintDefinition": ""
+                },
+                {
                     "Name": "lsif_uploads_associated_index_id",
                     "IsPrimaryKey": false,
                     "IsUnique": false,
@@ -12012,32 +12032,12 @@
                     "ConstraintDefinition": ""
                 },
                 {
-                    "Name": "lsif_uploads_pkey",
-                    "IsPrimaryKey": true,
-                    "IsUnique": true,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE UNIQUE INDEX lsif_uploads_pkey ON lsif_uploads USING btree (id)",
-                    "ConstraintType": "p",
-                    "ConstraintDefinition": "PRIMARY KEY (id)"
-                },
-                {
                     "Name": "lsif_uploads_repository_id_commit",
                     "IsPrimaryKey": false,
                     "IsUnique": false,
                     "IsExclusion": false,
                     "IsDeferrable": false,
                     "IndexDefinition": "CREATE INDEX lsif_uploads_repository_id_commit ON lsif_uploads USING btree (repository_id, commit)",
-                    "ConstraintType": "",
-                    "ConstraintDefinition": ""
-                },
-                {
-                    "Name": "lsif_uploads_repository_id_commit_root_indexer",
-                    "IsPrimaryKey": false,
-                    "IsUnique": true,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE UNIQUE INDEX lsif_uploads_repository_id_commit_root_indexer ON lsif_uploads USING btree (repository_id, commit, root, indexer) WHERE state = 'completed'::text",
                     "ConstraintType": "",
                     "ConstraintDefinition": ""
                 },
@@ -12809,6 +12809,16 @@
             ],
             "Indexes": [
                 {
+                    "Name": "notebooks_pkey",
+                    "IsPrimaryKey": true,
+                    "IsUnique": true,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE UNIQUE INDEX notebooks_pkey ON notebooks USING btree (id)",
+                    "ConstraintType": "p",
+                    "ConstraintDefinition": "PRIMARY KEY (id)"
+                },
+                {
                     "Name": "notebooks_blocks_tsvector_idx",
                     "IsPrimaryKey": false,
                     "IsUnique": false,
@@ -12837,16 +12847,6 @@
                     "IndexDefinition": "CREATE INDEX notebooks_namespace_user_id_idx ON notebooks USING btree (namespace_user_id)",
                     "ConstraintType": "",
                     "ConstraintDefinition": ""
-                },
-                {
-                    "Name": "notebooks_pkey",
-                    "IsPrimaryKey": true,
-                    "IsUnique": true,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE UNIQUE INDEX notebooks_pkey ON notebooks USING btree (id)",
-                    "ConstraintType": "p",
-                    "ConstraintDefinition": "PRIMARY KEY (id)"
                 },
                 {
                     "Name": "notebooks_title_trgm_idx",
@@ -13068,16 +13068,6 @@
             ],
             "Indexes": [
                 {
-                    "Name": "org_invitations_org_id",
-                    "IsPrimaryKey": false,
-                    "IsUnique": false,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE INDEX org_invitations_org_id ON org_invitations USING btree (org_id) WHERE deleted_at IS NULL",
-                    "ConstraintType": "",
-                    "ConstraintDefinition": ""
-                },
-                {
                     "Name": "org_invitations_pkey",
                     "IsPrimaryKey": true,
                     "IsUnique": true,
@@ -13086,6 +13076,16 @@
                     "IndexDefinition": "CREATE UNIQUE INDEX org_invitations_pkey ON org_invitations USING btree (id)",
                     "ConstraintType": "p",
                     "ConstraintDefinition": "PRIMARY KEY (id)"
+                },
+                {
+                    "Name": "org_invitations_org_id",
+                    "IsPrimaryKey": false,
+                    "IsUnique": false,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE INDEX org_invitations_org_id ON org_invitations USING btree (org_id) WHERE deleted_at IS NULL",
+                    "ConstraintType": "",
+                    "ConstraintDefinition": ""
                 },
                 {
                     "Name": "org_invitations_recipient_user_id",
@@ -14395,6 +14395,16 @@
                     "ConstraintDefinition": "PRIMARY KEY (id)"
                 },
                 {
+                    "Name": "registry_extension_releases_version",
+                    "IsPrimaryKey": false,
+                    "IsUnique": true,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE UNIQUE INDEX registry_extension_releases_version ON registry_extension_releases USING btree (registry_extension_id, release_version) WHERE release_version IS NOT NULL",
+                    "ConstraintType": "",
+                    "ConstraintDefinition": ""
+                },
+                {
                     "Name": "registry_extension_releases_registry_extension_id",
                     "IsPrimaryKey": false,
                     "IsUnique": false,
@@ -14411,16 +14421,6 @@
                     "IsExclusion": false,
                     "IsDeferrable": false,
                     "IndexDefinition": "CREATE INDEX registry_extension_releases_registry_extension_id_created_at ON registry_extension_releases USING btree (registry_extension_id, created_at) WHERE deleted_at IS NULL",
-                    "ConstraintType": "",
-                    "ConstraintDefinition": ""
-                },
-                {
-                    "Name": "registry_extension_releases_version",
-                    "IsPrimaryKey": false,
-                    "IsUnique": true,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE UNIQUE INDEX registry_extension_releases_version ON registry_extension_releases USING btree (registry_extension_id, release_version) WHERE release_version IS NOT NULL",
                     "ConstraintType": "",
                     "ConstraintDefinition": ""
                 }
@@ -14851,6 +14851,36 @@
             ],
             "Indexes": [
                 {
+                    "Name": "repo_external_unique_idx",
+                    "IsPrimaryKey": false,
+                    "IsUnique": true,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE UNIQUE INDEX repo_external_unique_idx ON repo USING btree (external_service_type, external_service_id, external_id)",
+                    "ConstraintType": "",
+                    "ConstraintDefinition": ""
+                },
+                {
+                    "Name": "repo_name_unique",
+                    "IsPrimaryKey": false,
+                    "IsUnique": true,
+                    "IsExclusion": false,
+                    "IsDeferrable": true,
+                    "IndexDefinition": "CREATE UNIQUE INDEX repo_name_unique ON repo USING btree (name)",
+                    "ConstraintType": "u",
+                    "ConstraintDefinition": "UNIQUE (name) DEFERRABLE"
+                },
+                {
+                    "Name": "repo_pkey",
+                    "IsPrimaryKey": true,
+                    "IsUnique": true,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE UNIQUE INDEX repo_pkey ON repo USING btree (id)",
+                    "ConstraintType": "p",
+                    "ConstraintDefinition": "PRIMARY KEY (id)"
+                },
+                {
                     "Name": "repo_archived",
                     "IsPrimaryKey": false,
                     "IsUnique": false,
@@ -14877,16 +14907,6 @@
                     "IsExclusion": false,
                     "IsDeferrable": false,
                     "IndexDefinition": "CREATE INDEX repo_created_at ON repo USING btree (created_at)",
-                    "ConstraintType": "",
-                    "ConstraintDefinition": ""
-                },
-                {
-                    "Name": "repo_external_unique_idx",
-                    "IsPrimaryKey": false,
-                    "IsUnique": true,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE UNIQUE INDEX repo_external_unique_idx ON repo USING btree (external_service_type, external_service_id, external_id)",
                     "ConstraintType": "",
                     "ConstraintDefinition": ""
                 },
@@ -14961,16 +14981,6 @@
                     "ConstraintDefinition": ""
                 },
                 {
-                    "Name": "repo_name_unique",
-                    "IsPrimaryKey": false,
-                    "IsUnique": true,
-                    "IsExclusion": false,
-                    "IsDeferrable": true,
-                    "IndexDefinition": "CREATE UNIQUE INDEX repo_name_unique ON repo USING btree (name)",
-                    "ConstraintType": "u",
-                    "ConstraintDefinition": "UNIQUE (name) DEFERRABLE"
-                },
-                {
                     "Name": "repo_non_deleted_id_name_idx",
                     "IsPrimaryKey": false,
                     "IsUnique": false,
@@ -14979,16 +14989,6 @@
                     "IndexDefinition": "CREATE INDEX repo_non_deleted_id_name_idx ON repo USING btree (id, name) WHERE deleted_at IS NULL",
                     "ConstraintType": "",
                     "ConstraintDefinition": ""
-                },
-                {
-                    "Name": "repo_pkey",
-                    "IsPrimaryKey": true,
-                    "IsUnique": true,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE UNIQUE INDEX repo_pkey ON repo USING btree (id)",
-                    "ConstraintType": "p",
-                    "ConstraintDefinition": "PRIMARY KEY (id)"
                 },
                 {
                     "Name": "repo_private",
@@ -15960,6 +15960,16 @@
             ],
             "Indexes": [
                 {
+                    "Name": "settings_pkey",
+                    "IsPrimaryKey": true,
+                    "IsUnique": true,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE UNIQUE INDEX settings_pkey ON settings USING btree (id)",
+                    "ConstraintType": "p",
+                    "ConstraintDefinition": "PRIMARY KEY (id)"
+                },
+                {
                     "Name": "settings_global_id",
                     "IsPrimaryKey": false,
                     "IsUnique": false,
@@ -15978,16 +15988,6 @@
                     "IndexDefinition": "CREATE INDEX settings_org_id_idx ON settings USING btree (org_id)",
                     "ConstraintType": "",
                     "ConstraintDefinition": ""
-                },
-                {
-                    "Name": "settings_pkey",
-                    "IsPrimaryKey": true,
-                    "IsUnique": true,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE UNIQUE INDEX settings_pkey ON settings USING btree (id)",
-                    "ConstraintType": "p",
-                    "ConstraintDefinition": "PRIMARY KEY (id)"
                 },
                 {
                     "Name": "settings_user_id_idx",
@@ -16514,16 +16514,6 @@
             ],
             "Indexes": [
                 {
-                    "Name": "user_credentials_credential_idx",
-                    "IsPrimaryKey": false,
-                    "IsUnique": false,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE INDEX user_credentials_credential_idx ON user_credentials USING btree ((encryption_key_id = ANY (ARRAY[''::text, 'previously-migrated'::text])))",
-                    "ConstraintType": "",
-                    "ConstraintDefinition": ""
-                },
-                {
                     "Name": "user_credentials_domain_user_id_external_service_type_exter_key",
                     "IsPrimaryKey": false,
                     "IsUnique": true,
@@ -16542,6 +16532,16 @@
                     "IndexDefinition": "CREATE UNIQUE INDEX user_credentials_pkey ON user_credentials USING btree (id)",
                     "ConstraintType": "p",
                     "ConstraintDefinition": "PRIMARY KEY (id)"
+                },
+                {
+                    "Name": "user_credentials_credential_idx",
+                    "IsPrimaryKey": false,
+                    "IsUnique": false,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE INDEX user_credentials_credential_idx ON user_credentials USING btree ((encryption_key_id = ANY (ARRAY[''::text, 'previously-migrated'::text])))",
+                    "ConstraintType": "",
+                    "ConstraintDefinition": ""
                 }
             ],
             "Constraints": [
@@ -16663,16 +16663,6 @@
                     "ConstraintDefinition": "UNIQUE (user_id, email)"
                 },
                 {
-                    "Name": "user_emails_unique_verified_email",
-                    "IsPrimaryKey": false,
-                    "IsUnique": false,
-                    "IsExclusion": true,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE INDEX user_emails_unique_verified_email ON user_emails USING btree (email) WHERE verified_at IS NOT NULL",
-                    "ConstraintType": "x",
-                    "ConstraintDefinition": "EXCLUDE USING btree (email WITH =) WHERE (verified_at IS NOT NULL)"
-                },
-                {
                     "Name": "user_emails_user_id_is_primary_idx",
                     "IsPrimaryKey": false,
                     "IsUnique": true,
@@ -16681,6 +16671,16 @@
                     "IndexDefinition": "CREATE UNIQUE INDEX user_emails_user_id_is_primary_idx ON user_emails USING btree (user_id, is_primary) WHERE is_primary = true",
                     "ConstraintType": "",
                     "ConstraintDefinition": ""
+                },
+                {
+                    "Name": "user_emails_unique_verified_email",
+                    "IsPrimaryKey": false,
+                    "IsUnique": false,
+                    "IsExclusion": true,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE INDEX user_emails_unique_verified_email ON user_emails USING btree (email) WHERE verified_at IS NOT NULL",
+                    "ConstraintType": "x",
+                    "ConstraintDefinition": "EXCLUDE USING btree (email WITH =) WHERE (verified_at IS NOT NULL)"
                 }
             ],
             "Constraints": [
@@ -17484,16 +17484,6 @@
                     "ConstraintDefinition": ""
                 },
                 {
-                    "Name": "users_created_at_idx",
-                    "IsPrimaryKey": false,
-                    "IsUnique": false,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE INDEX users_created_at_idx ON users USING btree (created_at)",
-                    "ConstraintType": "",
-                    "ConstraintDefinition": ""
-                },
-                {
                     "Name": "users_pkey",
                     "IsPrimaryKey": true,
                     "IsUnique": true,
@@ -17510,6 +17500,16 @@
                     "IsExclusion": false,
                     "IsDeferrable": false,
                     "IndexDefinition": "CREATE UNIQUE INDEX users_username ON users USING btree (username) WHERE deleted_at IS NULL",
+                    "ConstraintType": "",
+                    "ConstraintDefinition": ""
+                },
+                {
+                    "Name": "users_created_at_idx",
+                    "IsPrimaryKey": false,
+                    "IsUnique": false,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE INDEX users_created_at_idx ON users USING btree (created_at)",
                     "ConstraintType": "",
                     "ConstraintDefinition": ""
                 }
@@ -17723,16 +17723,6 @@
             ],
             "Indexes": [
                 {
-                    "Name": "webhook_logs_external_service_id_idx",
-                    "IsPrimaryKey": false,
-                    "IsUnique": false,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE INDEX webhook_logs_external_service_id_idx ON webhook_logs USING btree (external_service_id)",
-                    "ConstraintType": "",
-                    "ConstraintDefinition": ""
-                },
-                {
                     "Name": "webhook_logs_pkey",
                     "IsPrimaryKey": true,
                     "IsUnique": true,
@@ -17741,6 +17731,16 @@
                     "IndexDefinition": "CREATE UNIQUE INDEX webhook_logs_pkey ON webhook_logs USING btree (id)",
                     "ConstraintType": "p",
                     "ConstraintDefinition": "PRIMARY KEY (id)"
+                },
+                {
+                    "Name": "webhook_logs_external_service_id_idx",
+                    "IsPrimaryKey": false,
+                    "IsUnique": false,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE INDEX webhook_logs_external_service_id_idx ON webhook_logs USING btree (external_service_id)",
+                    "ConstraintType": "",
+                    "ConstraintDefinition": ""
                 },
                 {
                     "Name": "webhook_logs_received_at_idx",

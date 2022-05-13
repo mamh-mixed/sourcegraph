@@ -711,6 +711,16 @@
             ],
             "Indexes": [
                 {
+                    "Name": "dashboard_grants_pk",
+                    "IsPrimaryKey": true,
+                    "IsUnique": true,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE UNIQUE INDEX dashboard_grants_pk ON dashboard_grants USING btree (id)",
+                    "ConstraintType": "p",
+                    "ConstraintDefinition": "PRIMARY KEY (id)"
+                },
+                {
                     "Name": "dashboard_grants_dashboard_id_index",
                     "IsPrimaryKey": false,
                     "IsUnique": false,
@@ -739,16 +749,6 @@
                     "IndexDefinition": "CREATE INDEX dashboard_grants_org_id_idx ON dashboard_grants USING btree (org_id)",
                     "ConstraintType": "",
                     "ConstraintDefinition": ""
-                },
-                {
-                    "Name": "dashboard_grants_pk",
-                    "IsPrimaryKey": true,
-                    "IsUnique": true,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE UNIQUE INDEX dashboard_grants_pk ON dashboard_grants USING btree (id)",
-                    "ConstraintType": "p",
-                    "ConstraintDefinition": "PRIMARY KEY (id)"
                 },
                 {
                     "Name": "dashboard_grants_user_id_idx",
@@ -818,26 +818,6 @@
             ],
             "Indexes": [
                 {
-                    "Name": "dashboard_insight_view_dashboard_id_fk_idx",
-                    "IsPrimaryKey": false,
-                    "IsUnique": false,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE INDEX dashboard_insight_view_dashboard_id_fk_idx ON dashboard_insight_view USING btree (dashboard_id)",
-                    "ConstraintType": "",
-                    "ConstraintDefinition": ""
-                },
-                {
-                    "Name": "dashboard_insight_view_insight_view_id_fk_idx",
-                    "IsPrimaryKey": false,
-                    "IsUnique": false,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE INDEX dashboard_insight_view_insight_view_id_fk_idx ON dashboard_insight_view USING btree (insight_view_id)",
-                    "ConstraintType": "",
-                    "ConstraintDefinition": ""
-                },
-                {
                     "Name": "dashboard_insight_view_pk",
                     "IsPrimaryKey": true,
                     "IsUnique": true,
@@ -856,6 +836,26 @@
                     "IndexDefinition": "CREATE UNIQUE INDEX unique_dashboard_id_insight_view_id ON dashboard_insight_view USING btree (dashboard_id, insight_view_id)",
                     "ConstraintType": "u",
                     "ConstraintDefinition": "UNIQUE (dashboard_id, insight_view_id)"
+                },
+                {
+                    "Name": "dashboard_insight_view_dashboard_id_fk_idx",
+                    "IsPrimaryKey": false,
+                    "IsUnique": false,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE INDEX dashboard_insight_view_dashboard_id_fk_idx ON dashboard_insight_view USING btree (dashboard_id)",
+                    "ConstraintType": "",
+                    "ConstraintDefinition": ""
+                },
+                {
+                    "Name": "dashboard_insight_view_insight_view_id_fk_idx",
+                    "IsPrimaryKey": false,
+                    "IsUnique": false,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE INDEX dashboard_insight_view_insight_view_id_fk_idx ON dashboard_insight_view USING btree (insight_view_id)",
+                    "ConstraintType": "",
+                    "ConstraintDefinition": ""
                 }
             ],
             "Constraints": [
@@ -961,16 +961,6 @@
             ],
             "Indexes": [
                 {
-                    "Name": "insight_dirty_queries_insight_series_id_fk_idx",
-                    "IsPrimaryKey": false,
-                    "IsUnique": false,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE INDEX insight_dirty_queries_insight_series_id_fk_idx ON insight_dirty_queries USING btree (insight_series_id)",
-                    "ConstraintType": "",
-                    "ConstraintDefinition": ""
-                },
-                {
                     "Name": "insight_dirty_queries_pkey",
                     "IsPrimaryKey": true,
                     "IsUnique": true,
@@ -979,6 +969,16 @@
                     "IndexDefinition": "CREATE UNIQUE INDEX insight_dirty_queries_pkey ON insight_dirty_queries USING btree (id)",
                     "ConstraintType": "p",
                     "ConstraintDefinition": "PRIMARY KEY (id)"
+                },
+                {
+                    "Name": "insight_dirty_queries_insight_series_id_fk_idx",
+                    "IsPrimaryKey": false,
+                    "IsUnique": false,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE INDEX insight_dirty_queries_insight_series_id_fk_idx ON insight_dirty_queries USING btree (insight_series_id)",
+                    "ConstraintType": "",
+                    "ConstraintDefinition": ""
                 }
             ],
             "Constraints": [
@@ -1220,26 +1220,6 @@
             ],
             "Indexes": [
                 {
-                    "Name": "insight_series_deleted_at_idx",
-                    "IsPrimaryKey": false,
-                    "IsUnique": false,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE INDEX insight_series_deleted_at_idx ON insight_series USING btree (deleted_at)",
-                    "ConstraintType": "",
-                    "ConstraintDefinition": ""
-                },
-                {
-                    "Name": "insight_series_next_recording_after_idx",
-                    "IsPrimaryKey": false,
-                    "IsUnique": false,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE INDEX insight_series_next_recording_after_idx ON insight_series USING btree (next_recording_after)",
-                    "ConstraintType": "",
-                    "ConstraintDefinition": ""
-                },
-                {
                     "Name": "insight_series_pkey",
                     "IsPrimaryKey": true,
                     "IsUnique": true,
@@ -1256,6 +1236,26 @@
                     "IsExclusion": false,
                     "IsDeferrable": false,
                     "IndexDefinition": "CREATE UNIQUE INDEX insight_series_series_id_unique_idx ON insight_series USING btree (series_id)",
+                    "ConstraintType": "",
+                    "ConstraintDefinition": ""
+                },
+                {
+                    "Name": "insight_series_deleted_at_idx",
+                    "IsPrimaryKey": false,
+                    "IsUnique": false,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE INDEX insight_series_deleted_at_idx ON insight_series USING btree (deleted_at)",
+                    "ConstraintType": "",
+                    "ConstraintDefinition": ""
+                },
+                {
+                    "Name": "insight_series_next_recording_after_idx",
+                    "IsPrimaryKey": false,
+                    "IsUnique": false,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE INDEX insight_series_next_recording_after_idx ON insight_series USING btree (next_recording_after)",
                     "ConstraintType": "",
                     "ConstraintDefinition": ""
                 }
@@ -1495,6 +1495,16 @@
             ],
             "Indexes": [
                 {
+                    "Name": "insight_view_grants_pk",
+                    "IsPrimaryKey": true,
+                    "IsUnique": true,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE UNIQUE INDEX insight_view_grants_pk ON insight_view_grants USING btree (id)",
+                    "ConstraintType": "p",
+                    "ConstraintDefinition": "PRIMARY KEY (id)"
+                },
+                {
                     "Name": "insight_view_grants_global_idx",
                     "IsPrimaryKey": false,
                     "IsUnique": false,
@@ -1523,16 +1533,6 @@
                     "IndexDefinition": "CREATE INDEX insight_view_grants_org_id_idx ON insight_view_grants USING btree (org_id)",
                     "ConstraintType": "",
                     "ConstraintDefinition": ""
-                },
-                {
-                    "Name": "insight_view_grants_pk",
-                    "IsPrimaryKey": true,
-                    "IsUnique": true,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE UNIQUE INDEX insight_view_grants_pk ON insight_view_grants USING btree (id)",
-                    "ConstraintType": "p",
-                    "ConstraintDefinition": "PRIMARY KEY (id)"
                 },
                 {
                     "Name": "insight_view_grants_user_id_idx",
@@ -1676,16 +1676,6 @@
             ],
             "Indexes": [
                 {
-                    "Name": "metadata_metadata_gin",
-                    "IsPrimaryKey": false,
-                    "IsUnique": false,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE INDEX metadata_metadata_gin ON metadata USING gin (metadata)",
-                    "ConstraintType": "",
-                    "ConstraintDefinition": ""
-                },
-                {
                     "Name": "metadata_metadata_unique_idx",
                     "IsPrimaryKey": false,
                     "IsUnique": true,
@@ -1704,6 +1694,16 @@
                     "IndexDefinition": "CREATE UNIQUE INDEX metadata_pkey ON metadata USING btree (id)",
                     "ConstraintType": "p",
                     "ConstraintDefinition": "PRIMARY KEY (id)"
+                },
+                {
+                    "Name": "metadata_metadata_gin",
+                    "IsPrimaryKey": false,
+                    "IsUnique": false,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE INDEX metadata_metadata_gin ON metadata USING gin (metadata)",
+                    "ConstraintType": "",
+                    "ConstraintDefinition": ""
                 }
             ],
             "Constraints": null,
@@ -1879,16 +1879,6 @@
             ],
             "Indexes": [
                 {
-                    "Name": "repo_names_name_trgm",
-                    "IsPrimaryKey": false,
-                    "IsUnique": false,
-                    "IsExclusion": false,
-                    "IsDeferrable": false,
-                    "IndexDefinition": "CREATE INDEX repo_names_name_trgm ON repo_names USING gin (lower(name::text) gin_trgm_ops)",
-                    "ConstraintType": "",
-                    "ConstraintDefinition": ""
-                },
-                {
                     "Name": "repo_names_name_unique_idx",
                     "IsPrimaryKey": false,
                     "IsUnique": true,
@@ -1907,6 +1897,16 @@
                     "IndexDefinition": "CREATE UNIQUE INDEX repo_names_pkey ON repo_names USING btree (id)",
                     "ConstraintType": "p",
                     "ConstraintDefinition": "PRIMARY KEY (id)"
+                },
+                {
+                    "Name": "repo_names_name_trgm",
+                    "IsPrimaryKey": false,
+                    "IsUnique": false,
+                    "IsExclusion": false,
+                    "IsDeferrable": false,
+                    "IndexDefinition": "CREATE INDEX repo_names_name_trgm ON repo_names USING gin (lower(name::text) gin_trgm_ops)",
+                    "ConstraintType": "",
+                    "ConstraintDefinition": ""
                 }
             ],
             "Constraints": [
