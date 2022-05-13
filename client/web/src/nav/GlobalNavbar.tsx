@@ -205,8 +205,7 @@ export const GlobalNavbar: React.FunctionComponent<React.PropsWithChildren<Props
         return items.filter<NavDropdownItem>((item): item is NavDropdownItem => !!item)
     }, [searchContextsEnabled, showSearchContext])
 
-    activation = undefined
-    const shouldShowBatchChanges = true // props.batchChangesEnabled || isSourcegraphDotCom
+    const shouldShowBatchChanges = props.batchChangesEnabled || isSourcegraphDotCom
     const navLinkVariant = shouldShowBatchChanges && activation ? 'compact' : undefined
 
     return (
