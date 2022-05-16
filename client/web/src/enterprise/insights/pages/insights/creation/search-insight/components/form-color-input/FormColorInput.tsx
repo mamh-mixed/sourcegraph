@@ -4,13 +4,15 @@ import classNames from 'classnames'
 import { startCase } from 'lodash'
 import { noop } from 'rxjs'
 
+import { RadioButton } from '@sourcegraph/wildcard'
+
 import { DATA_SERIES_COLORS } from '../../constants'
 
 import styles from './FormColorInput.module.scss'
 
 interface FormColorInputProps {
     /** Name of data series color */
-    name?: string
+    name: string
     /** Title of color input. */
     title?: string
     /** Value of data series color ()*/
@@ -33,6 +35,7 @@ export const FormColorInput: React.FunctionComponent<React.PropsWithChildren<For
 
             <div>
                 {COLORS_KEYS.map(key => (
+                    // eslint-disable-next-line jsx-a11y/label-has-associated-control
                     <label
                         key={key}
                         /* eslint-disable-next-line react/forbid-dom-props */
@@ -40,13 +43,16 @@ export const FormColorInput: React.FunctionComponent<React.PropsWithChildren<For
                         title={startCase(key.toLocaleLowerCase())}
                         className={styles.formColorPickerColorBlock}
                     >
-                        <input
-                            type="radio"
+                        <RadioButton
                             name={name}
                             aria-label={key}
                             value={DATA_SERIES_COLORS[key]}
                             checked={value === DATA_SERIES_COLORS[key]}
-                            className={styles.formColorPickerNativeRadioControl}
+                            className={styles.formColorPickerNativeRadioControlInput}
+                            wrapperClassName={classNames(
+                                styles.formColorPickerNativeRadioControl,
+                                value === DATA_SERIES_COLORS[key] && styles.formColorPickerNativeRadioControlChecked
+                            )}
                             onChange={onChange}
                         />
 

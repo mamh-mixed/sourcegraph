@@ -28,6 +28,7 @@ import {
     Alert,
     ProductStatusBadge,
     Link,
+    Input,
 } from '@sourcegraph/wildcard'
 
 import { AuthenticatedUser } from '../../auth'
@@ -339,12 +340,11 @@ export const SearchContextForm: React.FunctionComponent<React.PropsWithChildren<
                         <div id="context-name-label" className="mb-2">
                             Context name
                         </div>
-                        <input
-                            className={classNames('w-100', 'form-control', styles.searchContextFormNameInput)}
+                        <Input
+                            className={classNames('w-100', styles.searchContextFormNameInput)}
                             aria-labelledby="context-name-label"
                             data-testid="search-context-name-input"
                             value={name}
-                            type="text"
                             pattern="^[a-zA-Z0-9_\-\/\.]+$"
                             required={true}
                             maxLength={MAX_NAME_LENGTH}

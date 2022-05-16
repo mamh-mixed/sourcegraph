@@ -34,14 +34,18 @@ exports[`FormActionArea Error is shown if code monitor has empty description 1`]
       >
         Recipients
       </label>
-      <input
-        class="form-control mb-2"
-        disabled=""
-        id="code-monitoring-form-actions-recipients"
-        required=""
-        type="text"
-        value="user@me.com (you)"
-      />
+      <div
+        class="container d-flex mb-2"
+      >
+        <input
+          class="form-control with-invalid-icon"
+          disabled=""
+          id="code-monitoring-form-actions-recipients"
+          required=""
+          type="text"
+          value="user@me.com (you)"
+        />
+      </div>
       <small
         class="text-muted"
       >

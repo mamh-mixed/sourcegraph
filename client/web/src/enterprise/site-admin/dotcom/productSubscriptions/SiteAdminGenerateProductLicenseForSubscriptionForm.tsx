@@ -11,7 +11,7 @@ import { asError, createAggregateError, isErrorLike } from '@sourcegraph/common'
 import { gql } from '@sourcegraph/http-client'
 import { Scalars } from '@sourcegraph/shared/src/graphql-operations'
 import * as GQL from '@sourcegraph/shared/src/schema'
-import { Alert, Button, useEventObservable, Link } from '@sourcegraph/wildcard'
+import { Alert, Button, useEventObservable, Link, Input } from '@sourcegraph/wildcard'
 
 import { mutateGraphQL } from '../../../../backend/graphql'
 import { ExpirationDate } from '../../../productSubscription/ExpirationDate'
@@ -139,9 +139,7 @@ export const SiteAdminGenerateProductLicenseForSubscriptionForm: React.FunctionC
                 <Form onSubmit={onSubmit}>
                     <div className="form-group">
                         <label htmlFor="site-admin-create-product-subscription-page__tags">Tags</label>
-                        <input
-                            type="text"
-                            className="form-control"
+                        <Input
                             id="site-admin-create-product-subscription-page__tags"
                             disabled={disableForm}
                             value={formData.tags}
@@ -169,10 +167,9 @@ export const SiteAdminGenerateProductLicenseForSubscriptionForm: React.FunctionC
                     </div>
                     <div className="form-group">
                         <label htmlFor="site-admin-create-product-subscription-page__userCount">Users</label>
-                        <input
+                        <Input
                             type="number"
                             min={1}
-                            className="form-control"
                             id="site-admin-create-product-subscription-page__userCount"
                             disabled={disableForm}
                             value={formData.userCount || ''}
@@ -181,9 +178,8 @@ export const SiteAdminGenerateProductLicenseForSubscriptionForm: React.FunctionC
                     </div>
                     <div className="form-group">
                         <label htmlFor="site-admin-create-product-subscription-page__validDays">Valid for (days)</label>
-                        <input
+                        <Input
                             type="number"
-                            className="form-control"
                             id="site-admin-create-product-subscription-page__validDays"
                             disabled={disableForm}
                             value={formData.validDays || ''}

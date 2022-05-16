@@ -21,12 +21,16 @@ export enum InputStatus {
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
     /** text label of input. */
     label?: ReactNode
+    /** text description, display as tooltip when label is hovered. */
+    labelTitle?: string
     /** Description block shown below the input. */
     message?: ReactNode
     /** Custom class name for root label element. */
     className?: string
     /** Custom class name for input element. */
     inputClassName?: string
+    /** Custom className for label wrapper */
+    labelWrapperClassName?: string
     /** Input icon (symbol) which render right after the input element. */
     inputSymbol?: ReactNode
     /** Exclusive status */
@@ -36,6 +40,8 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
     disabled?: boolean
     /** Determines the size of the input */
     variant?: 'regular' | 'small'
+    /** Determines if the class "form-control" is added on input */
+    formControl?: boolean
 }
 
 /**
@@ -46,10 +52,13 @@ export const Input = forwardRef((props, reference) => {
         as: Component = 'input',
         type = 'text',
         variant = 'regular',
+        formControl = true,
         label,
+        labelTitle,
         message,
         className,
         inputClassName,
+        labelWrapperClassName,
         inputSymbol,
         disabled,
         status = InputStatus.initial,
@@ -70,11 +79,17 @@ export const Input = forwardRef((props, reference) => {
                 <Component
                     disabled={disabled}
                     type={type}
-                    className={classNames(styles.input, inputClassName, 'form-control', 'with-invalid-icon', {
-                        'is-valid': status === InputStatus.valid,
-                        'is-invalid': error || status === InputStatus.error,
-                        'form-control-sm': variant === 'small',
-                    })}
+                    className={classNames(
+                        inputClassName,
+                        status === InputStatus.loading && styles.inputLoading,
+                        formControl && 'form-control',
+                        'with-invalid-icon',
+                        {
+                            'is-valid': status === InputStatus.valid,
+                            'is-invalid': error || status === InputStatus.error,
+                            'form-control-sm': variant === 'small',
+                        }
+                    )}
                     {...otherProps}
                     ref={mergedReference}
                     autoFocus={autoFocus}
@@ -94,8 +109,12 @@ export const Input = forwardRef((props, reference) => {
 
     if (label) {
         return (
-            <Label className={classNames('w-100', className)}>
-                {label && <div className="mb-2">{variant === 'regular' ? label : <small>{label}</small>}</div>}
+            <Label title={labelTitle} className={classNames('w-100', className)}>
+                {label && (
+                    <div className={classNames('mb-2', labelWrapperClassName)}>
+                        {variant === 'regular' ? label : <small>{label}</small>}
+                    </div>
+                )}
                 {inputWithMessage}
             </Label>
         )

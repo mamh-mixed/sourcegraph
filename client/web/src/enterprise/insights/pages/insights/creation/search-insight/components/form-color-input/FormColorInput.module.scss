@@ -7,7 +7,7 @@
 
     // We need to hide native radio button visually but still need to have it
     // for keyboard navigation and voice over support.
-    &__native-radio-control {
+    &__native-radio-control-input {
         width: 0;
         height: 0;
         opacity: 0;
@@ -45,7 +45,7 @@
     }
 
     // Checked state
-    &__native-radio-control:checked + &__radio-control {
+    &__native-radio-control-checked + &__radio-control {
         &::before {
             opacity: 1;
             border: solid 2px currentColor;
