@@ -1,4 +1,4 @@
-import { InputStatus } from '../Input'
+import { FormInputStatus } from '..'
 
 interface GetInputStatusProps {
     isValid?: boolean
@@ -6,20 +6,20 @@ interface GetInputStatusProps {
     isLoading?: boolean
 }
 
-export function getInputStatus(props: GetInputStatusProps): InputStatus {
+export function getInputStatus(props: GetInputStatusProps): FormInputStatus {
     const { isLoading, isError, isValid } = props
 
     if (isLoading) {
-        return InputStatus.loading
+        return FormInputStatus.loading
     }
 
     if (isError) {
-        return InputStatus.error
+        return FormInputStatus.error
     }
 
     if (isValid) {
-        return InputStatus.valid
+        return FormInputStatus.valid
     }
 
-    return InputStatus.initial
+    return FormInputStatus.initial
 }

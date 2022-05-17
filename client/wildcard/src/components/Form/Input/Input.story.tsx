@@ -5,6 +5,7 @@ import { Meta } from '@storybook/react'
 import { BrandedStory } from '@sourcegraph/branded/src/components/BrandedStory'
 import webStyles from '@sourcegraph/web/src/SourcegraphWebApp.scss'
 
+import { FormInput } from './FormInput'
 import { Input } from './Input'
 
 const Story: Meta = {
@@ -51,14 +52,7 @@ export const Simple = () => {
                 disabled={false}
                 placeholder="testing this one"
             />
-            <Input
-                value={selected}
-                label="Input loading"
-                onChange={handleChange}
-                message="random message"
-                status="loading"
-                placeholder="loading status input"
-            />
+
             <Input
                 value={selected}
                 label="Input error"
@@ -89,3 +83,18 @@ export const Simple = () => {
         </>
     )
 }
+
+export const SimpleFormInput = () => (
+    <>
+        <FormInput label="Input loading" message="random message" status="loading" placeholder="loading status input" />
+
+        <FormInput
+            label="Input with symbol"
+            type="number"
+            inputSymbol={<span className="d-flex align-items-center p-1">%</span>}
+            message="random message"
+            status="initial"
+            placeholder="1234"
+        />
+    </>
+)

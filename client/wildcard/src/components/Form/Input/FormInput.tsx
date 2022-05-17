@@ -1,43 +1,36 @@
-import { useRef, forwardRef, InputHTMLAttributes, ReactNode } from 'react'
+import { useRef, forwardRef, ReactNode } from 'react'
 
 import classNames from 'classnames'
 import { useMergeRefs } from 'use-callback-ref'
+
+import { LoaderInput } from '@sourcegraph/branded/src/components/LoaderInput'
 
 import { useAutoFocus } from '../../../hooks/useAutoFocus'
 import { ForwardReferenceComponent } from '../../../types'
 import { Label } from '../../Typography/Label'
 
+import { InputProps } from './Input'
+
 import styles from './Input.module.scss'
 
-export enum InputStatus {
+export enum FormInputStatus {
     initial = 'initial',
     error = 'error',
+    loading = 'loading',
     valid = 'valid',
 }
 
-export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
-    /** text label of input. */
-    label?: ReactNode
-    /** Description block shown below the input. */
-    message?: ReactNode
-    /** Custom class name for root label element. */
-    className?: string
-    /** Custom class name for input element. */
-    inputClassName?: string
-    /** Exclusive status */
-    status?: InputStatus | `${InputStatus}`
-    error?: ReactNode
-    /** Disable input behavior */
-    disabled?: boolean
-    /** Determines the size of the input */
-    variant?: 'regular' | 'small'
+export interface FormInputProps extends Omit<InputProps, 'status'> {
+    status?: FormInputStatus | `${FormInputStatus}`
+    /** Input icon (symbol) which render right after the input element. */
+    inputSymbol?: ReactNode
 }
 
 /**
  * Displays the input with description, error message, visual invalid and valid states.
- * Does not support Loader icon and status=loadind (user FormInput to get support for loading state)
+ * Renders Input component within LoaderInput to display loader icon with status=loading.
  */
-export const Input = forwardRef((props, reference) => {
+export const FormInput = forwardRef((props, reference) => {
     const {
         as: Component = 'input',
         type = 'text',
@@ -46,8 +39,9 @@ export const Input = forwardRef((props, reference) => {
         message,
         className,
         inputClassName,
+        inputSymbol,
         disabled,
-        status = InputStatus.initial,
+        status = FormInputStatus.initial,
         error,
         autoFocus,
         ...otherProps
@@ -61,18 +55,25 @@ export const Input = forwardRef((props, reference) => {
     const messageClassName = 'form-text font-weight-normal mt-2'
     const inputWithMessage = (
         <>
-            <Component
-                disabled={disabled}
-                type={type}
-                className={classNames(styles.input, inputClassName, 'form-control', 'with-invalid-icon', {
-                    'is-valid': status === InputStatus.valid,
-                    'is-invalid': error || status === InputStatus.error,
-                    'form-control-sm': variant === 'small',
-                })}
-                {...otherProps}
-                ref={mergedReference}
-                autoFocus={autoFocus}
-            />
+            <LoaderInput
+                className={classNames('d-flex', !label && className)}
+                loading={status === FormInputStatus.loading}
+            >
+                <Component
+                    disabled={disabled}
+                    type={type}
+                    className={classNames(styles.input, inputClassName, 'form-control', 'with-invalid-icon', {
+                        'is-valid': status === FormInputStatus.valid,
+                        'is-invalid': error || status === FormInputStatus.error,
+                        'form-control-sm': variant === 'small',
+                    })}
+                    {...otherProps}
+                    ref={mergedReference}
+                    autoFocus={autoFocus}
+                />
+
+                {inputSymbol}
+            </LoaderInput>
 
             {error && (
                 <small role="alert" className={classNames('text-danger', messageClassName)}>
@@ -93,6 +94,6 @@ export const Input = forwardRef((props, reference) => {
     }
 
     return inputWithMessage
-}) as ForwardReferenceComponent<'input', InputProps>
+}) as ForwardReferenceComponent<'input', FormInputProps>
 
-Input.displayName = 'Input'
+FormInput.displayName = 'FormInput'
