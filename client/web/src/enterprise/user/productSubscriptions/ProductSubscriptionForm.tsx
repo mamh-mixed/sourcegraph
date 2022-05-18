@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react'
 
+import { CardElement, useElements, useStripe } from '@stripe/react-stripe-js'
+import { TokenResult } from '@stripe/stripe-js'
 import * as H from 'history'
-import { ReactStripeElements } from 'react-stripe-elements'
 import { from, of, throwError, Observable } from 'rxjs'
 import { catchError, startWith, switchMap } from 'rxjs/operators'
 
@@ -87,12 +88,12 @@ interface Props extends ThemeProps {
 
 const DEFAULT_USER_COUNT = MIN_USER_COUNT
 
+type TokenResponse = TokenResult | { token: undefined; error: undefined }
+
 /**
  * Displays a form for a product subscription.
  */
-const _ProductSubscriptionForm: React.FunctionComponent<
-    React.PropsWithChildren<Props & ReactStripeElements.InjectedStripeProps>
-> = ({
+const _ProductSubscriptionForm: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
     accountID,
     subscriptionID,
     onSubmit: parentOnSubmit,
@@ -102,8 +103,10 @@ const _ProductSubscriptionForm: React.FunctionComponent<
     primaryButtonTextNoPaymentRequired = primaryButtonText,
     afterPrimaryButton,
     isLightTheme,
-    stripe,
 }) => {
+    const stripe = useStripe()
+    const elements = useElements()
+
     if (!stripe) {
         throw new Error('billing service is not available')
     }
@@ -133,14 +136,16 @@ const _ProductSubscriptionForm: React.FunctionComponent<
         useCallback(
             (submits: Observable<void>) =>
                 submits.pipe(
-                    switchMap(() =>
+                    switchMap(() => {
+                        const element = elements?.getElement(CardElement)
+
                         // TODO(sqs): store name, address, company, etc., in token
-                        (paymentValidity !== PaymentValidity.NoPaymentRequired
-                            ? from(stripe.createToken())
-                            : of({ token: undefined, error: undefined })
-                        ).pipe(
-                            switchMap(({ token, error }) => {
+                        return ((paymentValidity !== PaymentValidity.NoPaymentRequired && element
+                            ? from(stripe.createToken(element))
+                            : of({ token: undefined, error: undefined })) as Observable<TokenResponse>).pipe(
+                            switchMap(({ error, token }: TokenResponse) => {
                                 if (error) {
+                                    // eslint-disable-next-line rxjs/throw-error
                                     return throwError(error)
                                 }
                                 if (!accountID) {
@@ -168,9 +173,9 @@ const _ProductSubscriptionForm: React.FunctionComponent<
                             catchError(error => [asError(error)]),
                             startWith(LOADING)
                         )
-                    )
+                    })
                 ),
-            [accountID, billingPlanID, parentOnSubmit, paymentValidity, stripe, userCount]
+            [accountID, billingPlanID, parentOnSubmit, paymentValidity, stripe, userCount, elements]
         )
     )
     const onSubmit = useCallback<React.FormEventHandler>(
@@ -279,5 +284,7 @@ const _ProductSubscriptionForm: React.FunctionComponent<
 }
 
 export const ProductSubscriptionForm: React.FunctionComponent<React.PropsWithChildren<Props>> = props => (
-    <StripeWrapper<Props> component={_ProductSubscriptionForm} {...props} />
+    <StripeWrapper>
+        <_ProductSubscriptionForm {...props} />
+    </StripeWrapper>
 )

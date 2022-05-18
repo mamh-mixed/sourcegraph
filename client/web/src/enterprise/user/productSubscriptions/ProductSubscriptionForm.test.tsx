@@ -1,28 +1,36 @@
-import React from 'react'
-
+import { screen } from '@testing-library/react'
 import { createMemoryHistory } from 'history'
 
 import { renderWithBrandedContext } from '@sourcegraph/shared/src/testing'
+import { MockedTestProvider } from '@sourcegraph/shared/src/testing/apollo'
 
 import { ProductSubscriptionForm } from './ProductSubscriptionForm'
 
-jest.mock('../../dotcom/billing/StripeWrapper', () => ({
-    StripeWrapper: ({
-        component: Component,
-        ...props
-    }: {
-        component: React.ComponentType<React.PropsWithChildren<{ stripe: unknown }>>
-        [name: string]: unknown
-    }) => <Component {...props} stripe={{}} />,
+jest.mock('../../dotcom/productSubscriptions/features', () => ({
+    billingPublishableKey: 'public-key',
 }))
 
-jest.mock('react-stripe-elements', () => ({ CardElement: 'CardElement' }))
+jest.mock('@stripe/stripe-js', () => ({
+    ...jest.requireActual('@stripe/stripe-js'),
+    loadStripe: () =>
+        Promise.resolve({
+            elements: () => {},
+            createToken: () => {},
+            createPaymentMethod: () => {},
+            confirmCardPayment: () => {},
+        }),
+}))
+
+jest.mock('@stripe/react-stripe-js', () => ({
+    ...jest.requireActual('@stripe/react-stripe-js'),
+    CardElement: 'cardelement',
+}))
 
 describe('ProductSubscriptionForm', () => {
-    test('new subscription for anonymous viewer (no account)', () => {
+    test('new subscription for anonymous viewer (no account)', async () => {
         const history = createMemoryHistory()
-        expect(
-            renderWithBrandedContext(
+        const { asFragment } = renderWithBrandedContext(
+            <MockedTestProvider>
                 <ProductSubscriptionForm
                     accountID={null}
                     subscriptionID={null}
@@ -31,10 +39,13 @@ describe('ProductSubscriptionForm', () => {
                     primaryButtonText="Submit"
                     isLightTheme={false}
                     history={history}
-                />,
-                { history }
-            ).asFragment()
-        ).toMatchSnapshot()
+                />
+            </MockedTestProvider>,
+            { history }
+        )
+
+        expect(await screen.findByText(/submit/i)).toBeInTheDocument()
+        expect(asFragment()).toMatchSnapshot()
     })
 
     test('new subscription for existing account', () => {
