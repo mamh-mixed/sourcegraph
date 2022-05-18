@@ -20,6 +20,6 @@ export const ModalHeader: React.FunctionComponent<React.PropsWithChildren<ModalH
         <Typography.H3 id={id}>
             Batch Changes credentials: {defaultExternalServices[externalServiceKind].defaultDisplayName}
         </Typography.H3>
-        <p className="mb-4">{externalServiceURL}</p>
+        <Typography.Text className="mb-4">{externalServiceURL}</Typography.Text>
     </>
 )

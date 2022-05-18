@@ -7,13 +7,13 @@ import { ExternalServiceKind } from '../../../graphql-operations'
 import styles from './modalHints.module.scss'
 
 const MachineUserRecommendation = (
-    <p>
+    <Typography.Text>
         We recommend setting up a machine user to provide restricted access to repositories.{' '}
         <Link to="https://docs.sourcegraph.com/cloud/access_tokens_on_cloud" target="_blank" rel="noopener noreferrer">
             Learn more
         </Link>
         .
-    </p>
+    </Typography.Text>
 )
 
 export const scopes: Partial<Record<ExternalServiceKind, React.ReactFragment>> = {

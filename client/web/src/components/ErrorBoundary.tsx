@@ -5,7 +5,7 @@ import AlertCircleIcon from 'mdi-react/AlertCircleIcon'
 import ReloadIcon from 'mdi-react/ReloadIcon'
 
 import { asError } from '@sourcegraph/common'
-import { Button } from '@sourcegraph/wildcard'
+import { Button, Typography } from '@sourcegraph/wildcard'
 
 import { DatadogClient, isWebpackChunkError } from '../monitoring'
 
@@ -86,7 +86,7 @@ export class ErrorBoundary extends React.PureComponent<Props, State> {
                         title="Reload required"
                         subtitle={
                             <div className="container">
-                                <p>A new version of Sourcegraph is available.</p>
+                                <Typography.Text>A new version of Sourcegraph is available.</Typography.Text>
                                 <Button onClick={this.onReloadClick} variant="primary">
                                     Reload to update
                                 </Button>
@@ -107,13 +107,13 @@ export class ErrorBoundary extends React.PureComponent<Props, State> {
                     className={this.props.className}
                     subtitle={
                         <div className="container">
-                            <p>
+                            <Typography.Text>
                                 Sourcegraph encountered an unexpected error. If reloading the page doesn't fix it,
                                 contact your site admin or Sourcegraph support.
-                            </p>
-                            <p>
+                            </Typography.Text>
+                            <Typography.Text>
                                 <code className="text-wrap">{this.state.error.message}</code>
-                            </p>
+                            </Typography.Text>
                             {this.props.extraContext}
                         </div>
                     }

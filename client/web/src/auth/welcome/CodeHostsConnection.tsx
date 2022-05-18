@@ -47,10 +47,10 @@ export const CodeHostsConnection: React.FunctionComponent<React.PropsWithChildre
         <>
             <div className="mb-4 mt-3">
                 <Typography.H3>Connect with code hosts</Typography.H3>
-                <p className="text-muted">
+                <Typography.Text className="text-muted">
                     Connect with providers where your source code is hosted. Then, choose the repositories you’d like to
                     search with Sourcegraph.
-                </p>
+                </Typography.Text>
             </div>
             <UserCodeHosts
                 user={user}

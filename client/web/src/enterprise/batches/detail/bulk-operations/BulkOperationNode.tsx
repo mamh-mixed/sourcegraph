@@ -70,19 +70,21 @@ export const BulkOperationNode: React.FunctionComponent<React.PropsWithChildren<
                 <Badge variant="secondary" className="mb-2" as="p">
                     {node.changesetCount}
                 </Badge>
-                <p className="mb-0">{pluralize('changeset', node.changesetCount)}</p>
+                <Typography.Text className="mb-0">{pluralize('changeset', node.changesetCount)}</Typography.Text>
             </div>
             <div className={styles.bulkOperationNodeDivider} />
             <div className="flex-grow-1 ml-3">
                 <Typography.H4>{OPERATION_TITLES[node.type]}</Typography.H4>
-                <p className="mb-0">
+                <Typography.Text className="mb-0">
                     <Link to={node.initiator.url}>{node.initiator.username}</Link> <Timestamp date={node.createdAt} />
-                </p>
+                </Typography.Text>
             </div>
             {node.state === BulkOperationState.PROCESSING && (
                 <div className={classNames(styles.bulkOperationNodeProgressBar, 'flex-grow-1 ml-3')}>
                     <meter value={node.progress} className="w-100" min={0} max={1} />
-                    <p className="text-center mb-0">{Math.ceil(node.progress * 100)}%</p>
+                    <Typography.Text alignment="center" className="mb-0">
+                        {Math.ceil(node.progress * 100)}%
+                    </Typography.Text>
                 </div>
             )}
             {node.state === BulkOperationState.FAILED && (
@@ -108,7 +110,7 @@ export const BulkOperationNode: React.FunctionComponent<React.PropsWithChildren<
                 >
                     {node.errors.map((error, index) => (
                         <Alert className="mt-2" key={index} variant="danger">
-                            <p>
+                            <Typography.Text>
                                 {error.changeset.__typename === 'HiddenExternalChangeset' ? (
                                     <span className="text-muted">On hidden repository</span>
                                 ) : (
@@ -123,7 +125,7 @@ export const BulkOperationNode: React.FunctionComponent<React.PropsWithChildren<
                                         .
                                     </>
                                 )}
-                            </p>
+                            </Typography.Text>
                             {error.error && <ErrorMessage error={'```\n' + error.error + '\n```'} />}
                         </Alert>
                     ))}

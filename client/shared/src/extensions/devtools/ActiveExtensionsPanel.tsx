@@ -77,10 +77,10 @@ export const ActiveExtensionsPanel: React.FunctionComponent<
                 <Typography.H4>Sideload extension</Typography.H4>
                 {sideloadedExtensionURL ? (
                     <div>
-                        <p>
+                        <Typography.Text>
                             <span>Load from: </span>
                             <Link to={sideloadedExtensionURL}>{sideloadedExtensionURL}</Link>
-                        </p>
+                        </Typography.Text>
                         <div>
                             <Button className="mr-1" onClick={setSideloadedExtensionURL} variant="primary" size="sm">
                                 Change
@@ -92,9 +92,9 @@ export const ActiveExtensionsPanel: React.FunctionComponent<
                     </div>
                 ) : (
                     <div>
-                        <p>
+                        <Typography.Text>
                             <span>No sideloaded extension</span>
-                        </p>
+                        </Typography.Text>
                         <div>
                             <Button onClick={setSideloadedExtensionURL} variant="primary" size="sm">
                                 Load extension

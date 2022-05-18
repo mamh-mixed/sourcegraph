@@ -19,7 +19,7 @@ export const ExtensionPermissionModal: React.FunctionComponent<
     return (
         <Modal position="center" onDismiss={denyPermission} aria-labelledby={labelId}>
             <Typography.H3 id={labelId}>Add {name || extensionID} Sourcegraph extension?</Typography.H3>
-            <p className="mb-0 mt-3">It will be able to:</p>
+            <Typography.Text className="mb-0 mt-3">It will be able to:</Typography.Text>
             <ul className="list-dashed">
                 <li className="m-0">read repositories and files you view using Sourcegraph</li>
                 <li className="m-0">read and change your Sourcegraph settings</li>

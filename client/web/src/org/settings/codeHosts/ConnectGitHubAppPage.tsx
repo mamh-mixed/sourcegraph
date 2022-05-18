@@ -123,7 +123,7 @@ export const ConnectGitHubAppPage: React.FunctionComponent<React.PropsWithChildr
                             </GitHubOrgListItem>
                         </ul>
                     ) : (
-                        <p>Something went wrong.</p>
+                        <Typography.Text>Something went wrong.</Typography.Text>
                     )}
                 </CardBody>
             </Card>

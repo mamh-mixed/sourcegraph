@@ -5,7 +5,7 @@ import AlertIcon from 'mdi-react/AlertIcon'
 import CheckIcon from 'mdi-react/CheckIcon'
 
 import { isDefined } from '@sourcegraph/common'
-import { Badge } from '@sourcegraph/wildcard'
+import { Badge, Typography } from '@sourcegraph/wildcard'
 
 import { Timestamp } from '../../../../components/time/Timestamp'
 import {
@@ -74,12 +74,14 @@ export const IndexerSummary: React.FunctionComponent<React.PropsWithChildren<Ind
                 </div>
 
                 <div className="px-2 py-1">
-                    <p className="mb-1">{summary.indexer?.name || summary.name} precise intelligence</p>
+                    <Typography.Text className="mb-1">
+                        {summary.indexer?.name || summary.name} precise intelligence
+                    </Typography.Text>
 
                     {lastUpdated && (
-                        <p className="mb-1 text-muted">
+                        <Typography.Text className="mb-1 text-muted">
                             Last updated: <Timestamp date={lastUpdated} now={now} />
-                        </p>
+                        </Typography.Text>
                     )}
 
                     {summary.uploads.length + summary.indexes.length === 0 ? (
@@ -101,12 +103,12 @@ export const IndexerSummary: React.FunctionComponent<React.PropsWithChildren<Ind
                     ) : (
                         <>
                             {failedUploads.length === 0 && failedIndexes.length === 0 && (
-                                <p className="mb-1 text-muted">
+                                <Typography.Text className="mb-1 text-muted">
                                     <CheckIcon size={16} className="text-success" /> Looks good!
-                                </p>
+                                </Typography.Text>
                             )}
                             {failedUploads.length > 0 && (
-                                <p className="mb-1 text-muted">
+                                <Typography.Text className="mb-1 text-muted">
                                     <AlertIcon size={16} className="text-danger" />{' '}
                                     <TelemetricRedirect
                                         to={`/${repoName}/-/code-intelligence/uploads?filters=errored`}
@@ -116,10 +118,10 @@ export const IndexerSummary: React.FunctionComponent<React.PropsWithChildren<Ind
                                         className={telemetricRedirectClassName}
                                     />{' '}
                                     failed
-                                </p>
+                                </Typography.Text>
                             )}
                             {failedIndexes.length > 0 && (
-                                <p className="mb-1 text-muted">
+                                <Typography.Text className="mb-1 text-muted">
                                     <AlertIcon size={16} className="text-danger" />{' '}
                                     <TelemetricRedirect
                                         to={`/${repoName}/-/code-intelligence/indexes?filters=errored`}
@@ -129,7 +131,7 @@ export const IndexerSummary: React.FunctionComponent<React.PropsWithChildren<Ind
                                         className={telemetricRedirectClassName}
                                     />{' '}
                                     failed
-                                </p>
+                                </Typography.Text>
                             )}
                         </>
                     )}

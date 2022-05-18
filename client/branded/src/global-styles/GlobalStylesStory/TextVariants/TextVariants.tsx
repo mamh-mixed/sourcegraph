@@ -2,6 +2,8 @@ import React, { ElementType } from 'react'
 
 import classNames from 'classnames'
 
+import { Typography } from '@sourcegraph/wildcard'
+
 import styles from './TextVariants.module.scss'
 
 const SIZE_VARIANTS = ['Base', 'Small'] as const
@@ -66,12 +68,12 @@ export const TextVariants: React.FunctionComponent<React.PropsWithChildren<unkno
                 <td>Body Text</td>
                 <td>
                     {WEIGHT_VARIANTS.map(weight => (
-                        <p key={`Base/${weight}`} className={styles.textVariant}>
+                        <Typography.Text key={`Base/${weight}`} className={styles.textVariant}>
                             <TextLabel size="Base" name="Body" weight={weight} />
-                        </p>
+                        </Typography.Text>
                     ))}
                     {WEIGHT_VARIANTS.map(weight => (
-                        <p key={`Small/${weight}`} className={styles.textVariant}>
+                        <Typography.Text key={`Small/${weight}`} className={styles.textVariant}>
                             <small>
                                 <TextLabel
                                     size="Small"
@@ -80,7 +82,7 @@ export const TextVariants: React.FunctionComponent<React.PropsWithChildren<unkno
                                     className={classNames({ 'font-weight-bold': weight === 'Strong' })}
                                 />
                             </small>
-                        </p>
+                        </Typography.Text>
                     ))}
                 </td>
             </tr>

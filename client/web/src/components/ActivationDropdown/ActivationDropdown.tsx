@@ -137,7 +137,9 @@ export class ActivationDropdown extends React.PureComponent<ActivationDropdownPr
                                         ? 'Almost there!'
                                         : 'Welcome to Sourcegraph'}
                                 </Typography.H3>
-                                <p className="mb-2">Complete the steps below to finish onboarding!</p>
+                                <Typography.Text className="mb-2">
+                                    Complete the steps below to finish onboarding!
+                                </Typography.Text>
                             </div>
                             <ActivationChecklist
                                 {...this.props}

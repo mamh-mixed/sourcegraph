@@ -138,13 +138,13 @@ export const CodeMonitoringLogs: React.FunctionComponent<
     return (
         <div>
             <Typography.H2>Code Monitoring Logs</Typography.H2>
-            <p>
+            <Typography.Text>
                 {/* TODO: Text to change */}
                 You can use these logs to troubleshoot issues with code monitor notifications. Only the {
                     runPageSize
                 }{' '}
                 most recent runs are shown and old runs are deleted periodically.
-            </p>
+            </Typography.Text>
             <Card className="p-3">
                 <ConnectionContainer>
                     {error && <ConnectionError errors={[error.message]} />}

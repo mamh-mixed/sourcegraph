@@ -36,7 +36,9 @@ export const ReenqueueChangesetsModal: React.FunctionComponent<
     return (
         <Modal onDismiss={onCancel} aria-labelledby={LABEL_ID}>
             <Typography.H3 id={LABEL_ID}>Re-enqueue changesets</Typography.H3>
-            <p className="mb-4">Are you sure you want to re-enqueue all the selected changesets?</p>
+            <Typography.Text className="mb-4">
+                Are you sure you want to re-enqueue all the selected changesets?
+            </Typography.Text>
             {isErrorLike(isLoading) && <ErrorAlert error={isLoading} />}
             <div className="d-flex justify-content-end">
                 <Button

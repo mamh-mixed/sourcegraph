@@ -40,7 +40,7 @@ export const InsightTemplatesBanner: React.FunctionComponent<InsightTemplatesBan
                     <CodeInsightsBatchesIcon className="mr-4" />
                     <div className="flex-grow-1">
                         <Typography.H4>{heading}</Typography.H4>
-                        <p className="mb-0">{paragraph}</p>
+                        <Typography.Text className="mb-0">{paragraph}</Typography.Text>
                     </div>
                 </div>
             </CardBody>

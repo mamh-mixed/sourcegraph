@@ -1,6 +1,7 @@
 import { storiesOf } from '@storybook/react'
 
 import { BrandedStory } from '@sourcegraph/branded/src/components/BrandedStory'
+import { Typography } from '@sourcegraph/wildcard'
 
 import { SyntaxHighlightedSearchQuery } from './SyntaxHighlightedSearchQuery'
 
@@ -11,13 +12,13 @@ const { add } = storiesOf('search-ui/SyntaxHighlightedSearchQuery', module).addP
 add('SyntaxHighlightedSearchQuery', () => (
     <BrandedStory>
         {() => (
-            <p>
+            <Typography.Text>
                 <SyntaxHighlightedSearchQuery query="test AND spec" />
                 <br />
                 <SyntaxHighlightedSearchQuery query="test or spec repo:sourcegraph" />
                 <br />
                 <SyntaxHighlightedSearchQuery query="test -lang:ts" />
-            </p>
+            </Typography.Text>
         )}
     </BrandedStory>
 ))

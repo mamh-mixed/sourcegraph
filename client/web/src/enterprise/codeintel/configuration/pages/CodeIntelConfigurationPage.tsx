@@ -186,16 +186,18 @@ export const PoliciesNode: FunctionComponent<React.PropsWithChildren<PoliciesNod
 
                 <div>
                     {indexingEnabled && !policy.retentionEnabled && !policy.indexingEnabled ? (
-                        <p className="text-muted mt-2">Data retention and auto-indexing disabled.</p>
+                        <Typography.Text className="text-muted mt-2">
+                            Data retention and auto-indexing disabled.
+                        </Typography.Text>
                     ) : (
                         <>
-                            <p className="mt-2">
+                            <Typography.Text className="mt-2">
                                 <RetentionPolicyDescription policy={policy} />
-                            </p>
+                            </Typography.Text>
                             {indexingEnabled && (
-                                <p className="mt-2">
+                                <Typography.Text className="mt-2">
                                     <IndexingPolicyDescription policy={policy} />
-                                </p>
+                                </Typography.Text>
                             )}
                         </>
                     )}

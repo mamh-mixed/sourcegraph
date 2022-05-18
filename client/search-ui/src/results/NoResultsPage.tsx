@@ -252,7 +252,7 @@ export const NoResultsPage: React.FunctionComponent<React.PropsWithChildren<NoRe
                             title="Search is literal by default"
                             onClose={onClose}
                         >
-                            <p>
+                            <Typography.Text>
                                 If you type <code>facebook react</code>, we will search for file names, file contents,
                                 repo names, etc. for the exact, ordered phrase <code>facebook react</code>. If you add
                                 quotes around your search phrase, we will include the quotes in the search. Literal
@@ -261,11 +261,11 @@ export const NoResultsPage: React.FunctionComponent<React.PropsWithChildren<NoRe
                                     {'{'} url: "https://sourcegraph.com" {'}'}
                                 </code>{' '}
                                 without escaping.
-                            </p>
-                            <p>
+                            </Typography.Text>
+                            <Typography.Text>
                                 Try searching in regexp mode to match terms independently, similar to an AND search, but
                                 term ordering is maintained.
-                            </p>
+                            </Typography.Text>
                             <SearchInputExample
                                 showSearchContext={searchContextsEnabled && showSearchContext}
                                 query="repo:sourcegraph const Authentication"
@@ -280,7 +280,9 @@ export const NoResultsPage: React.FunctionComponent<React.PropsWithChildren<NoRe
                     {!hiddenSectionIDs?.includes(SectionID.COMMON_PROBLEMS) && (
                         <Container sectionID={SectionID.COMMON_PROBLEMS} title="Common Problems" onClose={onClose}>
                             <Typography.H4>Finding a specific repository</Typography.H4>
-                            <p>Repositories are specified by their org/repository-name convention:</p>
+                            <Typography.Text>
+                                Repositories are specified by their org/repository-name convention:
+                            </Typography.Text>
                             <SearchInputExample
                                 showSearchContext={searchContextsEnabled && showSearchContext}
                                 query="repo:sourcegraph/about lang:go publish"
@@ -291,10 +293,10 @@ export const NoResultsPage: React.FunctionComponent<React.PropsWithChildren<NoRe
                                     })
                                 }
                             />
-                            <p>
+                            <Typography.Text>
                                 To search within all of an org’s repositories, specify only the org name and a trailing
                                 slash:
-                            </p>
+                            </Typography.Text>
                             <SearchInputExample
                                 showSearchContext={searchContextsEnabled && showSearchContext}
                                 query="repo:sourcegraph/ lang:go publish"
@@ -305,7 +307,7 @@ export const NoResultsPage: React.FunctionComponent<React.PropsWithChildren<NoRe
                                     })
                                 }
                             />
-                            <p>
+                            <Typography.Text>
                                 <small>
                                     <Link
                                         target="blank"
@@ -314,10 +316,10 @@ export const NoResultsPage: React.FunctionComponent<React.PropsWithChildren<NoRe
                                         Learn more <Icon as={ExternalLinkIcon} />
                                     </Link>
                                 </small>
-                            </p>
+                            </Typography.Text>
 
                             <Typography.H4>AND, OR, NOT</Typography.H4>
-                            <p>Conditionals and grouping are possible within queries:</p>
+                            <Typography.Text>Conditionals and grouping are possible within queries:</Typography.Text>
                             <SearchInputExample
                                 showSearchContext={searchContextsEnabled && showSearchContext}
                                 query="repo:sourcegraph/ (lang:typescript OR lang:go) auth"
@@ -326,10 +328,10 @@ export const NoResultsPage: React.FunctionComponent<React.PropsWithChildren<NoRe
                             />
 
                             <Typography.H4>Escaping</Typography.H4>
-                            <p>
+                            <Typography.Text>
                                 Because our default mode is literal, escaping requires a dedicated filter. Use the
                                 content filter to include spaces and filter keywords in searches.
-                            </p>
+                            </Typography.Text>
                             <SearchInputExample
                                 showSearchContext={searchContextsEnabled && showSearchContext}
                                 query={'content:"class Vector"'}
@@ -340,11 +342,11 @@ export const NoResultsPage: React.FunctionComponent<React.PropsWithChildren<NoRe
                     )}
 
                     <Container title="More resources">
-                        <p>
+                        <Typography.Text>
                             Check out the learn site, including the cheat sheet for more tips on getting the most from
                             Sourcegraph.
-                        </p>
-                        <p>
+                        </Typography.Text>
+                        <Typography.Text>
                             <Link
                                 onClick={() => telemetryService.log('NoResultsMore', { link: 'Learn site' })}
                                 target="blank"
@@ -360,11 +362,11 @@ export const NoResultsPage: React.FunctionComponent<React.PropsWithChildren<NoRe
                             >
                                 Sourcegraph cheat sheet <Icon as={ExternalLinkIcon} />
                             </Link>
-                        </p>
+                        </Typography.Text>
                     </Container>
 
                     {hiddenSectionIDs && hiddenSectionIDs.length > 0 && (
-                        <p>
+                        <Typography.Text>
                             Some help panels are hidden.{' '}
                             <Button
                                 className="p-0 border-0 align-baseline"
@@ -376,7 +378,7 @@ export const NoResultsPage: React.FunctionComponent<React.PropsWithChildren<NoRe
                             >
                                 Show all panels.
                             </Button>
-                        </p>
+                        </Typography.Text>
                     )}
                 </div>
             </div>

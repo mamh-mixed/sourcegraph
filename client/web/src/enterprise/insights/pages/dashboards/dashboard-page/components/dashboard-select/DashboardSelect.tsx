@@ -151,7 +151,7 @@ export const DashboardSelect: React.FunctionComponent<React.PropsWithChildren<Da
 
                                 <div className={classNames(styles.limitedAccess)}>
                                     <Typography.H3>Limited access</Typography.H3>
-                                    <p>Unlock for unlimited custom dashboards.</p>
+                                    <Typography.Text>Unlock for unlimited custom dashboards.</Typography.Text>
                                 </div>
                             </ListboxGroup>
                         )}

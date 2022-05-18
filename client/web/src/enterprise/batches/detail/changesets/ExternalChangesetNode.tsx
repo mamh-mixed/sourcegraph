@@ -231,9 +231,9 @@ const SyncerError: React.FunctionComponent<React.PropsWithChildren<{ syncerError
         </Typography.H4>
         <ErrorMessage error={syncerError} />
         <hr className="my-2" />
-        <p className="mb-0">
+        <Typography.Text className="mb-0">
             <small>This might be an ephemeral error that resolves itself at the next sync.</small>
-        </p>
+        </Typography.Text>
     </Alert>
 )
 

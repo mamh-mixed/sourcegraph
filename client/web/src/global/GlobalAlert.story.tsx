@@ -30,9 +30,9 @@ export default config
 export const GlobalAlerts: Story = () => (
     <div>
         <Typography.H1>Global Alert</Typography.H1>
-        <p>
+        <Typography.Text>
             These alerts map to the <code>AlertType</code> returned from the backend API
-        </p>
+        </Typography.Text>
         <Typography.H2>Variants</Typography.H2>
         {Object.values(AlertType).map(type => (
             <GlobalAlert key={type} alert={{ message: 'Something happened!', isDismissibleWithKey: null, type }} />

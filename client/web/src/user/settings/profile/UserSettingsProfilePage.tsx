@@ -59,7 +59,7 @@ export const UserSettingsProfilePage: React.FunctionComponent<React.PropsWithChi
             {props.activation?.completed && percentageDone(props.activation.completed) < 100 && (
                 <Container className="mb-3">
                     <Typography.H3>Almost there!</Typography.H3>
-                    <p>Complete the steps below to finish onboarding to Sourcegraph.</p>
+                    <Typography.Text>Complete the steps below to finish onboarding to Sourcegraph.</Typography.Text>
                     <ActivationChecklist steps={props.activation.steps} completed={props.activation.completed} />
                 </Container>
             )}
@@ -69,10 +69,10 @@ export const UserSettingsProfilePage: React.FunctionComponent<React.PropsWithChi
                     initialValue={user}
                     after={
                         window.context.sourcegraphDotComMode && (
-                            <p className="mt-4">
+                            <Typography.Text className="mt-4">
                                 <Link to="https://about.sourcegraph.com/contact">Contact support</Link> to delete your
                                 account.
-                            </p>
+                            </Typography.Text>
                         )
                     }
                 />

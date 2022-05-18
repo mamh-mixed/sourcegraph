@@ -19,6 +19,7 @@ import {
     Link,
     Icon,
     Checkbox,
+    Typography,
 } from '@sourcegraph/wildcard'
 
 import { AccessTokenScopes } from '../../../auth/accessToken'
@@ -153,11 +154,11 @@ export const UserSettingsCreateAccessTokenPage: React.FunctionComponent<React.Pr
                         <label htmlFor="user-settings-create-access-token-page__scope-user:all" className="mb-0">
                             Token scope
                         </label>
-                        <p>
+                        <Typography.Text>
                             <small className="form-help text-muted">
                                 Tokens with limited user scopes are not yet supported.
                             </small>
-                        </p>
+                        </Typography.Text>
 
                         <Checkbox
                             id="user-settings-create-access-token-page__scope-user:all"

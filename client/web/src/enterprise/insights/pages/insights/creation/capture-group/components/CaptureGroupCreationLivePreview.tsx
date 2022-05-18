@@ -1,7 +1,7 @@
 import React, { useContext, useMemo } from 'react'
 
 import { ErrorAlert } from '@sourcegraph/branded/src/components/alerts'
-import { useDeepMemo } from '@sourcegraph/wildcard'
+import { useDeepMemo, Typography } from '@sourcegraph/wildcard'
 
 import { SeriesBasedChartTypes, SeriesChart } from '../../../../../components'
 import {
@@ -100,7 +100,9 @@ export const CaptureGroupCreationLivePreview: React.FunctionComponent<
             </LivePreviewCard>
 
             {isAllReposMode && (
-                <p className="mt-2">Previews are only displayed if you individually list up to 50 repositories.</p>
+                <Typography.Text className="mt-2">
+                    Previews are only displayed if you individually list up to 50 repositories.
+                </Typography.Text>
             )}
         </aside>
     )

@@ -47,7 +47,9 @@ export const ConfirmDeleteModal: React.FunctionComponent<ConfirmDeleteModalProps
             confirmText="Delete forever"
         >
             <Typography.H3 className="text-danger mb-4">Delete '{insight.title}'?</Typography.H3>
-            <p className="mb-4">Are you sure you want to delete insight {insight.title}? This can't be undone.</p>
+            <Typography.Text className="mb-4">
+                Are you sure you want to delete insight {insight.title}? This can't be undone.
+            </Typography.Text>
         </ConfirmationModal>
     )
 }

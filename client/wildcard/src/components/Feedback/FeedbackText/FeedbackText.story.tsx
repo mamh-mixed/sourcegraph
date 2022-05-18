@@ -29,9 +29,9 @@ export default config
 export const FeedbackTextExample: Story = () => (
     <>
         <Typography.H1>FeedbackText</Typography.H1>
-        <p>This is an example of a feedback with a header</p>
+        <Typography.Text>This is an example of a feedback with a header</Typography.Text>
         <FeedbackText headerText="This is a header text" />
-        <p>This is an example of a feedback with a footer</p>
+        <Typography.Text>This is an example of a feedback with a footer</Typography.Text>
         <FeedbackText footerText="This is a footer text" />
     </>
 )

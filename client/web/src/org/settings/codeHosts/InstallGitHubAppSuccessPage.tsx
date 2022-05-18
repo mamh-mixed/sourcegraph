@@ -59,16 +59,16 @@ export const InstallGitHubAppSuccessPage: React.FunctionComponent<React.PropsWit
                         Sourcegraph Cloud for GitHub installed on {data?.account.login}
                     </Typography.H2>
                     <br />
-                    <p className="mr-3 ml-3 text-center">
+                    <Typography.Text alignment="center" className="mr-3 ml-3">
                         <b>One more thing:</b> to finish setup, let the requestor know that the Sourcegraph Cloud for
                         GitHub App has been installed, and they can complete the connection with GitHub for your
                         organization.
-                    </p>
+                    </Typography.Text>
                 </CardBody>
             </Card>
-            <p className="text-center mt-3 text-muted">
+            <Typography.Text alignment="center" className="mt-3 text-muted">
                 New to Sourcegraph? <Link to="/sign-up">Sign up now</Link> to start searching across your team's code!
-            </p>
+            </Typography.Text>
         </Page>
     )
 }

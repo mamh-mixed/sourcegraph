@@ -121,9 +121,9 @@ const ExecutionOption: React.FunctionComponent<React.PropsWithChildren<Execution
             </div>
             {!props.disabled && props.moreInfo && (
                 <animated.div className={styles.expandedInfo} style={infoStyle}>
-                    <p className="m-0 pb-2" ref={infoReference}>
+                    <Typography.Text className="m-0 pb-2" ref={infoReference}>
                         {props.moreInfo}
-                    </p>
+                    </Typography.Text>
                 </animated.div>
             )}
         </div>

@@ -73,7 +73,7 @@ export const SiteAdminUpdatesPage: React.FunctionComponent<React.PropsWithChildr
                 </Alert>
             )}
 
-            <p className="site-admin-updates_page__info">
+            <Typography.Text className="site-admin-updates_page__info">
                 <small>
                     <strong>Current product version:</strong> {state.productVersion} ({state.buildVersion})
                 </small>
@@ -93,12 +93,12 @@ export const SiteAdminUpdatesPage: React.FunctionComponent<React.PropsWithChildr
                     <Link to="/site-admin/configuration">Configure</Link> <code>update.channel</code> to{' '}
                     {autoUpdateCheckingEnabled ? 'disable' : 'enable'}.
                 </small>
-            </p>
-            <p>
+            </Typography.Text>
+            <Typography.Text>
                 <Link to="https://about.sourcegraph.com/changelog" target="_blank" rel="noopener">
                     Sourcegraph changelog
                 </Link>
-            </p>
+            </Typography.Text>
         </div>
     )
 }

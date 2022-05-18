@@ -74,7 +74,7 @@ export const SiteAdminProductCustomersPage: React.FunctionComponent<React.PropsW
             <div className="d-flex justify-content-between align-items-center mb-1">
                 <Typography.H2 className="mb-0">Customers</Typography.H2>
             </div>
-            <p>User accounts may be linked to a customer on the billing system.</p>
+            <Typography.Text>User accounts may be linked to a customer on the billing system.</Typography.Text>
             <FilteredSiteAdminCustomerConnection
                 className="list-group list-group-flush mt-3"
                 noun="customer"

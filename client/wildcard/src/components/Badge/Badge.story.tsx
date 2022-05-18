@@ -45,22 +45,22 @@ export const Badges = () => (
     <>
         <Typography.H1>Badges</Typography.H1>
         <Typography.H2>Variants</Typography.H2>
-        <p>Our badges can be styled with different variants.</p>
+        <Typography.Text>Our badges can be styled with different variants.</Typography.Text>
         {BADGE_VARIANTS.map(variant => (
             <Badge key={variant} variant={variant} className="mr-2">
                 {variant}
             </Badge>
         ))}
         <Typography.H2 className="mt-4">Size</Typography.H2>
-        <p>We can also make our badges smaller.</p>
+        <Typography.Text>We can also make our badges smaller.</Typography.Text>
         <Badge small={true}>I am a small badge</Badge>
         <Typography.H2 className="mt-4">Pills</Typography.H2>
-        <p>Commonly used to display counts, we can style badges as pills.</p>
+        <Typography.Text>Commonly used to display counts, we can style badges as pills.</Typography.Text>
         <Badge pill={true} variant="secondary">
             321+
         </Badge>
         <Typography.H2 className="mt-4">Links</Typography.H2>
-        <p>For more advanced functionality, badges can also function as links.</p>
+        <Typography.Text>For more advanced functionality, badges can also function as links.</Typography.Text>
         <Badge href="https://example.com" variant="secondary">
             I am a link
         </Badge>

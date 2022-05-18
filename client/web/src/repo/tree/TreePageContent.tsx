@@ -139,7 +139,7 @@ export const TreePageContent: React.FunctionComponent<React.PropsWithChildren<Tr
         <>No commits in this tree.</>
     ) : (
         <div className="test-tree-page-no-recent-commits">
-            <p className="mb-2">No commits in this tree in the past year.</p>
+            <Typography.Text className="mb-2">No commits in this tree in the past year.</Typography.Text>
             <Button
                 className="test-tree-page-show-all-commits"
                 onClick={onShowOlderCommitsClicked}
@@ -161,9 +161,9 @@ export const TreePageContent: React.FunctionComponent<React.PropsWithChildren<Tr
                 </>
             ) : (
                 <>
-                    <p className="mb-2">
+                    <Typography.Text className="mb-2">
                         {totalCount} {pluralize('commit', totalCount)} in this tree in the past year.
-                    </p>
+                    </Typography.Text>
                     <Button onClick={onShowOlderCommitsClicked} variant="secondary" size="sm">
                         Show all commits
                     </Button>

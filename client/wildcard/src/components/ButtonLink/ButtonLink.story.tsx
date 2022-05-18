@@ -67,7 +67,7 @@ export const Overview: Story = () => (
             Outline
         </ButtonLink>
         <Typography.H2>Icons</Typography.H2>
-        <p>We can use icons with our buttons.</p>{' '}
+        <Typography.Text>We can use icons with our buttons.</Typography.Text>{' '}
         <ButtonLink
             variant="secondary"
             to="https://sourcegraph.com"
@@ -79,7 +79,7 @@ export const Overview: Story = () => (
             Search
         </ButtonLink>
         <Typography.H2>Smaller</Typography.H2>
-        <p>We can make our buttons smaller.</p>
+        <Typography.Text>We can make our buttons smaller.</Typography.Text>
         <ButtonLink
             variant="secondary"
             to="https://sourcegraph.com"

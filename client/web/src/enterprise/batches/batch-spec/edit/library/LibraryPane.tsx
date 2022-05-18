@@ -4,7 +4,7 @@ import ChevronDoubleLeftIcon from 'mdi-react/ChevronDoubleLeftIcon'
 import ChevronDoubleRightIcon from 'mdi-react/ChevronDoubleRightIcon'
 import { animated, useSpring } from 'react-spring'
 
-import { Button, useLocalStorage, Icon, Link } from '@sourcegraph/wildcard'
+import { Button, useLocalStorage, Icon, Link, Typography } from '@sourcegraph/wildcard'
 
 import { Scalars } from '../../../../../graphql-operations'
 import { insertNameIntoLibraryItem } from '../../yaml-util'
@@ -138,9 +138,9 @@ export const LibraryPane: React.FunctionComponent<React.PropsWithChildren<Librar
                             </li>
                         ))}
                     </ul>
-                    <p className={styles.lastItem}>
+                    <Typography.Text className={styles.lastItem}>
                         <Link to="https://github.com/sourcegraph/batch-change-examples">View more examples</Link>
-                    </p>
+                    </Typography.Text>
                 </animated.div>
             </animated.div>
         </>

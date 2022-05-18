@@ -59,9 +59,9 @@ export const DeleteNotebookModal: React.FunctionComponent<React.PropsWithChildre
                 Delete the notebook?
             </Typography.H3>
 
-            <p>
+            <Typography.Text>
                 <strong>This action cannot be undone.</strong>
-            </p>
+            </Typography.Text>
             {(!deleteCompletedOrError || isErrorLike(deleteCompletedOrError)) && (
                 <div className="text-right">
                     <Button className="mr-2" onClick={toggleDeleteModal} variant="secondary" outline={true}>

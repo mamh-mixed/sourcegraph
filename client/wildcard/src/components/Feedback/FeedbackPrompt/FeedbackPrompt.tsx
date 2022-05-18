@@ -111,7 +111,7 @@ const FeedbackPromptContent: React.FunctionComponent<React.PropsWithChildren<Fee
                 <div className={styles.success}>
                     <TickIcon className={styles.successTick} />
                     <Typography.H3>We‘ve received your feedback!</Typography.H3>
-                    <p className="d-inline">
+                    <Typography.Text className="d-inline">
                         Thank you for your help.
                         {productResearchEnabled && (
                             <>
@@ -123,7 +123,7 @@ const FeedbackPromptContent: React.FunctionComponent<React.PropsWithChildren<Fee
                                 and share your feedback on our latest features and ideas.
                             </>
                         )}
-                    </p>
+                    </Typography.Text>
                 </div>
             ) : (
                 <Form onSubmit={handleSubmit}>

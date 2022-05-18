@@ -77,11 +77,11 @@ export const CodeInsightsDotComGetStarted: React.FunctionComponent<
                                 Draw insights from your codebase about how different initiatives are tracking over time
                             </Typography.H2>
 
-                            <p>
+                            <Typography.Text>
                                 Create customizable, visual dashboards with meaningful codebase signals your team can
                                 use to answer questions about what's in your code and how your code is changing.
                                 Anything you can search, you can create a Code Insight for.
-                            </p>
+                            </Typography.Text>
 
                             <Typography.H3 className={classNames(styles.hereBulletTitle)}>
                                 Use Code Insights to...
@@ -156,10 +156,10 @@ export const CodeInsightsDotComGetStarted: React.FunctionComponent<
                             <div>
                                 <Typography.H3>Install locally to get started</Typography.H3>
 
-                                <p>
+                                <Typography.Text>
                                     Code Insights requires a local Sourcegraph installation via Docker Compose or
                                     Kubernetes. You can check it out for free by installing locally.
-                                </p>
+                                </Typography.Text>
 
                                 <Button
                                     as={Link}

@@ -103,15 +103,15 @@ export const AuthSidebarView: React.FunctionComponent<React.PropsWithChildren<Au
     if (!hasAccount) {
         return renderCommon(
             <>
-                <p className={classNames(styles.ctaParagraph)}>
+                <Typography.Text className={classNames(styles.ctaParagraph)}>
                     Create an account to search across your private repositories and access advanced features: search
                     multiple repositories & commit history, monitor code changes, save searches, and more.
-                </p>
-                <p className={classNames(styles.ctaButtonWrapperWithContextBelow)}>
+                </Typography.Text>
+                <Typography.Text className={classNames(styles.ctaButtonWrapperWithContextBelow)}>
                     <button type="button" onClick={onSignUpClick} className={classNames('btn my-1', styles.ctaButton)}>
                         Create an account
                     </button>
-                </p>
+                </Typography.Text>
                 <button
                     type="button"
                     className={classNames(styles.ctaParagraph, 'btn btn-text-link text-left')}
@@ -125,10 +125,10 @@ export const AuthSidebarView: React.FunctionComponent<React.PropsWithChildren<Au
 
     return renderCommon(
         <>
-            <p className={classNames(styles.ctaParagraph)}>
+            <Typography.Text className={classNames(styles.ctaParagraph)}>
                 Sign in by entering an access token created through your user settings on {hostname}.
-            </p>
-            <p className={classNames(styles.ctaParagraph)}>
+            </Typography.Text>
+            <Typography.Text className={classNames(styles.ctaParagraph)}>
                 See our {/* eslint-disable-next-line react/forbid-elements */}{' '}
                 <a
                     href={`https://docs.sourcegraph.com/cli/how-tos/creating_an_access_token?${SIDEBAR_UTM_PARAMS}`}
@@ -137,8 +137,8 @@ export const AuthSidebarView: React.FunctionComponent<React.PropsWithChildren<Au
                     user docs
                 </a>{' '}
                 for a video guide on how to create an access token.
-            </p>
-            <p className={classNames(styles.ctaButtonWrapperWithContextBelow)}>
+            </Typography.Text>
+            <Typography.Text className={classNames(styles.ctaButtonWrapperWithContextBelow)}>
                 <LoaderInput loading={state === 'validating'}>
                     <label htmlFor="access-token-input">Access Token</label>
                     <input
@@ -153,9 +153,9 @@ export const AuthSidebarView: React.FunctionComponent<React.PropsWithChildren<Au
                         placeholder="ex 6dfc880b320dff712d9f6cfcac5cbd13ebfad1d8"
                     />
                 </LoaderInput>
-            </p>
+            </Typography.Text>
             {usePrivateInstance && (
-                <p className={classNames(styles.ctaButtonWrapperWithContextBelow)}>
+                <Typography.Text className={classNames(styles.ctaButtonWrapperWithContextBelow)}>
                     <LoaderInput loading={state === 'validating'}>
                         <label htmlFor="instance-url-input">Sourcegraph Instance URL</label>
                         <input
@@ -170,7 +170,7 @@ export const AuthSidebarView: React.FunctionComponent<React.PropsWithChildren<Au
                             placeholder="ex https://sourcegraph.example.com"
                         />
                     </LoaderInput>
-                </p>
+                </Typography.Text>
             )}
             <button
                 type="submit"
@@ -225,16 +225,16 @@ export const AuthSidebarCta: React.FunctionComponent<React.PropsWithChildren<Aut
             <button type="button" className={classNames('btn btn-outline-secondary', styles.ctaTitle)}>
                 <Typography.H5 className="flex-grow-1">Welcome</Typography.H5>
             </button>
-            <p className={classNames(styles.ctaParagraph)}>
+            <Typography.Text className={classNames(styles.ctaParagraph)}>
                 The Sourcegraph extension allows you to search millions of open source repositories without cloning them
                 to your local machine.
-            </p>
-            <p className={classNames(styles.ctaParagraph)}>
+            </Typography.Text>
+            <Typography.Text className={classNames(styles.ctaParagraph)}>
                 Developers use Sourcegraph every day to onboard to new code bases, find code to reuse, resolve
                 incidents, fix security vulnerabilities, and more.
-            </p>
+            </Typography.Text>
             <div className={classNames(styles.ctaParagraph)}>
-                <p className="mb-0">Learn more:</p>
+                <Typography.Text className="mb-0">Learn more:</Typography.Text>
                 {/* eslint-disable-next-line react/forbid-elements */}
                 <a
                     href={'https://sourcegraph.com/?' + SIDEBAR_UTM_PARAMS}

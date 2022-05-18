@@ -188,7 +188,7 @@ const SearchTokenFindingReferencesList: React.FunctionComponent<
     if (!tokenResult?.searchToken) {
         return (
             <div>
-                <p className="text-danger">Could not find hovered token.</p>
+                <Typography.Text className="text-danger">Could not find hovered token.</Typography.Text>
             </div>
         )
     }
@@ -541,7 +541,7 @@ const CollapsibleLocationList: React.FunctionComponent<
                             isOpen={id => props.isOpen(props.name + id)}
                         />
                     ) : (
-                        <p className="text-muted pl-2">
+                        <Typography.Text className="text-muted pl-2">
                             {props.filter ? (
                                 <i>
                                     No {props.name} matching <strong>{props.filter}</strong> found
@@ -549,7 +549,7 @@ const CollapsibleLocationList: React.FunctionComponent<
                             ) : (
                                 <i>No {props.name} found</i>
                             )}
-                        </p>
+                        </Typography.Text>
                     )}
 
                     {props.hasMore &&
@@ -603,11 +603,11 @@ const SideBlob: React.FunctionComponent<
         return (
             <>
                 <LoadingSpinner inline={false} className="mx-auto my-4" />
-                <p className="text-muted text-center">
+                <Typography.Text alignment="center" className="text-muted">
                     <i>
                         Loading <code>{props.activeLocation.file}</code>...
                     </i>
-                </p>
+                </Typography.Text>
             </>
         )
     }
@@ -616,9 +616,9 @@ const SideBlob: React.FunctionComponent<
     if (error && !data) {
         return (
             <div>
-                <p className="text-danger">
+                <Typography.Text className="text-danger">
                     Loading <code>{props.activeLocation.file}</code> failed:
-                </p>
+                </Typography.Text>
                 <pre>{error.message}</pre>
             </div>
         )
@@ -632,11 +632,11 @@ const SideBlob: React.FunctionComponent<
     const { html, aborted } = data?.repository?.commit?.blob?.highlight
     if (aborted) {
         return (
-            <p className="text-warning text-center">
+            <Typography.Text alignment="center" className="text-warning">
                 <i>
                     Highlighting <code>{props.activeLocation.file}</code> failed
                 </i>
-            </p>
+            </Typography.Text>
         )
     }
 
@@ -914,16 +914,16 @@ const getPrePostLineContent = (location: Location): LocationLine => {
 const LoadingCodeIntel: React.FunctionComponent<React.PropsWithChildren<{}>> = () => (
     <>
         <LoadingSpinner inline={false} className="mx-auto my-4" />
-        <p className="text-muted text-center">
+        <Typography.Text alignment="center" className="text-muted">
             <i>Loading code intel ...</i>
-        </p>
+        </Typography.Text>
     </>
 )
 
 const LoadingCodeIntelFailed: React.FunctionComponent<React.PropsWithChildren<{ error: ErrorLike }>> = props => (
     <>
         <div>
-            <p className="text-danger">Loading code intel failed:</p>
+            <Typography.Text className="text-danger">Loading code intel failed:</Typography.Text>
             <pre>{props.error.message}</pre>
         </div>
     </>

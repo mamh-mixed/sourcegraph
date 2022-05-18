@@ -41,11 +41,11 @@ export const GettingStarted: React.FunctionComponent<React.PropsWithChildren<Get
                 </div>
                 <div className="col-12 col-md-5">
                     <Typography.H2>Automate large-scale code changes</Typography.H2>
-                    <p>
+                    <Typography.Text>
                         Batch Changes gives you a declarative structure for finding and modifying code across all of
                         your repositories. Its simple UI makes it easy to track and manage all of your changesets
                         through checks and code reviews until each change is merged.
-                    </p>
+                    </Typography.Text>
                     <Typography.H3>Common use cases</Typography.H3>
                     <ul className={classNames(styles.narrowList, 'mb-0')}>
                         <li>Update configuration files across many repositories</li>
@@ -72,10 +72,10 @@ export const GettingStarted: React.FunctionComponent<React.PropsWithChildren<Get
                                     Finding and replacing exclusionary terms
                                 </Link>
                             </Typography.H4>
-                            <p className="text-muted mb-0">
+                            <Typography.Text className="text-muted mb-0">
                                 A Sourcegraph query plus a simple <code>sed</code> command creates changesets required
                                 to manage a large scale change.
-                            </p>
+                            </Typography.Text>
                         </div>
                     </CardBody>
                 </Card>
@@ -90,42 +90,42 @@ export const GettingStarted: React.FunctionComponent<React.PropsWithChildren<Get
                                     Refactoring with language aware search
                                 </Link>
                             </Typography.H4>
-                            <p className="text-muted mb-0">
+                            <Typography.Text className="text-muted mb-0">
                                 Using{' '}
                                 <Link to="https://comby.dev/" rel="noopener">
                                     Comby's
                                 </Link>{' '}
                                 language-aware structural search to refactor Go statements to a semantically equivalent,
                                 but clearer execution.
-                            </p>
+                            </Typography.Text>
                         </div>
                     </CardBody>
                 </Card>
             </div>
             <div className="col-12 mb-4 text-right">
-                <p>
+                <Typography.Text>
                     <Link to="/help/batch_changes/tutorials" rel="noopener">
                         More tutorials
                     </Link>
-                </p>
+                </Typography.Text>
             </div>
         </div>
 
         <div className="row mb-5">
             <div className="col-12 col-md-4 mt-3">
-                <p>
+                <Typography.Text>
                     <strong>Quickstart</strong>
-                </p>
-                <p>Create your first Sourcegraph batch change in 10 minutes or less.</p>
+                </Typography.Text>
+                <Typography.Text>Create your first Sourcegraph batch change in 10 minutes or less.</Typography.Text>
                 <Link to="/help/batch_changes/quickstart" rel="noopener">
                     Batch Changes quickstart
                 </Link>
             </div>
             <div className="col-12 col-md-4 mt-3">
-                <p>
+                <Typography.Text>
                     <strong>Documentation</strong>
-                </p>
-                <p>
+                </Typography.Text>
+                <Typography.Text>
                     Learn about the batch spec{' '}
                     <Link to="/help/batch_changes/references/batch_spec_yaml_reference" rel="noopener">
                         YAML reference
@@ -140,18 +140,18 @@ export const GettingStarted: React.FunctionComponent<React.PropsWithChildren<Get
                         Batch Changes documentation
                     </Link>
                     .
-                </p>
+                </Typography.Text>
             </div>
             <div className="col-12 col-md-4">
                 <Card className={styles.overviewCard}>
                     <CardBody>
-                        <p>
+                        <Typography.Text>
                             <strong>Overview</strong>
-                        </p>
-                        <p>
+                        </Typography.Text>
+                        <Typography.Text>
                             View the product marketing page for a high-level overview of benefits and customer use
                             cases.
-                        </p>
+                        </Typography.Text>
                         {/*
                             a11y-ignore
                             Rule: "color-contrast" (Elements must have sufficient color contrast)
@@ -165,10 +165,10 @@ export const GettingStarted: React.FunctionComponent<React.PropsWithChildren<Get
             </div>
         </div>
         <Typography.H2>Batch changes demo</Typography.H2>
-        <p>
+        <Typography.Text>
             This 2 minute demo provides an overview of batch changes from editing a specification to managing
             changesets.
-        </p>
+        </Typography.Text>
         <Container className="mb-3">
             <iframe
                 title="Batch Changes demo"

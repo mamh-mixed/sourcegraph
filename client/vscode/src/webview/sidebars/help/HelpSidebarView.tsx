@@ -102,9 +102,9 @@ export const HelpSidebarView: React.FunctionComponent<React.PropsWithChildren<He
                             authenticatedUser={authenticatedUser}
                         />
                     ) : (
-                        <p className="ml-2">
+                        <Typography.Text className="ml-2">
                             Connected to {hostname} as {authenticatedUser.displayName}
-                        </p>
+                        </Typography.Text>
                     )}
                 </div>
             )}

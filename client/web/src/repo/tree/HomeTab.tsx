@@ -156,7 +156,7 @@ export const HomeTab: React.FunctionComponent<React.PropsWithChildren<Props>> = 
         <div className="w-100">No commits in this tree.</div>
     ) : (
         <div className="test-tree-page-no-recent-commits w-100">
-            <p className="mb-2">No commits in this tree in the past year.</p>
+            <Typography.Text className="mb-2">No commits in this tree in the past year.</Typography.Text>
             <div className="float-right">
                 <Button onClick={onShowOlderCommitsClicked} variant="link" size="sm" className="float-right p-0">
                     Show older commits
@@ -175,9 +175,9 @@ export const HomeTab: React.FunctionComponent<React.PropsWithChildren<Props>> = 
                 </>
             ) : (
                 <>
-                    <p className="mb-2">
+                    <Typography.Text className="mb-2">
                         {totalCount} {pluralize('commit', totalCount)} in this tree in the past year.
-                    </p>
+                    </Typography.Text>
                     <div className="float-right">
                         <Button
                             onClick={onShowOlderCommitsClicked}

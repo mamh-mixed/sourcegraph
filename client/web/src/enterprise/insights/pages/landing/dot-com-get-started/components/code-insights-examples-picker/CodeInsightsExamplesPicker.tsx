@@ -42,10 +42,10 @@ export const CodeInsightsExamplesPicker: React.FunctionComponent<
             <div className={styles.section}>
                 <Typography.H2>How engineering teams and leaders use Code Insights</Typography.H2>
 
-                <p className="text-muted">
+                <Typography.Text className="text-muted">
                     We've created a few common simple insights to show you what the tool can do.{' '}
                     <Link to="/help/code_insights">Explore more use cases.</Link>
-                </p>
+                </Typography.Text>
 
                 {!isMobileLayout && (
                     <ul className={styles.list}>

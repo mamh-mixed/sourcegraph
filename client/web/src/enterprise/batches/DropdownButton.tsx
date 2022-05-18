@@ -184,9 +184,9 @@ const DropdownItem: React.FunctionComponent<React.PropsWithChildren<DropdownItem
                     </>
                 )}
             </Typography.H4>
-            <p className="text-wrap text-muted mb-0">
+            <Typography.Text className="text-wrap text-muted mb-0">
                 <small>{action.dropdownDescription}</small>
-            </p>
+            </Typography.Text>
         </MenuItem>
     )
 }

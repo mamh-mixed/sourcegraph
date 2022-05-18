@@ -23,6 +23,7 @@ export const Text = React.forwardRef(
                 mode && getModeStyle({ mode }),
                 className
             )}
+            {...props}
             ref={reference}
             {...props}
         >

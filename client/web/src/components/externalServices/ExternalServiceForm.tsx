@@ -109,9 +109,9 @@ export const ExternalServiceForm: React.FunctionComponent<React.PropsWithChildre
                     className="test-external-service-editor"
                     telemetryService={telemetryService}
                 />
-                <p className="form-text text-muted">
+                <Typography.Text className="form-text text-muted">
                     <small>Use Ctrl+Space for completion, and hover over JSON properties for documentation.</small>
-                </p>
+                </Typography.Text>
             </div>
             <Button
                 type="submit"

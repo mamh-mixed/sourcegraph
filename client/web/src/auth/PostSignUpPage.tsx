@@ -144,7 +144,9 @@ export const PostSignUpPage: FunctionComponent<React.PropsWithChildren<PostSignU
                                     </Alert>
                                 )}
                                 <Typography.H2>Get started with Sourcegraph</Typography.H2>
-                                <p className="text-muted pb-3">Follow these steps to set up your account</p>
+                                <Typography.Text className="text-muted pb-3">
+                                    Follow these steps to set up your account
+                                </Typography.Text>
                             </div>
                             <div className="mt-2 pb-3 d-flex flex-column align-items-center w-100">
                                 <Steps initialStep={debug ? parseInt(debug, 10) : 1} totalSteps={3}>
@@ -173,7 +175,7 @@ export const PostSignUpPage: FunctionComponent<React.PropsWithChildren<PostSignU
                                         <StepPanel>
                                             <div className={classNames('mt-3', styles.container)}>
                                                 <Typography.H3>Add repositories</Typography.H3>
-                                                <p className="text-muted mb-4">
+                                                <Typography.Text className="text-muted mb-4">
                                                     Choose repositories you own or collaborate on from your code hosts.
                                                     We’ll sync and index these repositories so you can search your code
                                                     all in one place.
@@ -185,7 +187,7 @@ export const PostSignUpPage: FunctionComponent<React.PropsWithChildren<PostSignU
                                                         {' '}
                                                         Learn more
                                                     </Link>
-                                                </p>
+                                                </Typography.Text>
                                                 <SelectAffiliatedRepos
                                                     authenticatedUser={user}
                                                     onRepoSelectionModeChange={setRepoSelectionMode}

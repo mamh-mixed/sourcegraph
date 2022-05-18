@@ -95,28 +95,32 @@ export class SiteAdminCreateUserPage extends React.Component<RouteComponentProps
             <div className="site-admin-create-user-page">
                 <PageTitle title="Create user - Admin" />
                 <Typography.H2>Create user account</Typography.H2>
-                <p>
+                <Typography.Text>
                     Create a new user account
                     {window.context.resetPasswordEnabled
                         ? ' and generate a password reset link. If sending emails is not configured, you must manually send the link to the new user.'
                         : '. New users must authenticate using a configured authentication provider.'}
-                </p>
-                <p className="mb-4">
+                </Typography.Text>
+                <Typography.Text className="mb-4">
                     For information about configuring SSO authentication, see{' '}
                     <Link to="/help/admin/auth">User authentication</Link> in the Sourcegraph documentation.
-                </p>
+                </Typography.Text>
                 {this.state.createUserResult ? (
                     <Alert variant="success">
-                        <p>
+                        <Typography.Text>
                             Account created for <strong>{this.state.username}</strong>.
-                        </p>
+                        </Typography.Text>
                         {this.state.createUserResult.resetPasswordURL !== null ? (
                             <>
-                                <p>You must manually send this password reset link to the new user:</p>
+                                <Typography.Text>
+                                    You must manually send this password reset link to the new user:
+                                </Typography.Text>
                                 <CopyableText text={this.state.createUserResult.resetPasswordURL} size={40} />
                             </>
                         ) : (
-                            <p>The user must authenticate using a configured authentication provider.</p>
+                            <Typography.Text>
+                                The user must authenticate using a configured authentication provider.
+                            </Typography.Text>
                         )}
                         <Button className="mt-2" onClick={this.dismissAlert} autoFocus={true} variant="primary">
                             Create another user

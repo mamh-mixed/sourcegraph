@@ -5,7 +5,7 @@ import { Redirect, useLocation } from 'react-router-dom'
 
 import { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryService'
 import { ThemeProps } from '@sourcegraph/shared/src/theme'
-import { Link } from '@sourcegraph/wildcard'
+import { Link, Typography } from '@sourcegraph/wildcard'
 
 import { AuthenticatedUser } from '../auth'
 import { HeroPage } from '../components/HeroPage'
@@ -135,11 +135,13 @@ export const SignUpPage: React.FunctionComponent<React.PropsWithChildren<SignUpP
                 lessPadding={true}
                 body={
                     <div className={classNames('pb-5', signInSignUpCommonStyles.signupPageContainer)}>
-                        {context.sourcegraphDotComMode && <p className="pt-1 pb-2">Start searching public code now</p>}
+                        {context.sourcegraphDotComMode && (
+                            <Typography.Text className="pt-1 pb-2">Start searching public code now</Typography.Text>
+                        )}
                         <SignUpForm featureFlags={featureFlags} context={context} onSignUp={handleSignUp} />
-                        <p className="mt-3">
+                        <Typography.Text className="mt-3">
                             Already have an account? <Link to={`/sign-in${location.search}`}>Sign in</Link>
-                        </p>
+                        </Typography.Text>
                     </div>
                 }
             />

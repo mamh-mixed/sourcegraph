@@ -132,15 +132,15 @@ export const CommunitySearchContextPage: React.FunctionComponent<
             {!props.communitySearchContextMetadata.lowProfile && (
                 <div className="row">
                     <div className={classNames('col-xs-12 col-lg-7', styles.column)}>
-                        <p className={classNames('h5 font-weight-normal mb-4', styles.contentDescription)}>
+                        <Typography.Text weight="regular" className={classNames('h5 mb-4', styles.contentDescription)}>
                             {props.communitySearchContextMetadata.description}
-                        </p>
+                        </Typography.Text>
 
                         <Typography.H2>Search examples</Typography.H2>
                         {props.communitySearchContextMetadata.examples.map(example => (
                             <div className="mt-3" key={example.title}>
                                 <Typography.H3 className="mb-3">{example.title}</Typography.H3>
-                                <p>{example.description}</p>
+                                <Typography.Text>{example.description}</Typography.Text>
                                 <div className="d-flex mb-4">
                                     <small className={classNames('form-control text-monospace ', styles.exampleBar)}>
                                         <SyntaxHighlightedSearchQuery query={`${contextQuery} ${example.query}`} />
@@ -170,7 +170,7 @@ export const CommunitySearchContextPage: React.FunctionComponent<
                                     <Icon className="mr-2" as={SourceRepositoryMultipleIcon} />
                                     Repositories
                                 </Typography.H2>
-                                <p>
+                                <Typography.Text>
                                     Using the syntax{' '}
                                     <code>
                                         {/*
@@ -182,7 +182,7 @@ export const CommunitySearchContextPage: React.FunctionComponent<
                                         {props.communitySearchContextMetadata.spec}
                                     </code>{' '}
                                     in a query will search these repositories:
-                                </p>
+                                </Typography.Text>
                                 {searchContextOrError &&
                                     !isErrorLike(searchContextOrError) &&
                                     searchContextOrError !== LOADING && (

@@ -24,7 +24,7 @@ export const AccessTokenCreatedAlert: React.FunctionComponent<
     const isSudoToken = token.scopes.includes(AccessTokenScopes.SiteAdminSudo)
     return (
         <Alert className={classNames('access-token-created-alert', className)} variant="success">
-            <p>Copy the new access token now. You won't be able to see it again.</p>
+            <Typography.Text>Copy the new access token now. You won't be able to see it again.</Typography.Text>
             <CopyableText className="test-access-token" text={tokenSecret} size={48} />
             <Typography.H5 className="mt-4 mb-2">
                 <strong>Example usage</strong>

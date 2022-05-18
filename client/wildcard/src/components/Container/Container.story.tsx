@@ -24,12 +24,12 @@ export default config
 export const Overview: Story = () => (
     <>
         <Alert variant="info">
-            <p>
+            <Typography.Text>
                 A container is meant to group content semantically together. Every page using it should have a header,
                 optionally a description for the page and the container itself. Depending on the scope of a button, it
                 should live inside or outside of the container.
-            </p>
-            <p>If the button</p>
+            </Typography.Text>
+            <Typography.Text>If the button</Typography.Text>
             <ul className="mb-0">
                 <li>
                     affects everything inside the container (ie. saves all form fields within the container), it should
@@ -44,15 +44,17 @@ export const Overview: Story = () => (
         <hr />
         <Typography.H1>Example 1</Typography.H1>
         <Typography.H2>Some page explanation</Typography.H2>
-        <p className="text-muted">Optional: Add some descriptive text about what this page does.</p>
+        <Typography.Text className="text-muted">
+            Optional: Add some descriptive text about what this page does.
+        </Typography.Text>
         <Container className="mb-3">
             <Typography.H3>Section I</Typography.H3>
-            <p>Here you change the username.</p>
+            <Typography.Text>Here you change the username.</Typography.Text>
             <div className="form-group">
                 <input type="text" className="form-control" />
             </div>
             <Typography.H3>Section II</Typography.H3>
-            <p>Here you change your email.</p>
+            <Typography.Text>Here you change your email.</Typography.Text>
             <div className="form-group mb-0">
                 <input type="text" className="form-control" />
             </div>
@@ -66,10 +68,12 @@ export const Overview: Story = () => (
         <hr />
         <Typography.H1>Example 2</Typography.H1>
         <Typography.H2>Some page explanation</Typography.H2>
-        <p className="text-muted">Optional: Add some descriptive text about what this page does.</p>
+        <Typography.Text className="text-muted">
+            Optional: Add some descriptive text about what this page does.
+        </Typography.Text>
         <Container className="mb-3">
             <Typography.H3>Section I</Typography.H3>
-            <p>Here you change the username.</p>
+            <Typography.Text>Here you change the username.</Typography.Text>
             <div className="form-group">
                 <input type="text" className="form-control" />
             </div>
@@ -78,7 +82,7 @@ export const Overview: Story = () => (
             </Button>
             <hr className="mb-2" />
             <Typography.H3>Section II</Typography.H3>
-            <p>Here you change your email.</p>
+            <Typography.Text>Here you change your email.</Typography.Text>
             <div className="form-group">
                 <input type="text" className="form-control" />
             </div>

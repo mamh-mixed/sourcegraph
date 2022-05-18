@@ -390,7 +390,7 @@ export const Notepad: React.FunctionComponent<React.PropsWithChildren<NotepadPro
                     </ul>
                     {confirmRemoveAll && (
                         <div className="p-2">
-                            <p>Are you sure you want to delete all entries?</p>
+                            <Typography.Text>Are you sure you want to delete all entries?</Typography.Text>
                             <div className="d-flex justify-content-between">
                                 <Button variant="secondary" onClick={() => setConfirmRemoveAll(false)}>
                                     Cancel

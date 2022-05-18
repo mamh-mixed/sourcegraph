@@ -57,9 +57,9 @@ export const DeleteSearchContextModal: React.FunctionComponent<
                 Delete search context?
             </Typography.H3>
 
-            <p>
+            <Typography.Text>
                 <strong>This action cannot be undone.</strong>
-            </p>
+            </Typography.Text>
             {(!deleteCompletedOrError || isErrorLike(deleteCompletedOrError)) && (
                 <div className="text-right">
                     <Button className="mr-2" onClick={toggleDeleteModal} outline={true} variant="secondary">

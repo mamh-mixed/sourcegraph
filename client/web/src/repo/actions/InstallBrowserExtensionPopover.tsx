@@ -46,13 +46,13 @@ export const InstallBrowserExtensionPopover: React.FunctionComponent<React.Props
                     <Typography.H3 className="mb-0 test-install-browser-extension-popover-header">
                         Take Sourcegraph's code intelligence to {displayName}!
                     </Typography.H3>
-                    <p className="py-3">
+                    <Typography.Text className="py-3">
                         Install Sourcegraph browser extension to add code intelligence{' '}
                         {serviceKind === ExternalServiceKind.PHABRICATOR
                             ? 'while browsing and reviewing code'
                             : `to ${serviceKind === ExternalServiceKind.GITLAB ? 'MR' : 'PR'}s and file views`}{' '}
                         on {displayName} or any other connected code host.
-                    </p>
+                    </Typography.Text>
 
                     <div
                         className={classNames(

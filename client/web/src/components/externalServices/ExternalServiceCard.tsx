@@ -57,7 +57,7 @@ export const ExternalServiceCard: React.FunctionComponent<React.PropsWithChildre
                         </small>
                     )}
                 </Typography.H3>
-                {shortDescription && <p className="mb-0 text-muted">{shortDescription}</p>}
+                {shortDescription && <Typography.Text className="mb-0 text-muted">{shortDescription}</Typography.Text>}
             </div>
             {to && <ChevronRightIcon className="align-self-center" />}
         </div>

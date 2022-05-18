@@ -10,7 +10,17 @@ import { catchError, switchMap, tap } from 'rxjs/operators'
 import { ErrorAlert } from '@sourcegraph/branded/src/components/alerts'
 import { asError } from '@sourcegraph/common'
 import * as GQL from '@sourcegraph/shared/src/schema'
-import { Container, PageHeader, LoadingSpinner, FeedbackText, Button, Link, Alert, Icon } from '@sourcegraph/wildcard'
+import {
+    Container,
+    PageHeader,
+    LoadingSpinner,
+    FeedbackText,
+    Button,
+    Link,
+    Alert,
+    Icon,
+    Typography,
+} from '@sourcegraph/wildcard'
 
 import { PageTitle } from '../../components/PageTitle'
 import { Timestamp } from '../../components/time/Timestamp'
@@ -221,7 +231,9 @@ class CheckMirrorRepositoryConnectionActionContainer extends React.PureComponent
                                 </Alert>
                             ) : (
                                 <Alert className={classNames('mb-0', styles.alert)} variant="danger">
-                                    <p>The remote repository is unreachable. Logs follow.</p>
+                                    <Typography.Text>
+                                        The remote repository is unreachable. Logs follow.
+                                    </Typography.Text>
                                     <div>
                                         <pre className={styles.log}>
                                             <code>{this.state.result.error}</code>

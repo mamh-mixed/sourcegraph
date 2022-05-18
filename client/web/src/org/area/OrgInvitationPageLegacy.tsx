@@ -134,14 +134,14 @@ export const OrgInvitationPageLegacy = withAuthenticatedUser(
                                     </Link>{' '}
                                     organization.
                                 </Typography.H3>
-                                <p>
+                                <Typography.Text>
                                     <small className="text-muted">
                                         Invited by{' '}
                                         <Link to={userURL(this.props.org.viewerPendingInvitation.sender.username)}>
                                             {this.props.org.viewerPendingInvitation.sender.username}
                                         </Link>
                                     </small>
-                                </p>
+                                </Typography.Text>
                                 <div className="mt-3">
                                     <Button
                                         type="submit"

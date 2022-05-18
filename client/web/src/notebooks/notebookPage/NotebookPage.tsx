@@ -368,15 +368,15 @@ const NotepadCTA: React.FunctionComponent<React.PropsWithChildren<NotepadCTAProp
                         <NotepadIcon /> Enable notepad
                     </Typography.H3>{' '}
                     <ProductStatusBadge status="beta" />
-                    <p>
+                    <Typography.Text>
                         The notepad adds a toolbar to the bottom right of search results and file pages to help you
                         create notebooks from your code navigation activities.
-                    </p>
-                    <p>
+                    </Typography.Text>
+                    <Typography.Text>
                         <Button variant="primary" onClick={onEnable} size="sm">
                             Enable notepad
                         </Button>
-                    </p>
+                    </Typography.Text>
                 </div>
             </aside>
         </MarketingBlock>

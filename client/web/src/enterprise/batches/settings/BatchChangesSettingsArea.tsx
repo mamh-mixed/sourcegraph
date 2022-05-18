@@ -1,6 +1,6 @@
 import React from 'react'
 
-import { PageHeader } from '@sourcegraph/wildcard'
+import { PageHeader, Typography } from '@sourcegraph/wildcard'
 
 import { PageTitle } from '../../../components/PageTitle'
 import { UserAreaUserFields } from '../../../graphql-operations'
@@ -19,7 +19,11 @@ export const BatchChangesSettingsArea: React.FunctionComponent<
         <PageTitle title="Batch changes settings" />
         <PageHeader headingElement="h2" path={[{ text: 'Batch Changes settings' }]} className="mb-3" />
         <UserCodeHostConnections
-            headerLine={<p>Add access tokens to enable Batch Changes changeset creation on your code hosts.</p>}
+            headerLine={
+                <Typography.Text>
+                    Add access tokens to enable Batch Changes changeset creation on your code hosts.
+                </Typography.Text>
+            }
             userID={props.user.id}
         />
     </div>

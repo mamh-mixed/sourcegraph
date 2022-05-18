@@ -226,10 +226,10 @@ class UserNode extends React.PureComponent<UserNodeProps, UserNodeState> {
                 {this.state.errorDescription && <ErrorAlert className="mt-2" error={this.state.errorDescription} />}
                 {this.state.resetPasswordURL && (
                     <Alert className="mt-2" variant="success">
-                        <p>
+                        <Typography.Text>
                             Password was reset. You must manually send <strong>{this.props.node.username}</strong> this
                             reset link:
-                        </p>
+                        </Typography.Text>
                         <CopyableText text={this.state.resetPasswordURL} size={40} />
                     </Alert>
                 )}

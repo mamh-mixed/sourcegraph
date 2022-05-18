@@ -32,6 +32,7 @@ import {
     CollapseHeader,
     CollapsePanel,
     Icon,
+    Typography,
 } from '@sourcegraph/wildcard'
 
 import styles from './SearchReference.module.scss'
@@ -431,16 +432,16 @@ const SearchReferenceEntry = <T extends SearchReferenceInfo>({
                             <Markdown dangerousInnerHTML={renderMarkdown(searchReference.description)} />
                         )}
                         {searchReference.alias && (
-                            <p>
+                            <Typography.Text>
                                 Alias:{' '}
                                 <span className="text-code search-filter-keyword">
                                     {searchReference.alias}
                                     {isFilterInfo(searchReference) ? ':' : ''}
                                 </span>
-                            </p>
+                            </Typography.Text>
                         )}
                         {isFilterInfo(searchReference) && isNegatableFilter(searchReference.field) && (
-                            <p>
+                            <Typography.Text>
                                 Negation:{' '}
                                 <span className="test-code search-filter-keyword">-{searchReference.field}:</span>
                                 {searchReference.alias && (
@@ -454,16 +455,16 @@ const SearchReferenceEntry = <T extends SearchReferenceInfo>({
                                 )}
                                 <br />
                                 <span className={styles.placeholder}>(opt + click filter in reference list)</span>
-                            </p>
+                            </Typography.Text>
                         )}
                         {searchReference.examples && (
                             <>
                                 <div className="font-weight-medium">Examples</div>
                                 <div className={classNames('text-code', styles.examples)}>
                                     {searchReference.examples.map(example => (
-                                        <p key={example}>
+                                        <Typography.Text key={example}>
                                             <SearchReferenceExample example={example} onClick={onExampleClick} />
-                                        </p>
+                                        </Typography.Text>
                                     ))}
                                 </div>
                             </>
@@ -591,13 +592,13 @@ const SearchReference = React.memo(
                         </TabPanels>
                     </Tabs>
                 )}
-                <p className={sidebarStyles.sidebarSectionFooter}>
+                <Typography.Text className={sidebarStyles.sidebarSectionFooter}>
                     <small>
                         <Link target="blank" to="https://docs.sourcegraph.com/code_search/reference/queries">
                             Search syntax <Icon as={ExternalLinkIcon} />
                         </Link>
                     </small>
-                </p>
+                </Typography.Text>
             </div>
         )
     }

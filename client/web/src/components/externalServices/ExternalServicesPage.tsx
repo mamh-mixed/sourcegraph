@@ -100,7 +100,7 @@ export const ExternalServicesPage: React.FunctionComponent<React.PropsWithChildr
                     </Button>
                 )}
             </div>
-            <p className="mt-2">Manage code host connections to sync repositories.</p>
+            <Typography.Text className="mt-2">Manage code host connections to sync repositories.</Typography.Text>
             <FilteredConnection<
                 ListExternalServiceFields,
                 Omit<ExternalServiceNodeProps, 'node'>,

@@ -119,9 +119,9 @@ export const OptionsPage: React.FunctionComponent<React.PropsWithChildren<Option
                     onChange={onChangeSourcegraphUrl}
                     validate={validateSourcegraphUrl}
                 />
-                <p className="mt-2 mb-0">
+                <Typography.Text className="mt-2 mb-0">
                     <small>Enter the URL of your Sourcegraph instance to use the extension on private code.</small>
-                </p>
+                </Typography.Text>
             </section>
 
             {permissionAlert && (
@@ -142,7 +142,7 @@ export const OptionsPage: React.FunctionComponent<React.PropsWithChildren<Option
                 >
                     <small>How do we keep your code private?</small> <OpenInNewIcon size="0.75rem" className="ml-2" />
                 </Link>
-                <p className="mb-0">
+                <Typography.Text className="mb-0">
                     <Button
                         className="p-0 shadow-none font-weight-normal test-toggle-advanced-settings-button"
                         onClick={toggleAdvancedSettings}
@@ -151,7 +151,7 @@ export const OptionsPage: React.FunctionComponent<React.PropsWithChildren<Option
                     >
                         {showAdvancedSettings ? 'Hide' : 'Show'} advanced settings
                     </Button>
-                </p>
+                </Typography.Text>
                 {showAdvancedSettings && (
                     <OptionsPageAdvancedSettings optionFlags={optionFlags} onChangeOptionFlag={onChangeOptionFlag} />
                 )}
@@ -189,9 +189,9 @@ const PermissionAlert: React.FunctionComponent<React.PropsWithChildren<Permissio
         <Typography.H4>
             {AlertIcon && <Icon role="img" className="mr-2" as={AlertIcon} aria-hidden={true} />} <span>{name}</span>
         </Typography.H4>
-        <p className={styles.permissionText}>
+        <Typography.Text className={styles.permissionText}>
             <strong>Grant permissions</strong> to use the Sourcegraph extension on {name}.
-        </p>
+        </Typography.Text>
         <Button onClick={onClickGrantPermissions} variant="primary" size="sm">
             <small>Grant permissions</small>
         </Button>
@@ -216,7 +216,7 @@ const RepoSyncErrorAlert: React.FunctionComponent<
                 <Icon role="img" aria-hidden={true} className="mr-2" as={isDefaultURL ? LockIcon : BlockHelperIcon} />
                 {isDefaultURL ? 'Private repository' : 'Repository not found'}
             </Typography.H4>
-            <p className="mb-0">
+            <Typography.Text className="mb-0">
                 {isDefaultURL ? (
                     <>
                         <Link
@@ -255,7 +255,7 @@ const RepoSyncErrorAlert: React.FunctionComponent<
                 ) : (
                     <>Contact your admin to add this repository to Sourcegraph.</>
                 )}
-            </p>
+            </Typography.Text>
         </section>
     )
 }
@@ -266,7 +266,9 @@ const SourcegraphCloudAlert: React.FunctionComponent<React.PropsWithChildren<unk
             <Icon role="img" aria-hidden={true} className="mr-2" as={CheckCircleOutlineIcon} />
             You're on Sourcegraph Cloud
         </Typography.H4>
-        <p>Naturally, the browser extension is not necessary to browse public code on sourcegraph.com.</p>
+        <Typography.Text>
+            Naturally, the browser extension is not necessary to browse public code on sourcegraph.com.
+        </Typography.Text>
     </section>
 )
 

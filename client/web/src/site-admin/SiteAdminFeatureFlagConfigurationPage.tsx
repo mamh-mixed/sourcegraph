@@ -564,10 +564,10 @@ const ManageFeatureFlag: FunctionComponent<
     return (
         <>
             <Typography.H3>Name</Typography.H3>
-            <p>{name}</p>
+            <Typography.Text>{name}</Typography.Text>
 
             <Typography.H3>Type</Typography.H3>
-            <p>{type.slice('FeatureFlag'.length)}</p>
+            <Typography.Text>{type.slice('FeatureFlag'.length)}</Typography.Text>
 
             <FeatureFlagValueSettings type={type} value={value} setFlagValue={setFlagValue} />
 

@@ -45,7 +45,7 @@ export const DetachChangesetsModal: React.FunctionComponent<React.PropsWithChild
     return (
         <Modal onDismiss={onCancel} aria-labelledby={labelId}>
             <Typography.H3 id={labelId}>Detach changesets</Typography.H3>
-            <p className="mb-4">Are you sure you want to detach the selected changesets?</p>
+            <Typography.Text className="mb-4">Are you sure you want to detach the selected changesets?</Typography.Text>
             {isErrorLike(isLoading) && <ErrorAlert error={isLoading} />}
             <div className="d-flex justify-content-end">
                 <Button

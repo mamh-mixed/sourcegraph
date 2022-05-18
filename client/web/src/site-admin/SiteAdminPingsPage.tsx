@@ -57,18 +57,18 @@ export const SiteAdminPingsPage: React.FunctionComponent<React.PropsWithChildren
         <div className="site-admin-pings-page">
             <PageTitle title="Pings - Admin" />
             <Typography.H2>Pings</Typography.H2>
-            <p>
+            <Typography.Text>
                 Sourcegraph periodically sends a ping to Sourcegraph.com to help our product and customer teams. It
                 sends only the high-level data below. It never sends code, repository names, usernames, or any other
                 specific data.
-            </p>
+            </Typography.Text>
             <Typography.H3>Most recent ping</Typography.H3>
             {latestPing === undefined ? (
-                <p>
+                <Typography.Text>
                     <LoadingSpinner />
-                </p>
+                </Typography.Text>
             ) : isEmpty(latestPing) ? (
-                <p>No recent ping data to display.</p>
+                <Typography.Text>No recent ping data to display.</Typography.Text>
             ) : (
                 <MonacoEditor
                     {...props}
@@ -81,10 +81,10 @@ export const SiteAdminPingsPage: React.FunctionComponent<React.PropsWithChildren
                 />
             )}
             <Typography.H3>Critical telemetry</Typography.H3>
-            <p>
+            <Typography.Text>
                 Critical telemetry includes only the high-level data below required for billing, support, updates, and
                 security notices. This cannot be disabled.
-            </p>
+            </Typography.Text>
             <ul>
                 <li>Randomly generated site identifier</li>
                 <li>
@@ -103,10 +103,10 @@ export const SiteAdminPingsPage: React.FunctionComponent<React.PropsWithChildren
                 <li>Code Insights: total count of insights</li>
             </ul>
             <Typography.H3>Other telemetry</Typography.H3>
-            <p>
+            <Typography.Text>
                 By default, Sourcegraph also aggregates usage and performance metrics for some product features. No
                 personal or specific information is ever included.
-            </p>
+            </Typography.Text>
             <ul>
                 <li>Whether the instance is deployed on localhost (true/false)</li>
                 <li>
@@ -372,9 +372,9 @@ export const SiteAdminPingsPage: React.FunctionComponent<React.PropsWithChildren
                 </li>
             </ul>
             {updatesDisabled ? (
-                <p>All telemetry is disabled.</p>
+                <Typography.Text>All telemetry is disabled.</Typography.Text>
             ) : (
-                nonCriticalTelemetryDisabled && <p>Non-critical telemetry is disabled.</p>
+                nonCriticalTelemetryDisabled && <Typography.Text>Non-critical telemetry is disabled.</Typography.Text>
             )}
         </div>
     )

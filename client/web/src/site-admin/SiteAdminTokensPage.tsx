@@ -56,7 +56,9 @@ export const SiteAdminTokensPage: React.FunctionComponent<React.PropsWithChildre
                     <Icon as={AddIcon} /> Generate access token
                 </Button>
             </div>
-            <p>Tokens may be used to access the Sourcegraph API with the full privileges of the token's creator.</p>
+            <Typography.Text>
+                Tokens may be used to access the Sourcegraph API with the full privileges of the token's creator.
+            </Typography.Text>
             <FilteredConnection<AccessTokenFields, Omit<AccessTokenNodeProps, 'node'>>
                 className="list-group list-group-flush mt-3"
                 noun="access token"

@@ -44,18 +44,18 @@ export default config
 export const Badges = () => (
     <>
         <Typography.H1>Product status badges</Typography.H1>
-        <p>
+        <Typography.Text>
             We often want to label different parts of our products with badges to ensure they are accurately presented
             to users.
-        </p>
+        </Typography.Text>
         {PRODUCT_STATUSES.map(status => (
             <ProductStatusBadge key={status} status={status} className="mr-2" />
         ))}
         <Typography.H2 className="mt-4">Linked product status badges</Typography.H2>
-        <p>
+        <Typography.Text>
             In some cases, we will want to automatically link to a relevant docs page for a particular status. This is
             also possible!
-        </p>
+        </Typography.Text>
         <ProductStatusBadge status="beta" linkToDocs={true} className="mr-3" />
         <ProductStatusBadge status="experimental" linkToDocs={true} className="mr-3" />
     </>

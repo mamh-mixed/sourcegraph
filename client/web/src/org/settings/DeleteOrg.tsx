@@ -24,9 +24,9 @@ export const DeleteOrg: React.FunctionComponent<React.PropsWithChildren<DeleteOr
         <Container className="mt-3 mb-5">
             <Typography.H3 className="text-danger">Delete this organization</Typography.H3>
             <div className="d-flex justify-content-between">
-                <p className="d-flex justify-content-right">
+                <Typography.Text className="d-flex justify-content-right">
                     This cannot be undone. Deleting an organization removes all of its resources.
-                </p>
+                </Typography.Text>
                 <Button variant="danger" size="sm" onClick={toggleDeleteModal}>
                     Delete this organization
                 </Button>

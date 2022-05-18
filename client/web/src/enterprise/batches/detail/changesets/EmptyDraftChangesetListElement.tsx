@@ -12,9 +12,9 @@ export const EmptyDraftChangesetListElement: React.FunctionComponent<React.Props
         <div className={styles.emptyDraftChangesetListElementBody}>
             <Typography.H3>No changesets exist</Typography.H3>
             <div className={styles.emptyDraftChangesetListElementContent}>
-                <p className="mt-2">
+                <Typography.Text className="mt-2">
                     This batch change is a draft. A batch spec must be executed and applied to create changesets.
-                </p>
+                </Typography.Text>
                 <Link to={`${location.pathname}/edit`}>Edit the most recent spec.</Link>
             </div>
         </div>

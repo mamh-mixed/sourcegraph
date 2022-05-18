@@ -4,6 +4,8 @@ import classNames from 'classnames'
 
 import { LinkOrSpan } from '@sourcegraph/shared/src/components/LinkOrSpan'
 
+import { Typography } from '..'
+
 import styles from './PageHeader.module.scss'
 
 type BreadcrumbIcon = React.ComponentType<{ className?: string }>
@@ -68,7 +70,7 @@ export const PageHeader: React.FunctionComponent<React.PropsWithChildren<Props>>
                     ))}
                 </HeadingX>
                 {byline && <small className={styles.byline}>{byline}</small>}
-                {description && <p className={styles.description}>{description}</p>}
+                {description && <Typography.Text className={styles.description}>{description}</Typography.Text>}
             </div>
             {actions && <div>{actions}</div>}
         </div>

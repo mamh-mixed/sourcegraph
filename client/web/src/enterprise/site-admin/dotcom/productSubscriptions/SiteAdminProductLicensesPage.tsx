@@ -44,7 +44,7 @@ export const SiteAdminProductLicensesPage: React.FunctionComponent<React.PropsWi
         <div className="site-admin-product-subscriptions-page">
             <PageTitle title="Product subscriptions" />
             <Typography.H2>License key lookup</Typography.H2>
-            <p>Find matching licenses and their associated product subscriptions.</p>
+            <Typography.Text>Find matching licenses and their associated product subscriptions.</Typography.Text>
             <FilteredProductLicenseConnection
                 className="list-group list-group-flush mt-3"
                 noun="product license"

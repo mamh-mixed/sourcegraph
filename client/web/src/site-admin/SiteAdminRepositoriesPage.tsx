@@ -152,13 +152,13 @@ export const SiteAdminRepositoriesPage: React.FunctionComponent<React.PropsWithC
                 </Alert>
             )}
             <Typography.H2>Repositories</Typography.H2>
-            <p>
+            <Typography.Text>
                 Repositories are synced from connected{' '}
                 <Link to="/site-admin/external-services" data-testid="test-repositories-code-host-connections-link">
                     code host connections
                 </Link>
                 .
-            </p>
+            </Typography.Text>
             <FilteredConnection<SiteAdminRepositoryFields, Omit<RepositoryNodeProps, 'node'>>
                 className="list-group list-group-flush mt-3"
                 noun="repository"

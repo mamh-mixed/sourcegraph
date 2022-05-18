@@ -5,7 +5,7 @@ import Check from 'mdi-react/CheckIcon'
 import CloseIcon from 'mdi-react/CloseIcon'
 import RadioboxBlankIcon from 'mdi-react/RadioboxBlankIcon'
 
-import { Icon } from '@sourcegraph/wildcard'
+import { Icon, Typography } from '@sourcegraph/wildcard'
 
 import styles from './SearchQueryChecks.module.scss'
 
@@ -82,9 +82,9 @@ export const SearchQueryChecks: React.FunctionComponent<React.PropsWithChildren<
             </li>
         </ul>
 
-        <p className="mt-1 text-muted">
+        <Typography.Text className="mt-1 text-muted">
             Tip: use <code>archived:no</code> or <code>fork:no</code> to exclude results from archived or forked
             repositories.
-        </p>
+        </Typography.Text>
     </div>
 )

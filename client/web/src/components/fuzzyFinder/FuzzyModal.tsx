@@ -123,7 +123,7 @@ export const FuzzyModal: React.FunctionComponent<React.PropsWithChildren<FuzzyMo
             }
             const links = fuzzyResult.links
             if (links.length === 0) {
-                setFuzzyResultElement(<p>No files matching '{query}'</p>)
+                setFuzzyResultElement(<Typography.Text>No files matching '{query}'</Typography.Text>)
                 setResultsCount(0)
                 setTotalFileCount(search.totalFileCount)
                 return setIsComplete(fuzzyResult.isComplete)
@@ -157,11 +157,11 @@ export const FuzzyModal: React.FunctionComponent<React.PropsWithChildren<FuzzyMo
         }
 
         if (props.isLoading) {
-            return empty(<p>Downloading...</p>)
+            return empty(<Typography.Text>Downloading...</Typography.Text>)
         }
 
         if (props.isError) {
-            return empty(<p>Error: {JSON.stringify(props.isError)}</p>)
+            return empty(<Typography.Text>Error: {JSON.stringify(props.isError)}</Typography.Text>)
         }
 
         switch (props.fsm.key) {
@@ -169,9 +169,9 @@ export const FuzzyModal: React.FunctionComponent<React.PropsWithChildren<FuzzyMo
                 handleEmpty(props)
                 return empty(<></>)
             case 'downloading':
-                return empty(<p>Downloading...</p>)
+                return empty(<Typography.Text>Downloading...</Typography.Text>)
             case 'failed':
-                return empty(<p>Error: {props.fsm.errorMessage}</p>)
+                return empty(<Typography.Text>Error: {props.fsm.errorMessage}</Typography.Text>)
             case 'indexing': {
                 const loader = props.fsm.indexing
                 later()
@@ -183,7 +183,7 @@ export const FuzzyModal: React.FunctionComponent<React.PropsWithChildren<FuzzyMo
             case 'ready':
                 return renderFiles(props.fsm.fuzzy)
             default:
-                return empty(<p>ERROR</p>)
+                return empty(<Typography.Text>ERROR</Typography.Text>)
         }
     }, [props, focusIndex, maxResults, query])
 

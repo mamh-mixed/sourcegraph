@@ -64,10 +64,10 @@ export class SiteAdminExternalAccountsPage extends React.Component<Props> {
                         View auth providers
                     </Button>
                 </div>
-                <p>
+                <Typography.Text>
                     An external account (on an <Link to="/site-admin/auth/providers">authentication provider</Link>) is
                     linked to a Sourcegraph user when it's used to sign into Sourcegraph.
-                </p>
+                </Typography.Text>
                 <FilteredConnection<ExternalAccountFields, Omit<ExternalAccountNodeProps, 'node'>>
                     className="list-group list-group-flush mt-3"
                     noun="external user account"

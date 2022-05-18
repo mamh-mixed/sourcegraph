@@ -46,7 +46,9 @@ export const MergeChangesetsModal: React.FunctionComponent<React.PropsWithChildr
     return (
         <Modal onDismiss={onCancel} aria-labelledby={MODAL_LABEL_ID}>
             <Typography.H3 id={MODAL_LABEL_ID}>Merge changesets</Typography.H3>
-            <p className="mb-4">Are you sure you want to attempt to merge all the selected changesets?</p>
+            <Typography.Text className="mb-4">
+                Are you sure you want to attempt to merge all the selected changesets?
+            </Typography.Text>
             <Form>
                 <div className="form-group">
                     <Checkbox

@@ -118,7 +118,7 @@ export const SiteAdminReportBugPage: React.FunctionComponent<React.PropsWithChil
         <div>
             <PageTitle title="Report a bug - Admin" />
             <Typography.H2>Report a bug</Typography.H2>
-            <p>
+            <Typography.Text>
                 <Link
                     target="_blank"
                     rel="noopener noreferrer"
@@ -132,7 +132,7 @@ export const SiteAdminReportBugPage: React.FunctionComponent<React.PropsWithChil
                     support@sourcegraph.com
                 </Link>{' '}
                 instead.
-            </p>
+            </Typography.Text>
             <Alert variant="warning">
                 <div>
                     Please redact any secrets before sharing, whether on the public issue tracker or with

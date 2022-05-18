@@ -32,7 +32,9 @@ const ContributionsTable: React.FunctionComponent<
 > = ({ contributionGroups, history }) => (
     <div>
         {contributionGroups.length === 0 && (
-            <p>This extension doesn't define any settings or actions. No configuration is required to use it.</p>
+            <Typography.Text>
+                This extension doesn't define any settings or actions. No configuration is required to use it.
+            </Typography.Text>
         )}
         {contributionGroups.map(
             (group, index) =>

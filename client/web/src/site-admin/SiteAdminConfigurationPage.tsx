@@ -343,13 +343,13 @@ export class SiteAdminConfigurationPage extends React.Component<Props, State> {
         if (this.state.reloadStartedAt) {
             alerts.push(
                 <Alert key="error" className={styles.alert} variant="primary">
-                    <p>
+                    <Typography.Text>
                         <LoadingSpinner /> Waiting for site to reload...
-                    </p>
+                    </Typography.Text>
                     {Date.now() - this.state.reloadStartedAt > EXPECTED_RELOAD_WAIT && (
-                        <p>
+                        <Typography.Text>
                             <small>It's taking longer than expected. Check the server logs for error messages.</small>
-                        </p>
+                        </Typography.Text>
                     )}
                 </Alert>
             )
@@ -372,7 +372,7 @@ export class SiteAdminConfigurationPage extends React.Component<Props, State> {
         ) {
             alerts.push(
                 <Alert key="validation-messages" className={styles.alert} variant="danger">
-                    <p>The server reported issues in the last-saved config:</p>
+                    <Typography.Text>The server reported issues in the last-saved config:</Typography.Text>
                     <ul>
                         {this.state.site.configuration.validationMessages.map((message, index) => (
                             <li key={index} className={styles.alertItem}>
@@ -431,10 +431,10 @@ export class SiteAdminConfigurationPage extends React.Component<Props, State> {
             <div>
                 <PageTitle title="Configuration - Admin" />
                 <Typography.H2>Site configuration</Typography.H2>
-                <p>
+                <Typography.Text>
                     View and edit the Sourcegraph site configuration. See{' '}
                     <Link to="/help/admin/config/site_config">documentation</Link> for more information.
-                </p>
+                </Typography.Text>
                 <div>{alerts}</div>
                 {this.state.loading && <LoadingSpinner />}
                 {this.state.site?.configuration && (
@@ -452,13 +452,13 @@ export class SiteAdminConfigurationPage extends React.Component<Props, State> {
                             history={this.props.history}
                             telemetryService={this.props.telemetryService}
                         />
-                        <p className="form-text text-muted">
+                        <Typography.Text className="form-text text-muted">
                             <small>
                                 Use Ctrl+Space for completion, and hover over JSON properties for documentation. For
                                 more information, see the <Link to="/help/admin/config/site_config">documentation</Link>
                                 .
                             </small>
-                        </p>
+                        </Typography.Text>
                     </div>
                 )}
             </div>

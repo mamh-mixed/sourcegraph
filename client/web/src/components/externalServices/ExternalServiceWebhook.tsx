@@ -16,12 +16,12 @@ export const ExternalServiceWebhook: React.FunctionComponent<React.PropsWithChil
         return <></>
     }
 
-    let description = <p />
+    let description = <Typography.Text />
 
     switch (kind) {
         case ExternalServiceKind.BITBUCKETSERVER:
             description = (
-                <p>
+                <Typography.Text>
                     <Link
                         to="https://docs.sourcegraph.com/admin/external_service/bitbucket_server#webhooks"
                         target="_blank"
@@ -41,7 +41,7 @@ export const ExternalServiceWebhook: React.FunctionComponent<React.PropsWithChil
                     .
                     <br />
                     To set up another webhook manually, use the following URL:
-                </p>
+                </Typography.Text>
             )
             break
 
@@ -59,7 +59,7 @@ export const ExternalServiceWebhook: React.FunctionComponent<React.PropsWithChil
             <Typography.H3>Batch changes webhooks</Typography.H3>
             {description}
             <CopyableText className="mb-2" text={webhookURL} size={webhookURL.length} />
-            <p className="mb-0">
+            <Typography.Text className="mb-0">
                 Note that only{' '}
                 <Link to="https://docs.sourcegraph.com/user/batch_changes" target="_blank" rel="noopener noreferrer">
                     batch changes
@@ -69,14 +69,14 @@ export const ExternalServiceWebhook: React.FunctionComponent<React.PropsWithChil
                     see the docs on how to use them
                 </Link>
                 .
-            </p>
+            </Typography.Text>
         </Alert>
     )
 }
 
 function commonDescription(url: string): JSX.Element {
     return (
-        <p>
+        <Typography.Text>
             Point{' '}
             <Link
                 to={`https://docs.sourcegraph.com/admin/external_service/${url}#webhooks`}
@@ -86,6 +86,6 @@ function commonDescription(url: string): JSX.Element {
                 webhooks
             </Link>{' '}
             for this code host connection at the following URL:
-        </p>
+        </Typography.Text>
     )
 }

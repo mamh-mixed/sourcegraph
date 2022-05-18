@@ -60,14 +60,14 @@ export const AllButtons: Story = () => (
         <Typography.H2>Outline</Typography.H2>
         <ButtonVariants variants={['primary', 'secondary', 'danger']} outline={true} />
         <Typography.H2>Icons</Typography.H2>
-        <p>We can use icons with our buttons.</p>
+        <Typography.Text>We can use icons with our buttons.</Typography.Text>
         <ButtonVariants variants={['danger']} icon={SearchIcon} />
         <ButtonVariants variants={['danger']} icon={SearchIcon} outline={true} />
         <Typography.H2>Smaller</Typography.H2>
-        <p>We can make our buttons smaller.</p>
+        <Typography.Text>We can make our buttons smaller.</Typography.Text>
         <ButtonVariants variants={['primary']} size="sm" outline={true} />
         <Typography.H2>Links</Typography.H2>
-        <p>Links can be made to look like buttons.</p>
+        <Typography.Text>Links can be made to look like buttons.</Typography.Text>
         <Button
             variant="secondary"
             as="a"
@@ -78,7 +78,7 @@ export const AllButtons: Story = () => (
         >
             I am a link
         </Button>
-        <p>Buttons can be made to look like links.</p>
+        <Typography.Text>Buttons can be made to look like links.</Typography.Text>
         <ButtonVariants variants={['link']} />
         <Typography.H2>Button Display</Typography.H2>
         <Button className="mb-3" size="sm" variant="secondary" display="inline">
@@ -101,7 +101,7 @@ export const AllButtons: Story = () => (
             </Button>
         </ButtonGroup>
         <Typography.H2>Tooltips</Typography.H2>
-        <p>Buttons can have tooltips.</p>
+        <Typography.Text>Buttons can have tooltips.</Typography.Text>
         <Button variant="primary" className="mr-3" data-tooltip="Some extra context on the button.">
             Enabled
         </Button>

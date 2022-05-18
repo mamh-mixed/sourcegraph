@@ -47,7 +47,7 @@ const InsightCardBody: React.FunctionComponent<React.PropsWithChildren<InsightCa
             <Typography.H3 as={Typography.H2} className={styles.cardTitle}>
                 {title}
             </Typography.H3>
-            <p className="d-flex flex-column text-muted m-0">{children}</p>
+            <Typography.Text className="d-flex flex-column text-muted m-0">{children}</Typography.Text>
         </CardBody>
     )
 }

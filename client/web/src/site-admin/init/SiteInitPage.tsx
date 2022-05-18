@@ -82,14 +82,14 @@ export const SiteInitPage: React.FunctionComponent<React.PropsWithChildren<Props
                         // If there's already a user but the site is not initialized, then the we're in an
                         // unexpected state, likely because of a previous bug or because someone manually modified
                         // the site_config DB table.
-                        <p>
+                        <Typography.Text>
                             You're signed in as <strong>{authenticatedUser.username}</strong>. A site admin must
                             initialize Sourcegraph before you can continue.
-                        </p>
+                        </Typography.Text>
                     ) : (
                         <>
                             <Typography.H2 className="site-init-page__header">Welcome</Typography.H2>
-                            <p>Create an admin account to start using Sourcegraph.</p>
+                            <Typography.Text>Create an admin account to start using Sourcegraph.</Typography.Text>
                             <SignUpForm
                                 className="w-100"
                                 buttonLabel="Create admin account & continue"

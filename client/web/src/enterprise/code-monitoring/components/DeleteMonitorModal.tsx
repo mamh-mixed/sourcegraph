@@ -59,10 +59,10 @@ export const DeleteMonitorModal: React.FunctionComponent<React.PropsWithChildren
                 Delete code monitor?
             </Typography.H3>
 
-            <p>
+            <Typography.Text>
                 <strong>This action cannot be undone.</strong> Code monitoring will no longer watch for trigger event
                 and all actions will immediately be removed.
-            </p>
+            </Typography.Text>
             {(!deleteCompletedOrError || isErrorLike(deleteCompletedOrError)) && (
                 <div className="text-right">
                     <Button className="mr-2" onClick={toggleDeleteModal} outline={true} variant="secondary">

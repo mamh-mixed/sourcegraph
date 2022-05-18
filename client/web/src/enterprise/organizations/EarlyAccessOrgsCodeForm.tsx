@@ -109,7 +109,9 @@ export const EarlyAccessOrgsCodeForm: FunctionComponent<React.PropsWithChildren<
     return (
         <Form onSubmit={onSubmit}>
             <Typography.H2>Organizations code early access</Typography.H2>
-            <p>Type in an organization name to enable early access for organization code host and repositories.</p>
+            <Typography.Text>
+                Type in an organization name to enable early access for organization code host and repositories.
+            </Typography.Text>
 
             <div className="d-flex justify-content-start align-items-end">
                 <Input label="Name" value={name} onChange={onChange} className="mb-0" />

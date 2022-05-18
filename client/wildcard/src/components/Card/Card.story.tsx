@@ -46,10 +46,10 @@ export default config
 export const Simple: Story = () => (
     <>
         <Typography.H1>Cards</Typography.H1>
-        <p>
+        <Typography.Text>
             A card is a flexible and extensible content container. It includes options for headers and footers, a wide
             variety of content, contextual background colors, and powerful display options.{' '}
-        </p>
+        </Typography.Text>
 
         <Typography.H2>Examples</Typography.H2>
 

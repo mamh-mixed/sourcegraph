@@ -57,10 +57,10 @@ export default config
 export const Alerts: Story = () => (
     <>
         <Typography.H1>Alerts</Typography.H1>
-        <p>
+        <Typography.Text>
             Provide contextual feedback messages for typical user actions with the handful of available and flexible
             alert messages.
-        </p>
+        </Typography.Text>
         <div className="mb-2">
             {ALERT_VARIANTS.map(variant => (
                 <Alert key={variant} variant={variant}>

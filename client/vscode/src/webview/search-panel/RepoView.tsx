@@ -103,7 +103,9 @@ export const RepoView: React.FunctionComponent<React.PropsWithChildren<RepoViewP
                 path={[{ icon: SourceRepositoryIcon, text: displayRepoName(repositoryMatch.repository) }]}
                 className="mb-1 mt-3 test-tree-page-title"
             />
-            {repositoryMatch.description && <p className="mt-0 text-muted">{repositoryMatch.description}</p>}
+            {repositoryMatch.description && (
+                <Typography.Text className="mt-0 text-muted">{repositoryMatch.description}</Typography.Text>
+            )}
             <div className={classNames(styles.section)}>
                 <Typography.H4>Files and directories</Typography.H4>
                 {treeEntries === undefined ? (

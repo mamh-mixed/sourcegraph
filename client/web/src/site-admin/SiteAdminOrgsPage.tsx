@@ -130,17 +130,19 @@ export const SiteAdminOrgsPage: React.FunctionComponent<React.PropsWithChildren<
                     <Icon as={AddIcon} /> Create organization
                 </Button>
             </div>
-            <p>
+            <Typography.Text>
                 An organization is a set of users with associated configuration. See{' '}
                 <Link to="/help/admin/organizations">Sourcegraph documentation</Link> for information about configuring
                 organizations.
-            </p>
+            </Typography.Text>
             {window.context.sourcegraphDotComMode ? (
                 <>
                     <Alert variant="info">Only organization members can view & modify organization settings.</Alert>
                     <Typography.H3>Enable early access</Typography.H3>
                     <div className="d-flex justify-content-between align-items-center mb-3">
-                        <p>Enable early access for organization code host connections and repositories on Cloud.</p>
+                        <Typography.Text>
+                            Enable early access for organization code host connections and repositories on Cloud.
+                        </Typography.Text>
                         <Button to="./organizations/early-access-orgs-code" variant="primary" outline={true} as={Link}>
                             Enable early access
                         </Button>

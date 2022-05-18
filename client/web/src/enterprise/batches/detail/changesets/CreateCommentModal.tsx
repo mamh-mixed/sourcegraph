@@ -50,7 +50,9 @@ export const CreateCommentModal: React.FunctionComponent<React.PropsWithChildren
     return (
         <Modal onDismiss={onCancel} aria-labelledby={LABEL_ID}>
             <Typography.H3 id={LABEL_ID}>Post a bulk comment on changesets</Typography.H3>
-            <p className="mb-4">Use this feature to create a bulk comment on all the selected code hosts.</p>
+            <Typography.Text className="mb-4">
+                Use this feature to create a bulk comment on all the selected code hosts.
+            </Typography.Text>
             {isErrorLike(isLoading) && <ErrorAlert error={isLoading} />}
             <Form onSubmit={onSubmit}>
                 <div className="form-group">

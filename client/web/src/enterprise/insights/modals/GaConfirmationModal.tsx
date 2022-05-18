@@ -60,19 +60,19 @@ export const GaConfirmationModalContent: React.FunctionComponent<
             </div>
 
             <div className={styles.textContent}>
-                <p>
+                <Typography.Text>
                     <b>Your instance is now using the limited access version of Code Insights.</b>
-                </p>
+                </Typography.Text>
 
-                <p>
+                <Typography.Text>
                     Contact your admin or reach out to us to upgrade your licence for unlimited insights and dashboards.
-                </p>
+                </Typography.Text>
 
-                <p>
+                <Typography.Text>
                     Questions? Learn more about the{' '}
                     <Link to="/help/code_insights/references/license">Code Insights limited access</Link> or contact us
                     directly.
-                </p>
+                </Typography.Text>
             </div>
 
             <footer className={styles.actions}>

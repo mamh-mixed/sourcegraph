@@ -72,9 +72,9 @@ export const BatchChangeRepoPage: React.FunctionComponent<React.PropsWithChildre
                 </div>
             ) : null}
             {hasChangesets ? (
-                <p>
+                <Typography.Text>
                     Batch changes has created {stats?.changesetsStats.total} changesets on {repoDisplayName}
-                </p>
+                </Typography.Text>
             ) : (
                 <div className="mb-3" />
             )}

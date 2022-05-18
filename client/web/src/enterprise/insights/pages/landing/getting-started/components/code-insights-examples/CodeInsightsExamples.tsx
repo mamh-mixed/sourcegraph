@@ -52,10 +52,10 @@ export const CodeInsightsExamples: React.FunctionComponent<
     return (
         <section {...otherProps}>
             <Typography.H2>Example insights</Typography.H2>
-            <p className="text-muted">
+            <Typography.Text className="text-muted">
                 Here are a few example insights to show you what the tool can do.{' '}
                 <Link to={`${pathname}${search}#code-insights-templates`}>Explore more use cases.</Link>
-            </p>
+            </Typography.Text>
 
             <div className={styles.section}>
                 <CodeInsightExample

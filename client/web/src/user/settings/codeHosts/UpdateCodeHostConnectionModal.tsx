@@ -111,7 +111,7 @@ export const UpdateCodeHostConnectionModal: React.FunctionComponent<
                                     />
                                     <EncryptedDataIcon />
                                 </div>
-                                <p className="mt-1">{hintFragment}</p>
+                                <Typography.Text className="mt-1">{hintFragment}</Typography.Text>
                             </>
                         ) : (
                             machineUserFragment

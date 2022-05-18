@@ -77,13 +77,13 @@ const CodeHostConnections: React.FunctionComponent<React.PropsWithChildren<CodeH
                     </SummaryContainer>
                 )}
             </ConnectionContainer>
-            <p className="mb-0">
+            <Typography.Text className="mb-0">
                 Code host not present? Site admins can add a code host in{' '}
                 <Link to="/help/admin/external_service" target="_blank" rel="noopener noreferrer">
                     the manage repositories settings
                 </Link>
                 .
-            </p>
+            </Typography.Text>
         </Container>
     )
 }
