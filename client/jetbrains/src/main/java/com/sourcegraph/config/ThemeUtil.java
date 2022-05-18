@@ -29,6 +29,10 @@ public class ThemeUtil {
         return getHexString(UIUtil.getPanelBackground());
     }
 
+    public static Color getPanelBackgroundColor() {
+        return UIUtil.getPanelBackground();
+    }
+
     public static boolean isDarkTheme() {
         return getBrightnessFromColor(UIUtil.getPanelBackground()) < 128;
     }
