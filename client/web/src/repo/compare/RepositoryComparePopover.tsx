@@ -84,7 +84,7 @@ export const RepositoryComparePopover: React.FunctionComponent<
             >
                 <div className="text-muted mr-1">{type}: </div>
                 {comparison[type].revision || defaultBranch}
-                <Icon as={RepoRevisionChevronDownIcon} />
+                <Icon role="img" as={RepoRevisionChevronDownIcon} aria-hidden={true} />
             </PopoverTrigger>
             <PopoverContent position={Position.bottomStart}>
                 <RevisionsPopover
