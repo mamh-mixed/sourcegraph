@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 
 import classNames from 'classnames'
 import * as H from 'history'
@@ -93,6 +93,30 @@ interface Props
     isSearchAutoFocusRequired?: boolean
     isRepositoryRelatedPage?: boolean
     branding?: typeof window.context.branding
+}
+
+function useCalculatedNavLinkVariant(
+    containerReference: React.MutableRefObject<HTMLDivElement | null>
+): 'compact' | undefined {
+    const [navLinkVariant, setNavLinkVariant] = useState<'compact'>()
+    const [savedWindowWidth, setSavedWindowWidth] = useState<number>()
+    useEffect(() => {
+        function calculateNavLinkVariant(): void {
+            console.log('calculation')
+            const element = containerReference.current
+            if (element && element.offsetWidth < element.scrollWidth) {
+                setNavLinkVariant('compact')
+                setSavedWindowWidth(window.innerWidth)
+            } else if (window.innerWidth === savedWindowWidth) {
+                setNavLinkVariant(undefined)
+            }
+        }
+        calculateNavLinkVariant()
+        window.addEventListener('resize', calculateNavLinkVariant)
+        return () => window.removeEventListener('resize', calculateNavLinkVariant)
+    }, [containerReference, savedWindowWidth])
+
+    return navLinkVariant
 }
 
 export const GlobalNavbar: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
@@ -205,12 +229,12 @@ export const GlobalNavbar: React.FunctionComponent<React.PropsWithChildren<Props
         return items.filter<NavDropdownItem>((item): item is NavDropdownItem => !!item)
     }, [searchContextsEnabled, showSearchContext])
 
-    const shouldShowBatchChanges = props.batchChangesEnabled || isSourcegraphDotCom
-    const navLinkVariant = shouldShowBatchChanges && activation ? 'compact' : undefined
-
+    const navbarReference = useRef<HTMLDivElement | null>(null)
+    const navLinkVariant = useCalculatedNavLinkVariant(navbarReference)
     return (
         <>
             <NavBar
+                ref={navbarReference}
                 logo={
                     <BrandLogo
                         branding={branding}
@@ -250,7 +274,9 @@ export const GlobalNavbar: React.FunctionComponent<React.PropsWithChildren<Props
                     {/* This is the only circumstance where we show something
                          batch-changes-related even if the instance does not have batch
                          changes enabled, for marketing purposes on sourcegraph.com */}
-                    {shouldShowBatchChanges && <BatchChangesNavItem variant={navLinkVariant} />}
+                    {(props.batchChangesEnabled || isSourcegraphDotCom) && (
+                        <BatchChangesNavItem variant={navLinkVariant} />
+                    )}
                     {codeInsights && (
                         <NavItem icon={BarChartIcon}>
                             <NavLink variant={navLinkVariant} to="/insights">
