@@ -5,7 +5,7 @@ import classNames from 'classnames'
 import { noop } from 'lodash'
 
 import { ErrorAlert } from '@sourcegraph/branded/src/components/alerts'
-import { Badge, Button, Input, LoadingSpinner, Modal, ModalProps } from '@sourcegraph/wildcard'
+import { Badge, Button, Input, LoadingSpinner, Modal, ModalProps, Typography } from '@sourcegraph/wildcard'
 
 import { GetSharableInsightInfoResult } from '../../../../../graphql-operations'
 import {
@@ -49,7 +49,7 @@ export const ShareLinkModal: FunctionComponent<ShareLinkModalProps> = props => {
 
     return (
         <Modal className={classNames(styles.container)} {...attributes} isOpen={isOpen} onDismiss={onDismiss}>
-            <h3>Get shareable link</h3>
+            <Typography.H3>Get shareable link</Typography.H3>
 
             <ShareLinkModalContent insight={insight} dashboards={dashboards} />
 
@@ -117,20 +117,22 @@ const GlobalContent: FunctionComponent = () => <>Everyone on your Sourcegraph in
 
 const PrivateContent: FunctionComponent = () => (
     <>
-        <p>
+        <Typography.Text>
             Only you can see this insight, because it's only on private dashboards. Add this insight to public
             dashboards to share with others.
-        </p>
-        <p>
+        </Typography.Text>
+        <Typography.Text>
             The “all insights” dashboard shows you all insights available to you regardless of their visibility to
             others.
-        </p>
+        </Typography.Text>
     </>
 )
 
 const OrganizationContent: FunctionComponent<{ organizations: string[] }> = ({ organizations }) => (
     <>
-        <p className="mb-2">Only people added to following Organisations can see this insight:</p>
+        <Typography.Text className="mb-2">
+            Only people added to following Organisations can see this insight:
+        </Typography.Text>
         {organizations.map(organization => (
             <Badge variant="secondary" key={organization} className="mr-2">
                 {organization}
