@@ -141,7 +141,7 @@ const Container: React.FunctionComponent<React.PropsWithChildren<ContainerProps>
             <span className="flex-1">{title}</span>
             {sectionID && (
                 <Button variant="icon" aria-label="Hide Section" onClick={() => onClose?.(sectionID)}>
-                    <Icon as={CloseIcon} />
+                    <Icon role="img" aria-hidden={true} as={CloseIcon} />
                 </Button>
             )}
         </Typography.H3>
@@ -311,7 +311,7 @@ export const NoResultsPage: React.FunctionComponent<React.PropsWithChildren<NoRe
                                         target="blank"
                                         to="https://learn.sourcegraph.com/how-to-search-code-with-sourcegraph-a-cheat-sheet#searching-an-organizations-repository"
                                     >
-                                        Learn more <Icon as={ExternalLinkIcon} />
+                                        Learn more <Icon role="img" aria-hidden={true} as={ExternalLinkIcon} />
                                     </Link>
                                 </small>
                             </p>
@@ -350,7 +350,7 @@ export const NoResultsPage: React.FunctionComponent<React.PropsWithChildren<NoRe
                                 target="blank"
                                 to="https://learn.sourcegraph.com/"
                             >
-                                Sourcegraph Learn <Icon as={ExternalLinkIcon} />
+                                Sourcegraph Learn <Icon role="img" aria-hidden={true} as={ExternalLinkIcon} />
                             </Link>
                             <br />
                             <Link
@@ -358,7 +358,7 @@ export const NoResultsPage: React.FunctionComponent<React.PropsWithChildren<NoRe
                                 target="blank"
                                 to="https://learn.sourcegraph.com/how-to-search-code-with-sourcegraph-a-cheat-sheet"
                             >
-                                Sourcegraph cheat sheet <Icon as={ExternalLinkIcon} />
+                                Sourcegraph cheat sheet <Icon role="img" aria-hidden={true} as={ExternalLinkIcon} />
                             </Link>
                         </p>
                     </Container>

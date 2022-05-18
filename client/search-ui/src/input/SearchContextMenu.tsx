@@ -293,7 +293,7 @@ export const SearchContextMenu: React.FunctionComponent<React.PropsWithChildren<
             <div className={styles.title}>
                 <small>Choose search context</small>
                 <Button onClick={() => closeMenu()} variant="icon" className={styles.titleClose} aria-label="Close">
-                    <Icon as={CloseIcon} />
+                    <Icon role="img" aria-hidden={true} as={CloseIcon} />
                 </Button>
             </div>
             <div className={classNames('d-flex', styles.header)}>
