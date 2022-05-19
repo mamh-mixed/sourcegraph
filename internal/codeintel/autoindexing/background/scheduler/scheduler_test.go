@@ -1,4 +1,4 @@
-package indexing
+package scheduler
 
 import (
 	"context"
@@ -11,7 +11,6 @@ import (
 
 	policies "github.com/sourcegraph/sourcegraph/internal/codeintel/policies/enterprise"
 	"github.com/sourcegraph/sourcegraph/internal/codeintel/stores/dbstore"
-	"github.com/sourcegraph/sourcegraph/internal/observation"
 )
 
 func init() {
@@ -23,13 +22,13 @@ func TestIndexScheduler(t *testing.T) {
 	policyMatcher := testIndexSchedulerMockPolicyMatcher()
 	indexEnqueuer := NewMockIndexEnqueuer()
 
-	scheduler := &IndexScheduler{
-		dbStore:                dbStore,
-		policyMatcher:          policyMatcher,
-		indexEnqueuer:          indexEnqueuer,
-		repositoryProcessDelay: 24 * time.Hour,
-		repositoryBatchSize:    100,
-		operations:             newOperations(&observation.TestContext),
+	ConfigInst.RepositoryBatchSize = 100
+	ConfigInst.RepositoryMinimumCheckInterval = 24 * time.Hour
+
+	scheduler := &scheduler{
+		dbStore:       dbStore,
+		policyMatcher: policyMatcher,
+		indexEnqueuer: indexEnqueuer,
 	}
 
 	if err := scheduler.Handle(context.Background()); err != nil {
