@@ -1,10 +1,12 @@
-import { number } from '@storybook/addon-knobs'
-import { storiesOf } from '@storybook/react'
 import React, { useState } from 'react'
 
+import { number } from '@storybook/addon-knobs'
+import { storiesOf } from '@storybook/react'
+
 import { MockedTestProvider } from '@sourcegraph/shared/src/testing/apollo'
-import { WebStory } from '@sourcegraph/web/src/components/WebStory'
 import { Container } from '@sourcegraph/wildcard'
+
+import { WebStory } from '../../components/WebStory'
 
 import { SelectedExternalService } from './backend'
 import { buildHeaderMock } from './story/fixtures'
@@ -24,10 +26,12 @@ const { add } = storiesOf('web/site-admin/webhooks/WebhookLogPageHeader', module
 
 // Create a component to handle the minimum state management required for a
 // WebhookLogPageHeader.
-const WebhookLogPageHeaderContainer: React.FunctionComponent<{
-    initialExternalService?: SelectedExternalService
-    initialOnlyErrors?: boolean
-}> = ({ initialExternalService, initialOnlyErrors }) => {
+const WebhookLogPageHeaderContainer: React.FunctionComponent<
+    React.PropsWithChildren<{
+        initialExternalService?: SelectedExternalService
+        initialOnlyErrors?: boolean
+    }>
+> = ({ initialExternalService, initialOnlyErrors }) => {
     const [onlyErrors, setOnlyErrors] = useState(initialOnlyErrors === true)
     const [externalService, setExternalService] = useState(initialExternalService ?? 'all')
 

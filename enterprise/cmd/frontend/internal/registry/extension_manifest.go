@@ -8,21 +8,20 @@ import (
 	"path"
 	"strconv"
 
-	"github.com/cockroachdb/errors"
-
 	"github.com/sourcegraph/sourcegraph/enterprise/cmd/frontend/internal/registry/stores"
 	"github.com/sourcegraph/sourcegraph/internal/conf"
 	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/errcode"
 	"github.com/sourcegraph/sourcegraph/internal/jsonc"
 	"github.com/sourcegraph/sourcegraph/internal/lazyregexp"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 // validateExtensionManifest validates a JSON extension manifest for syntax.
 //
 // TODO(sqs): Also validate it against the JSON Schema.
 func validateExtensionManifest(text string) error {
-	var o interface{}
+	var o any
 	return jsonc.Unmarshal(text, &o)
 }
 
@@ -82,7 +81,7 @@ func getLatestForBatch(ctx context.Context, db database.DB, vs []*stores.Extensi
 // the date that the release was published.
 func prepReleaseManifest(extensionID string, release *stores.Release) error {
 	// Add URL to bundle if necessary.
-	o := make(map[string]interface{})
+	o := make(map[string]any)
 	if err := json.Unmarshal([]byte(release.Manifest), &o); err != nil {
 		return err
 	}

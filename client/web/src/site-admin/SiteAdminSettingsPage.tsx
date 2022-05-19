@@ -1,4 +1,5 @@
 import * as React from 'react'
+
 import { RouteComponentProps } from 'react-router'
 
 import { PlatformContextProps } from '@sourcegraph/shared/src/platform/context'
@@ -21,7 +22,7 @@ interface Props
     site: Pick<GQL.ISite, '__typename' | 'id'>
 }
 
-export const SiteAdminSettingsPage: React.FunctionComponent<Props> = props => (
+export const SiteAdminSettingsPage: React.FunctionComponent<React.PropsWithChildren<Props>> = props => (
     <>
         <PageTitle title="Global settings" />
         <SettingsArea

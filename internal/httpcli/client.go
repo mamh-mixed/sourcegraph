@@ -16,9 +16,7 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/rehttp"
-	"github.com/cockroachdb/errors"
 	"github.com/gregjones/httpcache"
-	"github.com/hashicorp/go-multierror"
 	"github.com/inconshreveable/log15"
 	"github.com/opentracing/opentracing-go"
 	otlog "github.com/opentracing/opentracing-go/log"
@@ -31,6 +29,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/metrics"
 	"github.com/sourcegraph/sourcegraph/internal/rcache"
 	"github.com/sourcegraph/sourcegraph/internal/trace/ot"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 // A Doer captures the Do method of an http.Client. It facilitates decorating
@@ -82,6 +81,14 @@ type Factory struct {
 // too large.
 var redisCache = rcache.NewWithTTL("http", 604800)
 
+// CachedTransportOpt is the default transport cache - it will return values from
+// the cache where possible (avoiding a network request) and will additionally add
+// validators (etag/if-modified-since) to repeated requests allowing servers to
+// return 304 / Not Modified.
+//
+// Responses load from cache will have the 'X-From-Cache' header set.
+var CachedTransportOpt = NewCachedTransportOpt(redisCache, true)
+
 // ExternalClientFactory is a httpcli.Factory with common options
 // and middleware pre-set for communicating with external services.
 var ExternalClientFactory = NewExternalClientFactory()
@@ -111,7 +118,7 @@ func NewExternalClientFactory() *Factory {
 			ExpJitterDelay(externalRetryDelayBase, externalRetryDelayMax),
 		),
 		TracedTransportOpt,
-		NewCachedTransportOpt(redisCache, true),
+		CachedTransportOpt,
 	)
 }
 
@@ -186,13 +193,13 @@ func (f Factory) Client(base ...Opt) (*http.Client, error) {
 	opts = append(opts, f.common...)
 
 	var cli http.Client
-	var err *multierror.Error
+	var err error
 
 	for _, opt := range opts {
-		err = multierror.Append(err, opt(&cli))
+		err = errors.Append(err, opt(&cli))
 	}
 
-	return &cli, err.ErrorOrNil()
+	return &cli, err
 }
 
 // NewFactory returns a Factory that applies the given common
@@ -250,6 +257,16 @@ func GitHubProxyRedirectMiddleware(cli Doer) Doer {
 			req.URL.Host = "api.github.com"
 			req.URL.Scheme = "https"
 		}
+		return cli.Do(req)
+	})
+}
+
+// GerritUnauthenticateMiddleware rewrites requests to Gerrit code host to
+// make them unauthenticated, used for testing against a non-Authed gerrit instance
+func GerritUnauthenticateMiddleware(cli Doer) Doer {
+	return DoerFunc(func(req *http.Request) (*http.Response, error) {
+		req.URL.Path = strings.ReplaceAll(req.URL.Path, "/a/", "/")
+		req.Header.Del("Authorization")
 		return cli.Do(req)
 	})
 }
@@ -317,6 +334,9 @@ func NewCertPoolOpt(certs ...string) Opt {
 
 // NewCachedTransportOpt returns an Opt that wraps the existing http.Transport
 // of an http.Client with caching using the given Cache.
+//
+// If markCachedResponses, responses returned from the cache will be given an extra header,
+// X-From-Cache.
 func NewCachedTransportOpt(c httpcache.Cache, markCachedResponses bool) Opt {
 	return func(cli *http.Client) error {
 		if cli.Transport == nil {

@@ -1,10 +1,11 @@
+import * as React from 'react'
+
 import classNames from 'classnames'
 import AlertCircleIcon from 'mdi-react/AlertCircleIcon'
 import CheckIcon from 'mdi-react/CheckIcon'
 import CloseIcon from 'mdi-react/CloseIcon'
-import * as React from 'react'
 
-import { Button, LoadingSpinner } from '@sourcegraph/wildcard'
+import { Button, LoadingSpinner, Icon } from '@sourcegraph/wildcard'
 
 import styles from './SaveToolbar.module.scss'
 
@@ -31,16 +32,9 @@ export type SaveToolbarPropsGenerator<T extends object> = (
     props: Readonly<React.PropsWithChildren<SaveToolbarProps>>
 ) => React.PropsWithChildren<SaveToolbarProps> & T
 
-export const SaveToolbar: React.FunctionComponent<React.PropsWithChildren<SaveToolbarProps>> = ({
-    dirty,
-    saving,
-    error,
-    onSave,
-    onDiscard,
-    children,
-    willShowError,
-    saveDiscardDisabled,
-}) => {
+export const SaveToolbar: React.FunctionComponent<
+    React.PropsWithChildren<React.PropsWithChildren<SaveToolbarProps>>
+> = ({ dirty, saving, error, onSave, onDiscard, children, willShowError, saveDiscardDisabled }) => {
     const disabled = saveDiscardDisabled ? saveDiscardDisabled() : saving || !dirty
     let saveDiscardTitle: string | undefined
     if (saving) {
@@ -57,7 +51,7 @@ export const SaveToolbar: React.FunctionComponent<React.PropsWithChildren<SaveTo
         <>
             {error && willShowError() && (
                 <div className={styles.error}>
-                    <AlertCircleIcon className={classNames('icon-inline', styles.errorIcon)} />
+                    <Icon className={styles.errorIcon} as={AlertCircleIcon} />
                     {error.message}
                 </div>
             )}
@@ -70,7 +64,7 @@ export const SaveToolbar: React.FunctionComponent<React.PropsWithChildren<SaveTo
                     variant="success"
                     size="sm"
                 >
-                    <CheckIcon className="icon-inline" style={{ marginRight: '0.1em' }} /> Save changes
+                    <Icon style={{ marginRight: '0.1em' }} as={CheckIcon} /> Save changes
                 </Button>
                 <Button
                     disabled={disabled}
@@ -80,7 +74,7 @@ export const SaveToolbar: React.FunctionComponent<React.PropsWithChildren<SaveTo
                     variant="secondary"
                     size="sm"
                 >
-                    <CloseIcon className="icon-inline" /> Discard
+                    <Icon as={CloseIcon} /> Discard
                 </Button>
                 {children}
                 {saving && (

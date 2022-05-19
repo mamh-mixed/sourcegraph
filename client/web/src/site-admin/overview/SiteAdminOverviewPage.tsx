@@ -1,17 +1,17 @@
-import OpenInNewIcon from 'mdi-react/OpenInNewIcon'
 import React, { useEffect, useMemo } from 'react'
+
+import OpenInNewIcon from 'mdi-react/OpenInNewIcon'
 import { Observable, of } from 'rxjs'
 import { map, catchError } from 'rxjs/operators'
 
 import { ErrorAlert } from '@sourcegraph/branded/src/components/alerts'
-import { ErrorLike, asError, isErrorLike } from '@sourcegraph/common'
+import { ErrorLike, asError, isErrorLike, numberWithCommas, pluralize } from '@sourcegraph/common'
 import { dataOrThrowErrors, gql } from '@sourcegraph/http-client'
 import { ActivationProps, percentageDone } from '@sourcegraph/shared/src/components/activation/Activation'
 import { ActivationChecklist } from '@sourcegraph/shared/src/components/activation/ActivationChecklist'
 import * as GQL from '@sourcegraph/shared/src/schema'
 import { ThemeProps } from '@sourcegraph/shared/src/theme'
-import { numberWithCommas, pluralize } from '@sourcegraph/shared/src/util/strings'
-import { LoadingSpinner, useObservable, Button, Link } from '@sourcegraph/wildcard'
+import { LoadingSpinner, useObservable, Button, Link, Icon, Typography } from '@sourcegraph/wildcard'
 
 import { queryGraphQL } from '../../backend/graphql'
 import { Collapsible } from '../../components/Collapsible'
@@ -21,7 +21,7 @@ import { eventLogger } from '../../tracking/eventLogger'
 import { UsageChart } from '../SiteAdminUsageStatisticsPage'
 
 interface Props extends ActivationProps, ThemeProps {
-    overviewComponents: readonly React.ComponentType[]
+    overviewComponents: readonly React.ComponentType<React.PropsWithChildren<unknown>>[]
 
     /** For testing only */
     _fetchOverview?: () => Observable<{
@@ -107,7 +107,7 @@ const fetchWeeklyActiveUsers = (): Observable<GQL.ISiteUsageStatistics> =>
 /**
  * A page displaying an overview of site admin information.
  */
-export const SiteAdminOverviewPage: React.FunctionComponent<Props> = ({
+export const SiteAdminOverviewPage: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
     isLightTheme,
     activation,
     overviewComponents,
@@ -157,7 +157,8 @@ export const SiteAdminOverviewPage: React.FunctionComponent<Props> = ({
                             setupPercentage < 100 ? 'Complete the steps below to finish onboarding to Sourcegraph' : ''
                         }
                         defaultExpanded={setupPercentage < 100}
-                        className="p-0 list-group-item font-weight-normal test-site-admin-overview-menu"
+                        className="p-0 list-group-item font-weight-normal"
+                        data-testid="site-admin-overview-menu"
                         buttonClassName="mb-0 py-3 px-3"
                         titleClassName="h5 mb-0 font-weight-bold"
                         detailClassName="h5 mb-0 font-weight-normal"
@@ -258,17 +259,16 @@ export const SiteAdminOverviewPage: React.FunctionComponent<Props> = ({
                                             showLegend={false}
                                             header={
                                                 <div className="site-admin-overview-page__detail-header">
-                                                    <h2>Weekly unique users</h2>
-                                                    <h3>
+                                                    <Typography.H2>Weekly unique users</Typography.H2>
+                                                    <Typography.H3>
                                                         <Button
                                                             to="/site-admin/usage-statistics"
                                                             variant="secondary"
                                                             as={Link}
                                                         >
-                                                            View all usage statistics{' '}
-                                                            <OpenInNewIcon className="icon-inline" />
+                                                            View all usage statistics <Icon as={OpenInNewIcon} />
                                                         </Button>
-                                                    </h3>
+                                                    </Typography.H3>
                                                 </div>
                                             }
                                         />

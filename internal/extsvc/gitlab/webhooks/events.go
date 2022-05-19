@@ -3,9 +3,8 @@ package webhooks
 import (
 	"encoding/json"
 
-	"github.com/cockroachdb/errors"
-
 	"github.com/sourcegraph/sourcegraph/internal/extsvc/gitlab"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 // EventCommon contains fields that are common to all webhook event types.
@@ -28,7 +27,7 @@ type PipelineEvent struct {
 var ErrObjectKindUnknown = errors.New("unknown object kind")
 
 type downcaster interface {
-	downcast() (interface{}, error)
+	downcast() (any, error)
 }
 
 // UnmarshalEvent unmarshals the given JSON into an event type. Possible return
@@ -38,7 +37,7 @@ type downcaster interface {
 // distinguished from other errors by checking for ErrObjectKindUnknown in the
 // error chain; note that the top level error value will not be equal to
 // ErrObjectKindUnknown in this case.
-func UnmarshalEvent(data []byte) (interface{}, error) {
+func UnmarshalEvent(data []byte) (any, error) {
 	// We need to unmarshal the event twice: once to determine what the eventual
 	// return type should be, and then once to actual unmarshal into that type.
 	//
@@ -54,7 +53,7 @@ func UnmarshalEvent(data []byte) (interface{}, error) {
 	}
 
 	// Now we can set up the typed event that we'll unmarshal into.
-	var typedEvent interface{}
+	var typedEvent any
 	switch event.ObjectKind {
 	case "merge_request":
 		typedEvent = &mergeRequestEvent{}

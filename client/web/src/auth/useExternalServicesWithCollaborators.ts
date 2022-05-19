@@ -1,18 +1,19 @@
 import { ApolloError, ApolloQueryResult } from '@apollo/client'
 
 import { useQuery } from '@sourcegraph/http-client'
-import { EXTERNAL_SERVICES_WITH_COLLABORATORS } from '@sourcegraph/web/src/components/externalServices/backend'
 
+import { EXTERNAL_SERVICES_WITH_COLLABORATORS } from '../components/externalServices/backend'
 import {
     Exact,
     ExternalServicesWithCollaboratorsResult,
     ExternalServicesWithCollaboratorsVariables,
     ListExternalServiceFields,
+    ListExternalServiceInvitableCollaboratorsFields,
     Maybe,
 } from '../graphql-operations'
 
 interface UseExternalServicesWithCollaboratorsResult {
-    externalServices: ListExternalServiceFields[] | undefined
+    externalServices: (ListExternalServiceFields & ListExternalServiceInvitableCollaboratorsFields)[] | undefined
     loadingServices: boolean
     errorServices: ApolloError | undefined
     refetchExternalServices: (

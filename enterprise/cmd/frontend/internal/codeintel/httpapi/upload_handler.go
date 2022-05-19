@@ -8,14 +8,14 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/cockroachdb/errors"
 	"github.com/inconshreveable/log15"
 	"github.com/opentracing/opentracing-go/log"
 
-	"github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/stores/uploadstore"
 	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/observation"
 	"github.com/sourcegraph/sourcegraph/internal/sentry"
+	"github.com/sourcegraph/sourcegraph/internal/uploadstore"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 type UploadHandler struct {
@@ -78,8 +78,8 @@ func (h *UploadHandler) handleEnqueue(w http.ResponseWriter, r *http.Request) {
 	// executed so that we can instrument the duration and the resulting error more
 	// easily. The remainder of the function simply serializes the result to the
 	// HTTP response writer.
-	payload, statusCode, err := func() (_ interface{}, statusCode int, err error) {
-		ctx, trace, endObservation := h.operations.handleEnqueue.WithAndLogger(r.Context(), &err, observation.Args{})
+	payload, statusCode, err := func() (_ any, statusCode int, err error) {
+		ctx, trace, endObservation := h.operations.handleEnqueue.With(r.Context(), &err, observation.Args{})
 		defer func() {
 			endObservation(1, observation.Args{LogFields: []log.Field{
 				log.Int("statusCode", statusCode),
@@ -96,6 +96,7 @@ func (h *UploadHandler) handleEnqueue(w http.ResponseWriter, r *http.Request) {
 			log.String("commit", uploadState.commit),
 			log.String("root", uploadState.root),
 			log.String("indexer", uploadState.indexer),
+			log.String("indexerVersion", uploadState.indexerVersion),
 			log.Int("associatedIndexID", uploadState.associatedIndexID),
 			log.Int("numParts", uploadState.numParts),
 			log.Int("numUploadedParts", len(uploadState.uploadedParts)),
@@ -141,7 +142,7 @@ func (h *UploadHandler) handleEnqueue(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type uploadHandlerFunc = func(context.Context, uploadState, io.Reader) (interface{}, int, error)
+type uploadHandlerFunc = func(context.Context, uploadState, io.Reader) (any, int, error)
 
 func (h *UploadHandler) selectUploadHandlerFunc(uploadState uploadState) uploadHandlerFunc {
 	if uploadState.uploadID == 0 {

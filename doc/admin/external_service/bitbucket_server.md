@@ -25,7 +25,7 @@ For Bitbucket Server instances that don't support personal access tokens (Bitbuc
 
 There are four fields for configuring which repositories are mirrored:
 
-- [`repos`](bitbucket_server.md#configuration)<br>A list of repositories in `projectKey/repositorySlug` format.
+- [`repos`](bitbucket_server.md#configuration)<br>A list of repositories in `projectKey/repositorySlug` format. The order determines the order in which we sync repository metadata and is safe to change.
 - [`repositoryQuery`](bitbucket_server.md#configuration)<br>A list of strings with some pre-defined options (`none`, `all`), and/or a [Bitbucket Server / Bitbucket Data Center Repo Search Request Query Parameters](https://docs.atlassian.com/bitbucket-server/rest/6.1.2/bitbucket-rest.html#idp355).
 - [`exclude`](bitbucket_server.md#configuration)<br>A list of repositories to exclude which takes precedence over the `repos`, and `repositoryQuery` fields.
 - [`excludePersonalRepositories`](bitbucket_server.md#configuration)<br>With this enabled, Sourcegraph will exclude any personal repositories from being imported, even if it has access to them.
@@ -94,7 +94,10 @@ Sourcegraph will mark repositories as archived if they have the `archived` label
 
 Internal rate limiting can be configured to limit the rate at which requests are made from Sourcegraph to Bitbucket Server / Bitbucket Data Center. 
 
-If enabled, the default rate is set at 28,800 per hour (8 per second) which can be configured via the `requestsPerHour` field (see below). If rate limiting is configured more than once for the same code host instance, the most restrictive limit will be used.
+If enabled, the default rate is set at 28,800 per hour (8 per second) which can be configured via the `requestsPerHour` field (see below):
+
+- For Sourcegraph <=3.38, if rate limiting is configured more than once for the same code host instance, the most restrictive limit will be used.
+- For Sourcegraph >=3.39, rate limiting should be enabled and configured for each individual code host connection.
 
 **NOTE** Internal rate limiting is only currently applied when synchronising changesets in [batch changes](../../batch_changes/index.md), repository permissions and repository metadata from code hosts.
 

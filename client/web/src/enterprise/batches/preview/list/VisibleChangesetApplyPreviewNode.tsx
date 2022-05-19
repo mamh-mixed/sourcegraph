@@ -1,3 +1,5 @@
+import React, { useCallback, useMemo, useState } from 'react'
+
 import classNames from 'classnames'
 import * as H from 'history'
 import AccountEditIcon from 'mdi-react/AccountEditIcon'
@@ -6,14 +8,13 @@ import CheckboxBlankCircleIcon from 'mdi-react/CheckboxBlankCircleIcon'
 import ChevronDownIcon from 'mdi-react/ChevronDownIcon'
 import ChevronRightIcon from 'mdi-react/ChevronRightIcon'
 import FileDocumentEditOutlineIcon from 'mdi-react/FileDocumentEditOutlineIcon'
-import React, { useCallback, useMemo, useState } from 'react'
 
 import { Maybe } from '@sourcegraph/shared/src/graphql-operations'
 import { ThemeProps } from '@sourcegraph/shared/src/theme'
-import { InputTooltip } from '@sourcegraph/web/src/components/InputTooltip'
-import { Button, Link, Alert } from '@sourcegraph/wildcard'
+import { Button, Link, Alert, Icon, Tabs, TabList, TabPanels, TabPanel, Tab, Typography } from '@sourcegraph/wildcard'
 
 import { DiffStatStack } from '../../../../components/diff/DiffStat'
+import { InputTooltip } from '../../../../components/InputTooltip'
 import { ChangesetState, VisibleChangesetApplyPreviewFields } from '../../../../graphql-operations'
 import { PersonLink } from '../../../../person/PersonLink'
 import { Branch, BranchMerge } from '../../Branch'
@@ -28,6 +29,7 @@ import { ChangesetSpecFileDiffConnection } from './ChangesetSpecFileDiffConnecti
 import { GitBranchChangesetDescriptionInfo } from './GitBranchChangesetDescriptionInfo'
 import { PreviewActions } from './PreviewActions'
 import { PreviewNodeIndicator } from './PreviewNodeIndicator'
+
 import styles from './VisibleChangesetApplyPreviewNode.module.scss'
 
 export interface VisibleChangesetApplyPreviewNodeProps extends ThemeProps {
@@ -46,7 +48,9 @@ export interface VisibleChangesetApplyPreviewNodeProps extends ThemeProps {
     expandChangesetDescriptions?: boolean
 }
 
-export const VisibleChangesetApplyPreviewNode: React.FunctionComponent<VisibleChangesetApplyPreviewNodeProps> = ({
+export const VisibleChangesetApplyPreviewNode: React.FunctionComponent<
+    React.PropsWithChildren<VisibleChangesetApplyPreviewNodeProps>
+> = ({
     node,
     isLightTheme,
     history,
@@ -74,9 +78,9 @@ export const VisibleChangesetApplyPreviewNode: React.FunctionComponent<VisibleCh
                 onClick={toggleIsExpanded}
             >
                 {isExpanded ? (
-                    <ChevronDownIcon className="icon-inline" aria-label="Close section" />
+                    <Icon aria-label="Close section" as={ChevronDownIcon} />
                 ) : (
-                    <ChevronRightIcon className="icon-inline" aria-label="Expand section" />
+                    <Icon aria-label="Expand section" as={ChevronRightIcon} />
                 )}
             </Button>
             {selectable ? (
@@ -126,7 +130,7 @@ export const VisibleChangesetApplyPreviewNode: React.FunctionComponent<VisibleCh
                             'd-flex justify-content-center align-items-center flex-column mx-1'
                         )}
                     >
-                        <CardTextOutlineIcon data-tooltip="The commit message changed" className="icon-inline" />
+                        <Icon data-tooltip="The commit message changed" as={CardTextOutlineIcon} />
                         <span className="text-nowrap">Message</span>
                     </div>
                 )}
@@ -137,7 +141,7 @@ export const VisibleChangesetApplyPreviewNode: React.FunctionComponent<VisibleCh
                             'd-flex justify-content-center align-items-center flex-column mx-1'
                         )}
                     >
-                        <FileDocumentEditOutlineIcon data-tooltip="The diff changed" className="icon-inline" />
+                        <Icon data-tooltip="The diff changed" as={FileDocumentEditOutlineIcon} />
                         <span className="text-nowrap">Diff</span>
                     </div>
                 )}
@@ -148,7 +152,7 @@ export const VisibleChangesetApplyPreviewNode: React.FunctionComponent<VisibleCh
                             'd-flex justify-content-center align-items-center flex-column mx-1'
                         )}
                     >
-                        <AccountEditIcon data-tooltip="The commit author details changed" className="icon-inline" />
+                        <Icon data-tooltip="The commit author details changed" as={AccountEditIcon} />
                         <span className="text-nowrap">Author</span>
                     </div>
                 )}
@@ -173,9 +177,9 @@ export const VisibleChangesetApplyPreviewNode: React.FunctionComponent<VisibleCh
                 variant="secondary"
             >
                 {isExpanded ? (
-                    <ChevronDownIcon className="icon-inline" aria-label="Close section" />
+                    <Icon aria-label="Close section" as={ChevronDownIcon} />
                 ) : (
-                    <ChevronRightIcon className="icon-inline" aria-label="Expand section" />
+                    <Icon aria-label="Expand section" as={ChevronRightIcon} />
                 )}{' '}
                 {isExpanded ? 'Hide' : 'Show'} details
             </Button>
@@ -203,13 +207,15 @@ export const VisibleChangesetApplyPreviewNode: React.FunctionComponent<VisibleCh
     )
 }
 
-const SelectBox: React.FunctionComponent<{
-    node: VisibleChangesetApplyPreviewFields
-    selectable: {
-        onSelect: (id: string) => void
-        isSelected: (id: string) => boolean
-    }
-}> = ({ node, selectable }) => {
+const SelectBox: React.FunctionComponent<
+    React.PropsWithChildren<{
+        node: VisibleChangesetApplyPreviewFields
+        selectable: {
+            onSelect: (id: string) => void
+            isSelected: (id: string) => boolean
+        }
+    }>
+> = ({ node, selectable }) => {
     const isPublishableResult = useMemo(() => checkPublishability(node), [node])
 
     const toggleSelected = useCallback((): void => {
@@ -225,6 +231,7 @@ const SelectBox: React.FunctionComponent<{
             checked={selectable.isSelected(isPublishableResult.changesetSpecID)}
             onChange={toggleSelected}
             tooltip="Click to select changeset for bulk-modifying the publication state"
+            aria-label="Click to select changeset for bulk-modifying the publication state"
         />
     ) : (
         <InputTooltip
@@ -233,6 +240,7 @@ const SelectBox: React.FunctionComponent<{
             checked={false}
             disabled={true}
             tooltip={isPublishableResult.reason}
+            aria-label={isPublishableResult.reason}
         />
     )
 
@@ -246,32 +254,19 @@ const SelectBox: React.FunctionComponent<{
     )
 }
 
-type SelectedTab = 'diff' | 'description' | 'commits'
-
 const ExpandedSection: React.FunctionComponent<
-    {
-        node: VisibleChangesetApplyPreviewFields
-        history: H.History
-        location: H.Location
-        authenticatedUser: PreviewPageAuthenticatedUser
+    React.PropsWithChildren<
+        {
+            node: VisibleChangesetApplyPreviewFields
+            history: H.History
+            location: H.Location
+            authenticatedUser: PreviewPageAuthenticatedUser
 
-        /** Used for testing. **/
-        queryChangesetSpecFileDiffs?: typeof _queryChangesetSpecFileDiffs
-    } & ThemeProps
+            /** Used for testing. **/
+            queryChangesetSpecFileDiffs?: typeof _queryChangesetSpecFileDiffs
+        } & ThemeProps
+    >
 > = ({ node, history, isLightTheme, location, authenticatedUser, queryChangesetSpecFileDiffs }) => {
-    const [selectedTab, setSelectedTab] = useState<SelectedTab>('diff')
-    const onSelectDiff = useCallback<React.MouseEventHandler>(event => {
-        event.preventDefault()
-        setSelectedTab('diff')
-    }, [])
-    const onSelectDescription = useCallback<React.MouseEventHandler>(event => {
-        event.preventDefault()
-        setSelectedTab('description')
-    }, [])
-    const onSelectCommits = useCallback<React.MouseEventHandler>(event => {
-        event.preventDefault()
-        setSelectedTab('commits')
-    }, [])
     if (node.targets.__typename === 'VisibleApplyPreviewTargetsDetach') {
         return (
             <Alert className="mb-0" variant="info">
@@ -280,6 +275,7 @@ const ExpandedSection: React.FunctionComponent<
             </Alert>
         )
     }
+
     if (node.targets.changesetSpec.description.__typename === 'ExistingChangesetReference') {
         return (
             <Alert className="mb-0" variant="info">
@@ -288,97 +284,56 @@ const ExpandedSection: React.FunctionComponent<
             </Alert>
         )
     }
+
     return (
-        <>
-            <div className="overflow-auto mb-4">
-                <ul className="nav nav-tabs d-inline-flex d-sm-flex flex-nowrap text-nowrap">
-                    <li className="nav-item">
-                        {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
-                        <Link
-                            to=""
-                            role="button"
-                            onClick={onSelectDiff}
-                            className={classNames(
-                                'nav-link',
-                                selectedTab === 'diff' && styles.visibleChangesetApplyPreviewNodeTabLinkActive,
-                                selectedTab === 'diff' && 'active'
-                            )}
-                        >
-                            <span className="text-content" data-tab-content="Changed files">
-                                Changed files
-                            </span>
-                            {node.delta.diffChanged && (
-                                <small className="text-warning ml-2" data-tooltip="Changes in this tab">
-                                    <CheckboxBlankCircleIcon
-                                        className={classNames(
-                                            styles.visibleChangesetApplyPreviewNodeChangeIndicator,
-                                            'icon-inline'
-                                        )}
-                                    />
-                                </small>
-                            )}
-                        </Link>
-                    </li>
-                    <li className="nav-item">
-                        {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
-                        <Link
-                            to=""
-                            role="button"
-                            onClick={onSelectDescription}
-                            className={classNames(
-                                'nav-link',
-                                selectedTab === 'description' && styles.visibleChangesetApplyPreviewNodeTabLinkActive,
-                                selectedTab === 'description' && 'active'
-                            )}
-                        >
-                            <span className="text-content" data-tab-content="Description">
-                                Description
-                            </span>
-                            {(node.delta.titleChanged || node.delta.bodyChanged) && (
-                                <small className="text-warning ml-2" data-tooltip="Changes in this tab">
-                                    <CheckboxBlankCircleIcon
-                                        className={classNames(
-                                            styles.visibleChangesetApplyPreviewNodeChangeIndicator,
-                                            'icon-inline'
-                                        )}
-                                    />
-                                </small>
-                            )}
-                        </Link>
-                    </li>
-                    <li className="nav-item">
-                        {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
-                        <Link
-                            to=""
-                            role="button"
-                            onClick={onSelectCommits}
-                            className={classNames(
-                                'nav-link',
-                                selectedTab === 'commits' && styles.visibleChangesetApplyPreviewNodeTabLinkActive,
-                                selectedTab === 'commits' && 'active'
-                            )}
-                        >
-                            <span className="text-content" data-tab-content="Commits">
-                                Commits
-                            </span>
-                            {(node.delta.authorEmailChanged ||
-                                node.delta.authorNameChanged ||
-                                node.delta.commitMessageChanged) && (
-                                <small className="text-warning ml-2" data-tooltip="Changes in this tab">
-                                    <CheckboxBlankCircleIcon
-                                        className={classNames(
-                                            styles.visibleChangesetApplyPreviewNodeChangeIndicator,
-                                            'icon-inline'
-                                        )}
-                                    />
-                                </small>
-                            )}
-                        </Link>
-                    </li>
-                </ul>
-            </div>
-            {selectedTab === 'diff' && (
-                <>
+        <Tabs size="large">
+            <TabList>
+                <Tab>
+                    <span className="text-content" data-tab-content="Changed files">
+                        Changed files
+                    </span>
+                    {node.delta.diffChanged && (
+                        <small className="text-warning ml-2" data-tooltip="Changes in this tab">
+                            <Icon
+                                className={styles.visibleChangesetApplyPreviewNodeChangeIndicator}
+                                as={CheckboxBlankCircleIcon}
+                            />
+                        </small>
+                    )}
+                </Tab>
+
+                <Tab>
+                    <span className="text-content" data-tab-content="Description">
+                        Description
+                    </span>
+                    {(node.delta.titleChanged || node.delta.bodyChanged) && (
+                        <small className="text-warning ml-2" data-tooltip="Changes in this tab">
+                            <Icon
+                                className={styles.visibleChangesetApplyPreviewNodeChangeIndicator}
+                                as={CheckboxBlankCircleIcon}
+                            />
+                        </small>
+                    )}
+                </Tab>
+
+                <Tab>
+                    <span className="text-content" data-tab-content="Commits">
+                        Commits
+                    </span>
+                    {(node.delta.authorEmailChanged ||
+                        node.delta.authorNameChanged ||
+                        node.delta.commitMessageChanged) && (
+                        <small className="text-warning ml-2" data-tooltip="Changes in this tab">
+                            <Icon
+                                className={styles.visibleChangesetApplyPreviewNodeChangeIndicator}
+                                as={CheckboxBlankCircleIcon}
+                            />
+                        </small>
+                    )}
+                </Tab>
+            </TabList>
+            <TabPanels>
+                <TabPanel className="pt-3">
                     {node.delta.diffChanged && (
                         <Alert variant="warning">
                             The files in this changeset have been altered from the previous version. These changes will
@@ -392,24 +347,23 @@ const ExpandedSection: React.FunctionComponent<
                         spec={node.targets.changesetSpec.id}
                         queryChangesetSpecFileDiffs={queryChangesetSpecFileDiffs}
                     />
-                </>
-            )}
-            {selectedTab === 'description' && (
-                <>
+                </TabPanel>
+
+                <TabPanel className="pt-3">
                     {node.targets.__typename === 'VisibleApplyPreviewTargetsUpdate' &&
                         node.delta.bodyChanged &&
                         node.targets.changeset.currentSpec?.description.__typename ===
                             'GitBranchChangesetDescription' && (
                             <>
-                                <h3 className="text-muted">
+                                <Typography.H3 className="text-muted">
                                     <del>{node.targets.changeset.currentSpec.description.title}</del>
-                                </h3>
+                                </Typography.H3>
                                 <del className="text-muted">
                                     <Description description={node.targets.changeset.currentSpec.description.body} />
                                 </del>
                             </>
                         )}
-                    <h3>
+                    <Typography.H3>
                         {node.targets.changesetSpec.description.title}{' '}
                         <small>
                             by{' '}
@@ -426,16 +380,21 @@ const ExpandedSection: React.FunctionComponent<
                                 }
                             />
                         </small>
-                    </h3>
+                    </Typography.H3>
                     <Description description={node.targets.changesetSpec.description.body} />
-                </>
-            )}
-            {selectedTab === 'commits' && <GitBranchChangesetDescriptionInfo node={node} />}
-        </>
+                </TabPanel>
+
+                <TabPanel className="pt-3">
+                    <GitBranchChangesetDescriptionInfo node={node} />
+                </TabPanel>
+            </TabPanels>
+        </Tabs>
     )
 }
 
-const ChangesetSpecTitle: React.FunctionComponent<{ spec: VisibleChangesetApplyPreviewFields }> = ({ spec }) => {
+const ChangesetSpecTitle: React.FunctionComponent<
+    React.PropsWithChildren<{ spec: VisibleChangesetApplyPreviewFields }>
+> = ({ spec }) => {
     // Identify the title and external ID/URL, if the changeset spec has them, depending on the type
     let externalID: Maybe<string> = null
     let externalURL: Maybe<{ url: string }> = null
@@ -444,7 +403,7 @@ const ChangesetSpecTitle: React.FunctionComponent<{ spec: VisibleChangesetApplyP
     if (spec.targets.__typename === 'VisibleApplyPreviewTargetsAttach') {
         // An import changeset does not display a regular title
         if (spec.targets.changesetSpec.description.__typename === 'ExistingChangesetReference') {
-            return <h3>Import changeset #{spec.targets.changesetSpec.description.externalID}</h3>
+            return <Typography.H3>Import changeset #{spec.targets.changesetSpec.description.externalID}</Typography.H3>
         }
 
         title = spec.targets.changesetSpec.description.title
@@ -463,7 +422,7 @@ const ChangesetSpecTitle: React.FunctionComponent<{ spec: VisibleChangesetApplyP
             : null
 
     return (
-        <h3>
+        <Typography.H3>
             {newTitle ? (
                 <>
                     <del className="mr-1">
@@ -479,11 +438,13 @@ const ChangesetSpecTitle: React.FunctionComponent<{ spec: VisibleChangesetApplyP
             ) : (
                 <ExternalChangesetTitle externalID={externalID} externalURL={externalURL} title={title} />
             )}
-        </h3>
+        </Typography.H3>
     )
 }
 
-const RepoLink: React.FunctionComponent<{ spec: VisibleChangesetApplyPreviewFields }> = ({ spec }) => {
+const RepoLink: React.FunctionComponent<React.PropsWithChildren<{ spec: VisibleChangesetApplyPreviewFields }>> = ({
+    spec,
+}) => {
     let to: string
     let name: string
     if (
@@ -503,7 +464,9 @@ const RepoLink: React.FunctionComponent<{ spec: VisibleChangesetApplyPreviewFiel
     )
 }
 
-const References: React.FunctionComponent<{ spec: VisibleChangesetApplyPreviewFields }> = ({ spec }) => {
+const References: React.FunctionComponent<React.PropsWithChildren<{ spec: VisibleChangesetApplyPreviewFields }>> = ({
+    spec,
+}) => {
     if (spec.targets.__typename === 'VisibleApplyPreviewTargetsDetach') {
         return null
     }
@@ -530,7 +493,9 @@ const References: React.FunctionComponent<{ spec: VisibleChangesetApplyPreviewFi
     )
 }
 
-const ApplyDiffStat: React.FunctionComponent<{ spec: VisibleChangesetApplyPreviewFields }> = ({ spec }) => {
+const ApplyDiffStat: React.FunctionComponent<React.PropsWithChildren<{ spec: VisibleChangesetApplyPreviewFields }>> = ({
+    spec,
+}) => {
     let diffStat: { added: number; changed: number; deleted: number }
     if (spec.targets.__typename === 'VisibleApplyPreviewTargetsDetach') {
         if (!spec.targets.changeset.diffStat) {
@@ -546,7 +511,7 @@ const ApplyDiffStat: React.FunctionComponent<{ spec: VisibleChangesetApplyPrevie
 }
 
 const VisibleChangesetApplyPreviewNodeStatusCell: React.FunctionComponent<
-    Pick<VisibleChangesetApplyPreviewNodeProps, 'node'> & { className?: string }
+    React.PropsWithChildren<Pick<VisibleChangesetApplyPreviewNodeProps, 'node'> & { className?: string }>
 > = ({ node, className }) => {
     if (node.targets.__typename === 'VisibleApplyPreviewTargetsAttach') {
         return <ChangesetStatusCell state={ChangesetState.UNPUBLISHED} className={className} />

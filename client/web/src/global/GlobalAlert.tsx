@@ -1,10 +1,11 @@
-import classNames from 'classnames'
 import React from 'react'
 
+import classNames from 'classnames'
+
+import { renderMarkdown } from '@sourcegraph/common'
 import { Markdown } from '@sourcegraph/shared/src/components/Markdown'
 import { AlertType } from '@sourcegraph/shared/src/graphql-operations'
 import * as GQL from '@sourcegraph/shared/src/schema'
-import { renderMarkdown } from '@sourcegraph/shared/src/util/markdown'
 import { Alert } from '@sourcegraph/wildcard'
 
 import { DismissibleAlert, DismissibleAlertProps } from '../components/DismissibleAlert'
@@ -12,10 +13,12 @@ import { DismissibleAlert, DismissibleAlertProps } from '../components/Dismissib
 /**
  * A global alert that is shown at the top of the viewport.
  */
-export const GlobalAlert: React.FunctionComponent<{
-    alert: Pick<GQL.IAlert, 'message' | 'isDismissibleWithKey' | 'type'>
-    className?: string
-}> = ({ alert, className: commonClassName }) => {
+export const GlobalAlert: React.FunctionComponent<
+    React.PropsWithChildren<{
+        alert: Pick<GQL.IAlert, 'message' | 'isDismissibleWithKey' | 'type'>
+        className?: string
+    }>
+> = ({ alert, className: commonClassName }) => {
     const content = <Markdown dangerousInnerHTML={renderMarkdown(alert.message)} />
     const className = classNames(commonClassName, 'd-flex')
 

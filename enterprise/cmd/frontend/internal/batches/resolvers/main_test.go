@@ -21,6 +21,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/encryption"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc"
+	"github.com/sourcegraph/sourcegraph/internal/gitserver"
 	"github.com/sourcegraph/sourcegraph/internal/gitserver/gitdomain"
 	"github.com/sourcegraph/sourcegraph/internal/timeutil"
 	"github.com/sourcegraph/sourcegraph/internal/types"
@@ -187,15 +188,15 @@ func mockRepoComparison(t *testing.T, baseRev, headRev, diff string) {
 
 	spec := fmt.Sprintf("%s...%s", baseRev, headRev)
 
-	git.Mocks.ResolveRevision = func(spec string, opt git.ResolveRevisionOptions) (api.CommitID, error) {
+	gitserver.Mocks.ResolveRevision = func(spec string, opt gitserver.ResolveRevisionOptions) (api.CommitID, error) {
 		if spec != baseRev && spec != headRev {
-			t.Fatalf("git.Mocks.ResolveRevision received unknown spec: %s", spec)
+			t.Fatalf("gitserver.Mocks.ResolveRevision received unknown spec: %s", spec)
 		}
 		return api.CommitID(spec), nil
 	}
 	t.Cleanup(func() { git.Mocks.GetCommit = nil })
 
-	git.Mocks.ExecReader = func(args []string) (io.ReadCloser, error) {
+	gitserver.Mocks.ExecReader = func(args []string) (io.ReadCloser, error) {
 		if len(args) < 1 && args[0] != "diff" {
 			t.Fatalf("gitserver.ExecReader received wrong args: %v", args)
 		}
@@ -205,7 +206,7 @@ func mockRepoComparison(t *testing.T, baseRev, headRev, diff string) {
 		}
 		return io.NopCloser(strings.NewReader(diff)), nil
 	}
-	t.Cleanup(func() { git.Mocks.ExecReader = nil })
+	t.Cleanup(func() { gitserver.Mocks.ExecReader = nil })
 
 	git.Mocks.MergeBase = func(repo api.RepoName, a, b api.CommitID) (api.CommitID, error) {
 		if string(a) != baseRev && string(b) != headRev {

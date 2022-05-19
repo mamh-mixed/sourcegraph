@@ -3,7 +3,8 @@
 exports[`UserProductSubscriptionStatus toggle: license key hidden 1`] = `
 <DocumentFragment>
   <div
-    class="test-product-certificate"
+    class="card"
+    data-testid="product-certificate"
   >
     <div
       class="cardBody d-flex align-items-center"
@@ -15,12 +16,12 @@ exports[`UserProductSubscriptionStatus toggle: license key hidden 1`] = `
       />
       <div>
         <h2
-          class="font-weight-normal mb-1"
+          class="h2 font-weight-normal mb-1"
         >
           P
         </h2>
         <h3
-          class="text-muted font-weight-normal"
+          class="h3 text-muted font-weight-normal"
         >
           123-user license, 
           <span>
@@ -49,7 +50,7 @@ exports[`UserProductSubscriptionStatus toggle: license key hidden 1`] = `
           type="button"
         >
           <keyicon
-            class="icon-inline"
+            class="iconInline"
           />
            Reveal license key
         </button>
@@ -68,7 +69,8 @@ exports[`UserProductSubscriptionStatus toggle: license key hidden 1`] = `
 exports[`UserProductSubscriptionStatus toggle: license key revealed 1`] = `
 <DocumentFragment>
   <div
-    class="test-product-certificate"
+    class="card"
+    data-testid="product-certificate"
   >
     <div
       class="cardBody d-flex align-items-center"
@@ -80,12 +82,12 @@ exports[`UserProductSubscriptionStatus toggle: license key revealed 1`] = `
       />
       <div>
         <h2
-          class="font-weight-normal mb-1"
+          class="h2 font-weight-normal mb-1"
         >
           P
         </h2>
         <h3
-          class="text-muted font-weight-normal"
+          class="h3 text-muted font-weight-normal"
         >
           123-user license, 
           <span>
@@ -114,7 +116,7 @@ exports[`UserProductSubscriptionStatus toggle: license key revealed 1`] = `
           type="button"
         >
           <keyicon
-            class="icon-inline"
+            class="iconInline"
           />
            Hide license key
         </button>
@@ -128,7 +130,9 @@ exports[`UserProductSubscriptionStatus toggle: license key revealed 1`] = `
       <div
         class="cardFooter"
       >
-        <h3>
+        <h3
+          class="h3"
+        >
           License key
         </h3>
         <copyabletext
@@ -139,7 +143,7 @@ exports[`UserProductSubscriptionStatus toggle: license key revealed 1`] = `
           class="mt-2 d-flex align-items-center"
         >
           <informationicon
-            class="icon-inline mr-1"
+            class="iconInline mr-1"
           />
            
           <span>

@@ -1,13 +1,14 @@
+import * as React from 'react'
+
 import classNames from 'classnames'
 import { parseISO } from 'date-fns'
 import differenceInDays from 'date-fns/differenceInDays'
-import * as React from 'react'
 import { Subscription } from 'rxjs'
 
+import { renderMarkdown } from '@sourcegraph/common'
 import { Markdown } from '@sourcegraph/shared/src/components/Markdown'
 import { Settings } from '@sourcegraph/shared/src/schema/settings.schema'
 import { isSettingsValid, SettingsCascadeProps } from '@sourcegraph/shared/src/settings/settings'
-import { renderMarkdown } from '@sourcegraph/shared/src/util/markdown'
 import { Link } from '@sourcegraph/wildcard'
 
 import { AuthenticatedUser } from '../auth'
@@ -21,8 +22,9 @@ import { LicenseExpirationAlert } from '../site/LicenseExpirationAlert'
 import { NeedsRepositoryConfigurationAlert } from '../site/NeedsRepositoryConfigurationAlert'
 
 import { GlobalAlert } from './GlobalAlert'
-import styles from './GlobalAlerts.module.scss'
 import { Notices } from './Notices'
+
+import styles from './GlobalAlerts.module.scss'
 
 interface Props extends SettingsCascadeProps {
     authenticatedUser: AuthenticatedUser | null

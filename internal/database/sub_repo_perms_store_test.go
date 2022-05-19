@@ -184,6 +184,61 @@ func TestSubRepoPermsGetByUser(t *testing.T) {
 	}
 }
 
+func TestSubRepoPermsSupportedForRepoId(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+	t.Parallel()
+
+	db := dbtest.NewDB(t)
+
+	ctx := context.Background()
+	s := SubRepoPerms(db)
+	prepareSubRepoTestData(ctx, t, db)
+
+	testSubRepoNotSupportedForRepo(ctx, t, s, 3, "perforce1", "Repo is not private, therefore sub-repo perms are not supported")
+
+	testSubRepoSupportedForRepo(ctx, t, s, 4, "perforce2", "Repo is private, therefore sub-repo perms are supported")
+
+	testSubRepoNotSupportedForRepo(ctx, t, s, 5, "github.com/foo/qux", "Repo is not perforce, therefore sub-repo perms are not supported")
+}
+
+func testSubRepoNotSupportedForRepo(ctx context.Context, t *testing.T, s SubRepoPermsStore, repoID api.RepoID, repoName api.RepoName, errMsg string) {
+	t.Helper()
+	exists, err := s.RepoIdSupported(ctx, repoID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if exists {
+		t.Fatal(errMsg)
+	}
+	exists, err = s.RepoSupported(ctx, repoName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if exists {
+		t.Fatal(errMsg)
+	}
+}
+
+func testSubRepoSupportedForRepo(ctx context.Context, t *testing.T, s SubRepoPermsStore, repoID api.RepoID, repoName api.RepoName, errMsg string) {
+	t.Helper()
+	exists, err := s.RepoIdSupported(ctx, repoID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !exists {
+		t.Fatal(errMsg)
+	}
+	exists, err = s.RepoSupported(ctx, repoName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !exists {
+		t.Fatal(errMsg)
+	}
+}
+
 func prepareSubRepoTestData(ctx context.Context, t *testing.T, db dbutil.DB) {
 	t.Helper()
 
@@ -197,6 +252,8 @@ func prepareSubRepoTestData(ctx context.Context, t *testing.T, db dbutil.DB) {
 		`INSERT INTO repo(id, name, external_id, external_service_type, external_service_id) VALUES(1, 'github.com/foo/bar', 'MDEwOlJlcG9zaXRvcnk0MTI4ODcwOA==', 'github', 'https://github.com/')`,
 		`INSERT INTO repo(id, name, external_id, external_service_type, external_service_id) VALUES(2, 'github.com/foo/baz', 'MDEwOlJlcG9zaXRvcnk0MTI4ODcwOB==', 'github', 'https://github.com/')`,
 		`INSERT INTO repo(id, name, external_id, external_service_type, external_service_id) VALUES(3, 'perforce1', 'MDEwOlJlcG9zaXRvcnk0MTI4ODcwOB==', 'perforce', 'https://perforce.com/')`,
+		`INSERT INTO repo(id, name, external_id, external_service_type, external_service_id, private) VALUES(4, 'perforce2', 'MDEwOlJlcG9zaXRvcnk0MTI4ODcwOB==', 'perforce', 'https://perforce.com/2', 'true')`,
+		`INSERT INTO repo(id, name, external_id, external_service_type, external_service_id, private) VALUES(5, 'github.com/foo/qux', 'MDEwOlJlcG9zaXRvcnk0MTI4ODcwOC==', 'github', 'https://github.com/', 'true')`,
 
 		`INSERT INTO external_service_repos(repo_id, external_service_id, clone_url) VALUES(1, 1, 'cloneURL')`,
 		`INSERT INTO external_service_repos(repo_id, external_service_id, clone_url) VALUES(2, 1, 'cloneURL')`,

@@ -1,7 +1,8 @@
-import classNames from 'classnames'
 import React, { CSSProperties } from 'react'
 
-import { isErrorLike } from '@sourcegraph/common'
+import classNames from 'classnames'
+
+import { isErrorLike, sanitizeClass } from '@sourcegraph/common'
 import { Card } from '@sourcegraph/wildcard'
 
 import { ActionItem, ActionItemComponentProps } from '../actions/ActionItem'
@@ -9,15 +10,15 @@ import { NotificationType } from '../api/extension/extensionHostApi'
 import { PlatformContextProps } from '../platform/context'
 import { TelemetryProps } from '../telemetry/telemetryService'
 import { ThemeProps } from '../theme'
-import { sanitizeClass } from '../util/strings'
 
-import hoverOverlayStyle from './HoverOverlay.module.scss'
 import type { HoverContext, HoverOverlayBaseProps, GetAlertClassName, GetAlertVariant } from './HoverOverlay.types'
 import { HoverOverlayAlerts, HoverOverlayAlertsProps } from './HoverOverlayAlerts'
 import { HoverOverlayContents } from './HoverOverlayContents'
-import style from './HoverOverlayContents.module.scss'
 import { HoverOverlayLogo } from './HoverOverlayLogo'
 import { useLogTelemetryEvent } from './useLogTelemetryEvent'
+
+import hoverOverlayStyle from './HoverOverlay.module.scss'
+import style from './HoverOverlayContents.module.scss'
 
 const LOADING = 'loading' as const
 
@@ -61,20 +62,26 @@ export interface HoverOverlayProps
     useBrandedLogo?: boolean
 }
 
-const getOverlayStyle = (overlayPosition: HoverOverlayProps['overlayPosition']): CSSProperties =>
-    overlayPosition
-        ? {
-              opacity: 1,
-              visibility: 'visible',
-              left: `${overlayPosition.left}px`,
-              top: `${overlayPosition.top}px`,
-          }
-        : {
-              opacity: 0,
-              visibility: 'hidden',
-          }
+const getOverlayStyle = (overlayPosition: HoverOverlayProps['overlayPosition']): CSSProperties => {
+    if (!overlayPosition) {
+        return {
+            opacity: 0,
+            visibility: 'hidden',
+        }
+    }
 
-export const HoverOverlay: React.FunctionComponent<HoverOverlayProps> = props => {
+    const topOrBottom = 'top' in overlayPosition ? 'top' : 'bottom'
+    const topOrBottomValue = 'top' in overlayPosition ? overlayPosition.top : overlayPosition.bottom
+
+    return {
+        opacity: 1,
+        visibility: 'visible',
+        left: `${overlayPosition.left}px`,
+        [topOrBottom]: `${topOrBottomValue}px`,
+    }
+}
+
+export const HoverOverlay: React.FunctionComponent<React.PropsWithChildren<HoverOverlayProps>> = props => {
     const {
         hoverOrError,
         hoverRef,
@@ -91,6 +98,8 @@ export const HoverOverlay: React.FunctionComponent<HoverOverlayProps> = props =>
         actionItemClassName,
         actionItemPressedClassName,
         contentClassName,
+
+        actionItemStyleProps,
 
         getAlertClassName,
         getAlertVariant,
@@ -111,7 +120,7 @@ export const HoverOverlay: React.FunctionComponent<HoverOverlayProps> = props =>
             data-testid="hover-overlay"
             // eslint-disable-next-line react/forbid-dom-props
             style={getOverlayStyle(overlayPosition)}
-            className={classNames(hoverOverlayStyle.hoverOverlay, className)}
+            className={classNames(hoverOverlayStyle.card, hoverOverlayStyle.hoverOverlay, className)}
             ref={hoverRef}
         >
             <div
@@ -169,6 +178,7 @@ export const HoverOverlay: React.FunctionComponent<HoverOverlayProps> = props =>
                                     telemetryService={telemetryService}
                                     extensionsController={extensionsController}
                                     location={location}
+                                    actionItemStyleProps={actionItemStyleProps}
                                 />
                             ))}
                         </div>

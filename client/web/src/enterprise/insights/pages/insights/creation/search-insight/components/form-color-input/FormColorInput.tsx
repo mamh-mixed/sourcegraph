@@ -1,6 +1,7 @@
+import React, { ChangeEventHandler, memo } from 'react'
+
 import classNames from 'classnames'
 import { startCase } from 'lodash'
-import React, { ChangeEventHandler, memo } from 'react'
 import { noop } from 'rxjs'
 
 import { DATA_SERIES_COLORS } from '../../constants'
@@ -23,7 +24,7 @@ interface FormColorInputProps {
 const COLORS_KEYS = Object.keys(DATA_SERIES_COLORS) as (keyof typeof DATA_SERIES_COLORS)[]
 
 /** Displays custom radio group for picking color of code insight chart line. */
-export const FormColorInput: React.FunctionComponent<FormColorInputProps> = memo(props => {
+export const FormColorInput: React.FunctionComponent<React.PropsWithChildren<FormColorInputProps>> = memo(props => {
     const { className, value = null, title, name, onChange = noop } = props
 
     return (

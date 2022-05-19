@@ -1,8 +1,7 @@
 import { createMemoryHistory } from 'history'
-import React from 'react'
 import { of, Observable } from 'rxjs'
 
-import { renderWithRouter } from '@sourcegraph/shared/src/testing/render-with-router'
+import { renderWithBrandedContext } from '@sourcegraph/shared/src/testing'
 
 import { StatusMessagesResult, StatusMessageFields } from '../graphql-operations'
 import { SourcegraphContext } from '../jscontext'
@@ -29,7 +28,7 @@ describe('StatusMessagesNavItem', () => {
     test('no messages', () => {
         const fetchMessages = (): Observable<StatusMessagesResult['statusMessages']> => of([])
         expect(
-            renderWithRouter(
+            renderWithBrandedContext(
                 <StatusMessagesNavItem fetchMessages={fetchMessages} user={user} history={createMemoryHistory()} />
             ).asFragment()
         ).toMatchSnapshot()
@@ -44,7 +43,7 @@ describe('StatusMessagesNavItem', () => {
         const fetchMessages = () => of([message])
         test('as non-site admin', () => {
             expect(
-                renderWithRouter(
+                renderWithBrandedContext(
                     <StatusMessagesNavItem fetchMessages={fetchMessages} user={user} history={createMemoryHistory()} />
                 ).asFragment()
             ).toMatchSnapshot()
@@ -52,7 +51,7 @@ describe('StatusMessagesNavItem', () => {
 
         test('as site admin', () => {
             expect(
-                renderWithRouter(
+                renderWithBrandedContext(
                     <StatusMessagesNavItem
                         fetchMessages={fetchMessages}
                         user={{ ...user, isSiteAdmin: true }}
@@ -76,7 +75,7 @@ describe('StatusMessagesNavItem', () => {
         const fetchMessages = () => of([message])
         test('as non-site admin', () => {
             expect(
-                renderWithRouter(
+                renderWithBrandedContext(
                     <StatusMessagesNavItem fetchMessages={fetchMessages} user={user} history={createMemoryHistory()} />
                 ).asFragment()
             ).toMatchSnapshot()
@@ -84,7 +83,7 @@ describe('StatusMessagesNavItem', () => {
 
         test('as site admin', () => {
             expect(
-                renderWithRouter(
+                renderWithBrandedContext(
                     <StatusMessagesNavItem
                         fetchMessages={fetchMessages}
                         user={{ ...user, isSiteAdmin: true }}
@@ -104,7 +103,7 @@ describe('StatusMessagesNavItem', () => {
         const fetchMessages = () => of([message])
         test('as non-site admin', () => {
             expect(
-                renderWithRouter(
+                renderWithBrandedContext(
                     <StatusMessagesNavItem fetchMessages={fetchMessages} user={user} history={createMemoryHistory()} />
                 ).asFragment()
             ).toMatchSnapshot()
@@ -112,7 +111,7 @@ describe('StatusMessagesNavItem', () => {
 
         test('as site admin', () => {
             expect(
-                renderWithRouter(
+                renderWithBrandedContext(
                     <StatusMessagesNavItem
                         fetchMessages={fetchMessages}
                         user={{ ...user, isSiteAdmin: true }}

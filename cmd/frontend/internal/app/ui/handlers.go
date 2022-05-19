@@ -9,13 +9,12 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/errors"
 	"github.com/gorilla/mux"
+	"github.com/grafana/regexp"
 	"github.com/inconshreveable/log15"
 
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/auth"
@@ -27,6 +26,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/internal/app/jscontext"
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/internal/handlerutil"
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/internal/routevar"
+	"github.com/sourcegraph/sourcegraph/internal/actor"
 	"github.com/sourcegraph/sourcegraph/internal/api"
 	"github.com/sourcegraph/sourcegraph/internal/authz"
 	"github.com/sourcegraph/sourcegraph/internal/conf"
@@ -34,6 +34,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/env"
 	"github.com/sourcegraph/sourcegraph/internal/errcode"
+	"github.com/sourcegraph/sourcegraph/internal/featureflag"
 	"github.com/sourcegraph/sourcegraph/internal/gitserver"
 	"github.com/sourcegraph/sourcegraph/internal/gitserver/gitdomain"
 	"github.com/sourcegraph/sourcegraph/internal/repoupdater"
@@ -41,6 +42,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/search/symbol"
 	"github.com/sourcegraph/sourcegraph/internal/types"
 	"github.com/sourcegraph/sourcegraph/internal/vcs/git"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 	"github.com/sourcegraph/sourcegraph/ui/assets"
 )
 
@@ -307,7 +309,15 @@ func serveHome(db database.DB) handlerFunc {
 			return nil // request was handled
 		}
 
-		// Homepage redirects to /search.
+		if envvar.SourcegraphDotComMode() && !actor.FromContext(r.Context()).IsAuthenticated() && !strings.Contains(r.UserAgent(), "Cookiebot") {
+			// The user is not signed in and tried to access Sourcegraph.com.
+			// Redirect to about.sourcegraph.com so they see general info page.
+			// Don't redirect Cookiebot so it can scan the website without authentication.
+			http.Redirect(w, r, (&url.URL{Scheme: aboutRedirectScheme, Host: aboutRedirectHost}).String(), http.StatusTemporaryRedirect)
+			return nil
+		}
+
+		// On non-Sourcegraph.com instances, there is no separate homepage, so redirect to /search.
 		r.URL.Path = "/search"
 		http.Redirect(w, r, r.URL.String(), http.StatusTemporaryRedirect)
 		return nil
@@ -326,6 +336,35 @@ func serveSignIn(db database.DB) handlerFunc {
 		common.Title = brandNameSubtitle("Sign in")
 
 		return renderTemplate(w, "app.html", common)
+	}
+}
+
+func serveEmbed(db database.DB) handlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) error {
+		flagSet := featureflag.FromContext(r.Context())
+		if enabled := flagSet["enable-embed-route"]; !enabled {
+			w.WriteHeader(http.StatusNotFound)
+			return nil
+		}
+
+		// 🚨 SECURITY: Removing the `X-Frame-Options` header allows embedding the `/embed` route in an iframe.
+		// The embedding is safe because the `/embed` route serves the `embed` JS bundle instead of the
+		// regular Sourcegraph (web) app bundle (see `client/web/webpack.config.js` for the entrypoint definitions).
+		// It contains only the components needed to render the embedded content, and it should not include sensitive pages, like the sign-in page.
+		// The embed bundle also has its own React router that only recognizes specific routes (e.g., for embedding a notebook).
+		//
+		// Any changes to this function could have security implications. Please consult the security team before making changes.
+		w.Header().Del("X-Frame-Options")
+
+		common, err := newCommon(w, r, db, "", index, serveError)
+		if err != nil {
+			return err
+		}
+		if common == nil {
+			return nil // request was handled
+		}
+
+		return renderTemplate(w, "embed.html", common)
 	}
 }
 
@@ -348,7 +387,7 @@ func redirectTreeOrBlob(routeName, path string, common *Common, w http.ResponseW
 		}
 		return false, nil
 	}
-	stat, err := git.Stat(r.Context(), authz.DefaultSubRepoPermsChecker, common.Repo.Name, common.CommitID, path)
+	stat, err := git.Stat(r.Context(), db, authz.DefaultSubRepoPermsChecker, common.Repo.Name, common.CommitID, path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			serveError(w, r, db, err, http.StatusNotFound)

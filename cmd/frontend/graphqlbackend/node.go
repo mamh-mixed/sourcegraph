@@ -3,11 +3,11 @@ package graphqlbackend
 import (
 	"context"
 
-	"github.com/cockroachdb/errors"
 	"github.com/graph-gophers/graphql-go"
 	"github.com/graph-gophers/graphql-go/relay"
 
 	executor "github.com/sourcegraph/sourcegraph/internal/services/executors/transport/graphql"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 // Node must be implemented by any resolver that implements the Node interface in
@@ -243,9 +243,20 @@ func (r *NodeResolver) ToBulkOperation() (BulkOperationResolver, bool) {
 	return n, ok
 }
 
-func (r *NodeResolver) ToBatchSpecWorkspace() (BatchSpecWorkspaceResolver, bool) {
+func (r *NodeResolver) ToHiddenBatchSpecWorkspace() (HiddenBatchSpecWorkspaceResolver, bool) {
 	n, ok := r.Node.(BatchSpecWorkspaceResolver)
-	return n, ok
+	if !ok {
+		return nil, ok
+	}
+	return n.ToHiddenBatchSpecWorkspace()
+}
+
+func (r *NodeResolver) ToVisibleBatchSpecWorkspace() (VisibleBatchSpecWorkspaceResolver, bool) {
+	n, ok := r.Node.(BatchSpecWorkspaceResolver)
+	if !ok {
+		return nil, ok
+	}
+	return n.ToVisibleBatchSpecWorkspace()
 }
 
 func (r *NodeResolver) ToInsightsDashboard() (InsightsDashboardResolver, bool) {

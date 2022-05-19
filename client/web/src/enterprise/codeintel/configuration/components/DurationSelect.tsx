@@ -1,5 +1,8 @@
+import { FunctionComponent, useState } from 'react'
+
 import classNames from 'classnames'
-import React, { FunctionComponent, useState } from 'react'
+
+import { Select } from '@sourcegraph/wildcard'
 
 import { defaultDurationValues } from '../shared'
 
@@ -16,7 +19,7 @@ const defaultCustomValue = 24
 
 const toInt = (value: string): number | null => Math.floor(parseInt(value, 10)) || null
 
-export const DurationSelect: FunctionComponent<DurationSelectProps> = ({
+export const DurationSelect: FunctionComponent<React.PropsWithChildren<DurationSelectProps>> = ({
     id,
     value,
     disabled,
@@ -30,9 +33,10 @@ export const DurationSelect: FunctionComponent<DurationSelectProps> = ({
 
     return (
         <div className="input-group">
-            <select
+            <Select
+                aria-label=""
                 id={id}
-                className={classNames('form-control', className)}
+                className={classNames('flex-1 mb-0', className)}
                 value={isCustom ? 'custom' : value || undefined}
                 disabled={disabled}
                 onChange={event => {
@@ -51,7 +55,7 @@ export const DurationSelect: FunctionComponent<DurationSelectProps> = ({
                 ))}
 
                 <option value="custom">Custom</option>
-            </select>
+            </Select>
 
             {isCustom && (
                 <>

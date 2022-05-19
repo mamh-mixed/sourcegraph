@@ -1,5 +1,6 @@
-import classNames from 'classnames'
 import React from 'react'
+
+import classNames from 'classnames'
 
 import { Link } from '@sourcegraph/wildcard'
 
@@ -35,7 +36,7 @@ export function offsetSum(props: HighlightedLinkProps): number {
  * we want to highlight 'Doc' and `READ' in the filename
  * 'Documentation/README.md`.
  */
-export const HighlightedLink: React.FunctionComponent<HighlightedLinkProps> = props => {
+export const HighlightedLink: React.FunctionComponent<React.PropsWithChildren<HighlightedLinkProps>> = props => {
     const spans: JSX.Element[] = []
     let start = 0
     function pushElement(kind: 'mark' | 'span', startOffset: number, endOffset: number): void {

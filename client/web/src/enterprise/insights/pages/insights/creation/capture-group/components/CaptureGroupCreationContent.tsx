@@ -1,12 +1,14 @@
-import classNames from 'classnames'
-import { noop } from 'lodash'
 import React, { useCallback } from 'react'
 
-import styles from '../../../../../components/creation-ui-kit/CreationUiKit.module.scss'
+import classNames from 'classnames'
+import { noop } from 'lodash'
+
+import { styles } from '../../../../../components/creation-ui-kit'
 import { useAsyncInsightTitleValidator } from '../../../../../components/form/hooks/use-async-insight-title-validator'
 import { useField } from '../../../../../components/form/hooks/useField'
 import { FormChangeEvent, SubmissionErrors, useForm } from '../../../../../components/form/hooks/useForm'
 import { createRequiredValidator } from '../../../../../components/form/validators'
+import { Insight } from '../../../../../core'
 import {
     repositoriesExistValidator,
     repositoriesFieldValidator,
@@ -25,6 +27,7 @@ const INITIAL_VALUES: CaptureGroupFormFields = {
     step: 'months',
     stepValue: '2',
     allRepos: false,
+    dashboardReferenceCount: 0,
 }
 
 const titleRequiredValidator = createRequiredValidator('Title is a required field.')
@@ -34,20 +37,24 @@ interface CaptureGroupCreationContentProps {
     mode: 'creation' | 'edit'
     initialValues?: Partial<CaptureGroupFormFields>
     className?: string
+    insight?: Insight
 
     onSubmit: (values: CaptureGroupFormFields) => SubmissionErrors | Promise<SubmissionErrors> | void
     onChange?: (event: FormChangeEvent<CaptureGroupFormFields>) => void
     onCancel: () => void
 }
 
-export const CaptureGroupCreationContent: React.FunctionComponent<CaptureGroupCreationContentProps> = props => {
-    const { mode, className, initialValues = {}, onSubmit, onChange = noop, onCancel } = props
+export const CaptureGroupCreationContent: React.FunctionComponent<
+    React.PropsWithChildren<CaptureGroupCreationContentProps>
+> = props => {
+    const { mode, className, initialValues = {}, onSubmit, onChange = noop, onCancel, insight } = props
 
     // Search query validators
     const validateChecks = useCallback((value: string | undefined) => {
         if (!value) {
             return queryRequiredValidator(value)
         }
+
         const validatedChecks = searchQueryValidator(value, value !== undefined)
         const allChecksPassed = Object.values(validatedChecks).every(Boolean)
 
@@ -153,10 +160,12 @@ export const CaptureGroupCreationContent: React.FunctionComponent<CaptureGroupCr
                 stepValue={stepValue}
                 query={query}
                 isFormClearActive={hasFilledValue}
-                onCancel={onCancel}
-                onFormReset={handleFormReset}
                 className={styles.contentForm}
                 allReposMode={allReposMode}
+                dashboardReferenceCount={initialValues.dashboardReferenceCount}
+                insight={insight}
+                onCancel={onCancel}
+                onFormReset={handleFormReset}
             />
 
             <CaptureGroupCreationLivePreview

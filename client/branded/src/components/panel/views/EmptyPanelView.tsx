@@ -1,6 +1,9 @@
+import React from 'react'
+
 import classNames from 'classnames'
 import CancelIcon from 'mdi-react/CancelIcon'
-import React from 'react'
+
+import { Icon } from '@sourcegraph/wildcard'
 
 import styles from './EmptyPanelView.module.scss'
 
@@ -8,14 +11,14 @@ interface EmptyPanelViewProps {
     className?: string
 }
 
-export const EmptyPanelView: React.FunctionComponent<EmptyPanelViewProps> = props => {
+export const EmptyPanelView: React.FunctionComponent<React.PropsWithChildren<EmptyPanelViewProps>> = props => {
     const { className, children } = props
 
     return (
         <div className={classNames(styles.emptyPanel, className)}>
             {children || (
                 <>
-                    <CancelIcon className="icon-inline mr-2" /> Nothing to show here
+                    <Icon role="img" className="mr-2" as={CancelIcon} aria-hidden={true} /> Nothing to show here
                 </>
             )}
         </div>

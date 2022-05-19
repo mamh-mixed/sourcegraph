@@ -9,8 +9,9 @@ import (
 )
 
 var databases = map[string]string{
-	"":           "sourcegraph",
-	"CODEINTEL_": "sourcegraph-codeintel",
+	"":              "sourcegraph",
+	"CODEINTEL_":    "sourcegraph-codeintel",
+	"CODEINSIGHTS_": "sourcegraph-codeinsights",
 }
 
 func maybePostgresProcFile() (string, error) {
@@ -188,7 +189,7 @@ func isPostgresConfigured(prefix string) bool {
 	return os.Getenv(prefix+"PGHOST") != "" || os.Getenv(prefix+"PGDATASOURCE") != ""
 }
 
-func pgPrintf(format string, args ...interface{}) {
+func pgPrintf(format string, args ...any) {
 	_, _ = fmt.Fprintf(os.Stderr, "✱ "+format+"\n", args...)
 }
 

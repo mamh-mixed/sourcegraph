@@ -1,9 +1,8 @@
 import { screen } from '@testing-library/react'
-import React from 'react'
-import { of } from 'rxjs'
+import { noop } from 'rxjs'
 
 import { NOOP_TELEMETRY_SERVICE } from '@sourcegraph/shared/src/telemetry/telemetryService'
-import { renderWithRouter } from '@sourcegraph/shared/src/testing/render-with-router'
+import { renderWithBrandedContext } from '@sourcegraph/shared/src/testing'
 
 import { RecentFilesPanel } from './RecentFilesPanel'
 
@@ -36,11 +35,13 @@ describe('RecentFilesPanel', () => {
 
         const props = {
             authenticatedUser: null,
-            fetchRecentFileViews: () => of(recentFiles),
+            recentFilesFragment: { recentFilesLogs: recentFiles },
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-explicit-any
+            fetchMore: noop as any,
             telemetryService: NOOP_TELEMETRY_SERVICE,
         }
 
-        renderWithRouter(<RecentFilesPanel {...props} />)
+        renderWithBrandedContext(<RecentFilesPanel {...props} />)
         const listItems = screen.getAllByTestId('recent-files-item')
         expect(listItems).toHaveLength(2)
         expect(listItems[0]).toHaveTextContent('ghe.sgdev.org/sourcegraph/gorilla-mux › go.mod')
@@ -75,11 +76,13 @@ describe('RecentFilesPanel', () => {
 
         const props = {
             authenticatedUser: null,
-            fetchRecentFileViews: () => of(recentFiles),
+            recentFilesFragment: { recentFilesLogs: recentFiles },
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-explicit-any
+            fetchMore: noop as any,
             telemetryService: NOOP_TELEMETRY_SERVICE,
         }
 
-        renderWithRouter(<RecentFilesPanel {...props} />)
+        renderWithBrandedContext(<RecentFilesPanel {...props} />)
         const listItems = screen.getAllByTestId('recent-files-item')
         expect(listItems).toHaveLength(2)
         expect(listItems[0]).toHaveTextContent('github.com/sourcegraph/sourcegraph › .eslintrc.js')
@@ -109,11 +112,13 @@ describe('RecentFilesPanel', () => {
 
         const props = {
             authenticatedUser: null,
-            fetchRecentFileViews: () => of(recentFiles),
+            recentFilesFragment: { recentFilesLogs: recentFiles },
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-explicit-any
+            fetchMore: noop as any,
             telemetryService: NOOP_TELEMETRY_SERVICE,
         }
 
-        renderWithRouter(<RecentFilesPanel {...props} />)
+        renderWithBrandedContext(<RecentFilesPanel {...props} />)
         expect(screen.getByTestId('recent-files-panel-show-more')).toBeInTheDocument()
     })
 
@@ -140,11 +145,13 @@ describe('RecentFilesPanel', () => {
 
         const props = {
             authenticatedUser: null,
-            fetchRecentFileViews: () => of(recentFiles),
+            recentFilesFragment: { recentFilesLogs: recentFiles },
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-explicit-any
+            fetchMore: noop as any,
             telemetryService: NOOP_TELEMETRY_SERVICE,
         }
 
-        renderWithRouter(<RecentFilesPanel {...props} />)
+        renderWithBrandedContext(<RecentFilesPanel {...props} />)
         expect(screen.queryByTestId('recent-files-panel-show-more')).not.toBeInTheDocument()
     })
 })

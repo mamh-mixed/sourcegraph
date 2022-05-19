@@ -1,7 +1,8 @@
 import * as util from 'util'
 
-import { render } from '@testing-library/react'
 import * as React from 'react'
+
+import { render } from '@testing-library/react'
 
 import { ActivationProps } from '@sourcegraph/shared/src/components/activation/Activation'
 
@@ -9,9 +10,11 @@ import { AuthenticatedUser } from '../auth'
 
 import { withActivation } from './withActivation'
 
-const Component: React.FunctionComponent<ActivationProps & { authenticatedUser: AuthenticatedUser | null }> = (
-    props: ActivationProps & { authenticatedUser: AuthenticatedUser | null }
-) => <div>activation steps: {props.activation ? util.inspect(props.activation) : 'undefined'}</div>
+const Component: React.FunctionComponent<
+    React.PropsWithChildren<ActivationProps & { authenticatedUser: AuthenticatedUser | null }>
+> = (props: ActivationProps & { authenticatedUser: AuthenticatedUser | null }) => (
+    <div>activation steps: {props.activation ? util.inspect(props.activation) : 'undefined'}</div>
+)
 
 describe.skip('withActivation', () => {
     const ComponentWithActivation = withActivation(Component)

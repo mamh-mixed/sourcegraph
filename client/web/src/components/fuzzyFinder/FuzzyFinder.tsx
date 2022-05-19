@@ -1,6 +1,7 @@
+import React, { useState, useEffect, Dispatch, SetStateAction } from 'react'
+
 import { ApolloError, useQuery } from '@apollo/client'
 import * as H from 'history'
-import React, { useState, useEffect, Dispatch, SetStateAction } from 'react'
 import { useHistory } from 'react-router-dom'
 
 import { gql, getDocumentNode } from '@sourcegraph/http-client'
@@ -34,7 +35,7 @@ export interface FuzzyFinderProps extends TelemetryProps {
     caseInsensitiveFileCountThreshold?: number
 }
 
-export const FuzzyFinder: React.FunctionComponent<FuzzyFinderProps> = ({
+export const FuzzyFinder: React.FunctionComponent<React.PropsWithChildren<FuzzyFinderProps>> = ({
     location: { search, pathname, hash },
     setCacheRetention,
     setIsVisible,
@@ -131,7 +132,9 @@ export interface Failed {
 const FILE_NAMES = gql`
     query FileNames($repository: String!, $commit: String!) {
         repository(name: $repository) {
+            id
             commit(rev: $commit) {
+                id
                 fileNames
             }
         }

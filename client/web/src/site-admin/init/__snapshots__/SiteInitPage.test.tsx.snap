@@ -6,7 +6,7 @@ exports[`SiteInitPage normal 1`] = `
     class="siteInitPage"
   >
     <div
-      class="content"
+      class="card content"
     >
       <div
         class="cardBody p-4"
@@ -17,7 +17,7 @@ exports[`SiteInitPage normal 1`] = `
           src="/img/sourcegraph-logo-light.svg"
         />
         <h2
-          class="site-init-page__header"
+          class="h2 site-init-page__header"
         >
           Welcome
         </h2>
@@ -107,7 +107,7 @@ exports[`SiteInitPage normal 1`] = `
               />
             </div>
             <small
-              class="form-text text-muted"
+              class="form-help text-muted"
             >
               At least 12 characters
             </small>
@@ -131,7 +131,7 @@ exports[`SiteInitPage normal 1`] = `
             >
               By signing up, you agree to our 
               <a
-                class=""
+                class="anchorLink"
                 href="https://about.sourcegraph.com/terms"
                 rel="noopener"
                 target="_blank"
@@ -140,7 +140,7 @@ exports[`SiteInitPage normal 1`] = `
               </a>
                and 
               <a
-                class=""
+                class="anchorLink"
                 href="https://about.sourcegraph.com/privacy"
                 rel="noopener"
                 target="_blank"
@@ -163,7 +163,7 @@ exports[`SiteInitPage unexpected authed user 1`] = `
     class="siteInitPage"
   >
     <div
-      class="content"
+      class="card content"
     >
       <div
         class="cardBody p-4"

@@ -1,6 +1,7 @@
+import { FunctionComponent, useCallback, useEffect, useMemo, useState } from 'react'
+
 import { useApolloClient } from '@apollo/client'
 import classNames from 'classnames'
-import React, { FunctionComponent, useCallback, useEffect, useMemo, useState } from 'react'
 import { RouteComponentProps } from 'react-router'
 import { of } from 'rxjs'
 
@@ -90,7 +91,7 @@ const filters: FilteredConnectionFilter[] = [
     },
 ]
 
-export const CodeIntelUploadsPage: FunctionComponent<CodeIntelUploadsPageProps> = ({
+export const CodeIntelUploadsPage: FunctionComponent<React.PropsWithChildren<CodeIntelUploadsPageProps>> = ({
     repo,
     queryLsifUploadsByRepository = defaultQueryLsifUploadsByRepository,
     queryLsifUploadsList = defaultQueryLsifUploadsList,

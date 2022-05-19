@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/errors"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 type rate struct {
@@ -66,7 +66,7 @@ func parseRateUnit(raw string) (rateUnit, error) {
 // parseRate parses a rate given either as a raw integer (which will be
 // interpreted as a rate per second), a string "unlimited" (which will be
 // interpreted, surprisingly, as unlimited), or a string in the form "N/UNIT".
-func parseRate(raw interface{}) (rate, error) {
+func parseRate(raw any) (rate, error) {
 	switch v := raw.(type) {
 	case int:
 		if v == 0 {

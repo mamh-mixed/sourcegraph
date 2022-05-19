@@ -1,7 +1,8 @@
+import React, { useCallback, useState } from 'react'
+
 import * as H from 'history'
 import AlertCircleIcon from 'mdi-react/AlertCircleIcon'
 import CheckCircleIcon from 'mdi-react/CheckCircleIcon'
-import React, { useCallback, useState } from 'react'
 import { of, Observable, concat, from } from 'rxjs'
 import { fromFetch } from 'rxjs/fetch'
 import { map, catchError, tap, concatMap } from 'rxjs/operators'
@@ -16,7 +17,15 @@ import * as GQL from '@sourcegraph/shared/src/schema'
 import extensionSchemaJSON from '@sourcegraph/shared/src/schema/extension.schema.json'
 import { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryService'
 import { ThemeProps } from '@sourcegraph/shared/src/theme'
-import { Button, LoadingSpinner, useLocalStorage, useEventObservable, Link } from '@sourcegraph/wildcard'
+import {
+    Button,
+    LoadingSpinner,
+    useLocalStorage,
+    useEventObservable,
+    Link,
+    Icon,
+    Typography,
+} from '@sourcegraph/wildcard'
 
 import { AuthenticatedUser } from '../../../auth'
 import { withAuthenticatedUser } from '../../../auth/withAuthenticatedUser'
@@ -130,7 +139,7 @@ export const RegistryExtensionNewReleasePage = withAuthenticatedUser<Props>(
         ) : (
             <div className="registry-extension-new-release-page">
                 <PageTitle title="Publish new release" />
-                <h2>Publish new release</h2>
+                <Typography.H2>Publish new release</Typography.H2>
                 <p>
                     Use the{' '}
                     <Link to="https://github.com/sourcegraph/src-cli" target="_blank" rel="noopener noreferrer">
@@ -144,7 +153,7 @@ export const RegistryExtensionNewReleasePage = withAuthenticatedUser<Props>(
                 {showEditor ? (
                     <>
                         <hr className="my-4" />
-                        <h2>Extension editor (experimental)</h2>
+                        <Typography.H2>Extension editor (experimental)</Typography.H2>
                         <p>
                             Edit or paste in an extension JSON manifest and JavaScript bundle. The JavaScript bundle
                             source must be self-contained; dependency bundling and TypeScript transpilation is not yet
@@ -155,7 +164,7 @@ export const RegistryExtensionNewReleasePage = withAuthenticatedUser<Props>(
                                 <div className="col-lg-6">
                                     <div className="form-group">
                                         <label htmlFor="registry-extension-new-release-page__manifest">
-                                            <h3>Manifest</h3>
+                                            <Typography.H3>Manifest</Typography.H3>
                                         </label>
                                         <DynamicallyImportedMonacoSettingsEditor
                                             id="registry-extension-new-release-page__manifest"
@@ -173,7 +182,7 @@ export const RegistryExtensionNewReleasePage = withAuthenticatedUser<Props>(
                                 <div className="col-lg-6">
                                     <div className="form-group">
                                         <label htmlFor="registry-extension-new-release-page__bundle">
-                                            <h3>Source</h3>
+                                            <Typography.H3>Source</Typography.H3>
                                         </label>
                                         {bundleOrError === undefined ? (
                                             <div>
@@ -200,7 +209,7 @@ export const RegistryExtensionNewReleasePage = withAuthenticatedUser<Props>(
                                     </div>
                                 </div>
                             </div>
-                            <div className="d-flex align-items-center">
+                            <div aria-live="polite" className="d-flex align-items-center">
                                 <Button
                                     type="submit"
                                     disabled={updateOrError === LOADING || isErrorLike(bundleOrError)}
@@ -215,7 +224,7 @@ export const RegistryExtensionNewReleasePage = withAuthenticatedUser<Props>(
                                         <LoadingSpinner />
                                     ) : (
                                         <span className="text-success">
-                                            <CheckCircleIcon className="icon-inline" /> Published release successfully.
+                                            <Icon as={CheckCircleIcon} /> Published release successfully.
                                         </span>
                                     ))}
                             </div>

@@ -1,6 +1,6 @@
 # Configuring Sourcegraph
 
-This page documents how to configure a Sourcegraph instance. For deployment configuration, please refer to the [relevant installation guide](../install/index.md).
+This page documents how to configure a Sourcegraph instance. For deployment configuration, please refer to the [relevant deployment docs for your deployment type](../deploy/index.md#deployment-types).
 
 - [Site configuration](site_config.md)
 - [Code host configuration](../external_service/index.md) (GitHub, GitLab, and the [Nginx HTTP server](../http_https_configuration.md).)
@@ -12,14 +12,16 @@ This page documents how to configure a Sourcegraph instance. For deployment conf
 
 - [Add Git repositories from your code host](../repo/add.md)
 - [Add user authentication providers (SSO)](../auth/index.md)
-- [Configure search scopes](../../code_search/how-to/scopes.md)
+- [Configure search scopes](../../code_search/how-to/snippets.md)
 - [Integrate with Phabricator](../../integration/phabricator.md)
 - [Add organizations](../organizations.md)
 - [Set up HTTPS](../http_https_configuration.md)
 - [Use a custom domain](../url.md)
+- [Configure email sending / SMTP server](email.md)
 - [Update Sourcegraph](../updates/index.md)
 - [Using external services (PostgreSQL, Redis, S3/GCS)](../external_services/index.md)
 - [PostgreSQL Config](./postgres-conf.md)
+- [Disabling user invitations](./user_invitations.md)
 
 ## Advanced tasks
 

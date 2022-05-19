@@ -2,61 +2,77 @@ package cliutil
 
 import (
 	"context"
-	"flag"
 	"fmt"
-	"strconv"
 
-	"github.com/peterbourgon/ff/v3/ffcli"
+	"github.com/urfave/cli/v2"
 
 	"github.com/sourcegraph/sourcegraph/internal/database/migration/runner"
 	"github.com/sourcegraph/sourcegraph/lib/output"
 )
 
-func UpTo(commandName string, run RunFunc, out *output.Output) *ffcli.Command {
-	var (
-		flagSet        = flag.NewFlagSet(fmt.Sprintf("%s upto", commandName), flag.ExitOnError)
-		schemaNameFlag = flagSet.String("db", "", `The target schema to migrate.`)
-		targetFlag     = flagSet.String("target", "", "The migration to apply.")
-	)
+func UpTo(commandName string, factory RunnerFactory, outFactory func() *output.Output, development bool) *cli.Command {
+	schemaNameFlag := &cli.StringFlag{
+		Name:     "db",
+		Usage:    "The target `schema` to modify.",
+		Required: true,
+	}
+	targetFlag := &cli.StringSliceFlag{
+		Name:     "target",
+		Usage:    "The `migration` to apply. Comma-separated values are accepted.",
+		Required: true,
+	}
+	unprivilegedOnlyFlag := &cli.BoolFlag{
+		Name:  "unprivileged-only",
+		Usage: `Do not apply privileged migrations.`,
+		Value: false,
+	}
+	ignoreSingleDirtyLogFlag := &cli.BoolFlag{
+		Name:  "ignore-single-dirty-log",
+		Usage: `Ignore a previously failed attempt if it will be immediately retried by this operation.`,
+		Value: development,
+	}
 
-	exec := func(ctx context.Context, args []string) error {
-		if len(args) != 0 {
-			out.WriteLine(output.Linef("", output.StyleWarning, "ERROR: too many arguments"))
-			return flag.ErrHelp
+	makeOptions := func(cmd *cli.Context, versions []int) runner.Options {
+		return runner.Options{
+			Operations: []runner.MigrationOperation{
+				{
+					SchemaName:     schemaNameFlag.Get(cmd),
+					Type:           runner.MigrationOperationTypeTargetedUp,
+					TargetVersions: versions,
+				},
+			},
+			UnprivilegedOnly:     unprivilegedOnlyFlag.Get(cmd),
+			IgnoreSingleDirtyLog: ignoreSingleDirtyLogFlag.Get(cmd),
 		}
+	}
 
-		if *schemaNameFlag == "" {
-			out.WriteLine(output.Linef("", output.StyleWarning, "ERROR: supply a schema via -db"))
-			return flag.ErrHelp
-		}
-
-		if *targetFlag == "" {
-			out.WriteLine(output.Linef("", output.StyleWarning, "ERROR: supply a migration target via -target"))
-			return flag.ErrHelp
-		}
-
-		version, err := strconv.Atoi(*targetFlag)
+	action := makeAction(outFactory, func(ctx context.Context, cmd *cli.Context, out *output.Output) error {
+		versions, err := parseTargets(targetFlag.Get(cmd))
 		if err != nil {
 			return err
 		}
+		if len(versions) == 0 {
+			return flagHelp(out, "supply a target via -target")
+		}
 
-		return run(ctx, runner.Options{
-			Operations: []runner.MigrationOperation{
-				{
-					SchemaName:    *schemaNameFlag,
-					Type:          runner.MigrationOperationTypeTargetedUp,
-					TargetVersion: version,
-				},
-			},
-		})
-	}
+		r, err := setupRunner(ctx, factory, schemaNameFlag.Get(cmd))
+		if err != nil {
+			return err
+		}
+		return r.Run(ctx, makeOptions(cmd, versions))
+	})
 
-	return &ffcli.Command{
-		Name:       "upto",
-		ShortUsage: fmt.Sprintf("%s upto -db=<schema> -target=<target>,<target>,...", commandName),
-		ShortHelp:  "Ensure a given migration has been applied - may apply dependency migrations",
-		FlagSet:    flagSet,
-		Exec:       exec,
-		LongHelp:   ConstructLongHelp(),
+	return &cli.Command{
+		Name:        "upto",
+		UsageText:   fmt.Sprintf("%s upto -db=<schema> -target=<target>,<target>,...", commandName),
+		Usage:       "Ensure a given migration has been applied - may apply dependency migrations",
+		Description: ConstructLongHelp(),
+		Action:      action,
+		Flags: []cli.Flag{
+			schemaNameFlag,
+			targetFlag,
+			unprivilegedOnlyFlag,
+			ignoreSingleDirtyLogFlag,
+		},
 	}
 }

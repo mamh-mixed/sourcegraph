@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cockroachdb/errors"
 	mockassert "github.com/derision-test/go-mockgen/testutil/assert"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
@@ -29,6 +28,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/timeutil"
 	"github.com/sourcegraph/sourcegraph/internal/types"
 	"github.com/sourcegraph/sourcegraph/internal/vcs/git"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 func TestExecutor_ExecutePlan(t *testing.T) {
@@ -74,7 +74,7 @@ func TestExecutor_ExecutePlan(t *testing.T) {
 		hasCurrentSpec bool
 		plan           *Plan
 
-		sourcerMetadata interface{}
+		sourcerMetadata any
 		sourcerErr      error
 		// Whether or not the source responds to CreateChangeset with "already exists"
 		alreadyExists bool

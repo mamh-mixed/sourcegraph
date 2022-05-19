@@ -1,5 +1,6 @@
-import classNames from 'classnames'
 import React from 'react'
+
+import classNames from 'classnames'
 
 import { Link } from '@sourcegraph/wildcard'
 
@@ -14,7 +15,9 @@ const onClickCTA = (): void => {
  * A global alert telling the site admin that they need to configure repositories
  * on this site.
  */
-export const NeedsRepositoryConfigurationAlert: React.FunctionComponent<{ className?: string }> = ({ className }) => (
+export const NeedsRepositoryConfigurationAlert: React.FunctionComponent<
+    React.PropsWithChildren<{ className?: string }>
+> = ({ className }) => (
     <DismissibleAlert
         partialStorageKey="needsRepositoryConfiguration"
         variant="success"

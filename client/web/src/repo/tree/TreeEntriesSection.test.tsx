@@ -1,13 +1,11 @@
-import React from 'react'
-
-import { renderWithRouter } from '@sourcegraph/shared/src/testing/render-with-router'
+import { renderWithBrandedContext } from '@sourcegraph/shared/src/testing'
 
 import { TreeEntriesSection } from './TreeEntriesSection'
 
 describe('TreeEntriesSection', () => {
     it('should render a grid of tree entries at the root', () => {
         expect(
-            renderWithRouter(
+            renderWithBrandedContext(
                 <TreeEntriesSection
                     parentPath=""
                     entries={[
@@ -54,7 +52,7 @@ describe('TreeEntriesSection', () => {
     })
     it('should render a grid of tree entries in a subdirectory', () => {
         expect(
-            renderWithRouter(
+            renderWithBrandedContext(
                 <TreeEntriesSection
                     parentPath="src"
                     entries={[
@@ -111,7 +109,7 @@ describe('TreeEntriesSection', () => {
     })
     it('should render only direct children', () => {
         expect(
-            renderWithRouter(
+            renderWithBrandedContext(
                 <TreeEntriesSection
                     parentPath="x"
                     entries={[

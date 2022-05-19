@@ -47,6 +47,8 @@ enable sign-in via multiple services. Identities from different providers will b
 Sourcegraph user by comparing the user's verified email address to the email address from the
 external identity provider.
 
+> _NOTE: If OAuth is the only sign-in method available on sign-out, a new OAuth sign-in will be attempted immediately upon a redirect to the sign-in page. If it is necessary to sign-out and have persistent access to the sign-in page, enable `builtin` sign-in in addition to your OAuth sign-in._
+
 ## Builtin password authentication
 
 The [`builtin` auth provider](../config/site_config.md#builtin-password-authentication) manages user accounts internally in its own database. It supports user signup, login, and password reset (via email if configured, or else via a site admin).
@@ -61,6 +63,47 @@ Site configuration example:
   "auth.providers": [{ "type": "builtin", "allowSignup": true }]
 }
 ```
+
+### Account lockout
+
+<span class="badge badge-note">Sourcegraph 3.39+</span>
+
+Account will be locked out for 30 minutes after 5 consecutive failed sign-in attempts within one hour for the builtin authentication provider. The threshold and duration of lockout and consecutive periods can be customized via `"auth.lockout"` in the site configuration:
+
+```json
+{
+  // ...
+  "auth.lockout": {
+    // The number of seconds to be considered as a consecutive period
+    "consecutivePeriod": 3600,
+    // The threshold of failed sign-in attempts in a consecutive period
+    "failedAttemptThreshold": 5,
+    // The number of seconds for the lockout period
+    "lockoutPeriod": 1800
+  }
+}
+```
+
+To enabled self-serve account unlock through emails, add the following lines to your site configuration:
+
+```json
+{
+  // Validity expressed in minutes of the unlock account token
+  "auth.unlockAccountLinkExpiry": 30,
+  // Base64-encoded HMAC signing key to sign the JWT token for account unlock URLs
+  "auth.unlockAccountLinkSigningKey": "your-signing-key",
+}
+```
+
+The `ssh-keygen` command can be used to generate and encode the signing key, for example:
+
+```bash
+$ ssh-keygen -t ed25519 -a 128 -f auth.unlockAccountLinkSigningKey
+$ base64 auth.unlockAccountLinkSigningKey | tr -d '\n'
+LS0tLS1CRUdJTiBPUEVOU1NIIFBSSVZBVEUgS0VZLS0tLS0KYjNCbGJu...
+```
+
+Copy the result of the `base64` command as the value of the `"auth.unlockAccountLinkSigningKey"`.
 
 ## GitHub
 
@@ -108,7 +151,7 @@ must create one explicitly.
 
 > WARNING: If `allowSignup` is set to `true`, anyone with internet access to both your Sourcegraph instance and your Github url are able to sign up and login to your instance. In particular, if url is set to `https://github.com`, this means that anyone with a Github account could log in to your Sourcegraph instance and search your indexed code. Make sure to also configure the `allowOrgs` field described below to limit signups to your org, or limit public access to your Sourcegraph instance via IP restrictions / VPN. For assistance, contact support.
 
-The `allowOrgs` fields restricts logins to members of the specified GitHub organizations. Existing user sessions are **not invalidated**. Only new logins after this setting is changed are affected.
+The `allowOrgs` field restricts logins to members of the specified GitHub organizations while `allowOrgsMap` restricts logins to members of GitHub teams that belong to a given org. If you choose to use the latter, note that subteams inheritance is not supported, therefore only members of the listed teams will be granted access. In both cases, existing user sessions are **not invalidated**. Only new logins after these settings are changed are affected.
 
 Once you've configured GitHub as a sign-on provider, you may also want to [add GitHub repositories to Sourcegraph](../external_service/github.md#repository-syncing).
 
@@ -174,6 +217,7 @@ Example [`openidconnect` auth provider](../config/site_config.md#openid-connect-
       "type": "openidconnect",
       "issuer": "https://oidc.example.com",
       "clientID": "my-client-id",
+      "configID":"my-config-id" //An arbitrary value that will be used to reference to this auth provider within the site config 
       "clientSecret": "my-client-secret",
       "requireEmailDomain": "example.com"
     }

@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/cockroachdb/errors"
 	"github.com/inconshreveable/log15"
 
 	fewebhooks "github.com/sourcegraph/sourcegraph/cmd/frontend/webhooks"
@@ -20,6 +19,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/extsvc/gitlab/webhooks"
 	"github.com/sourcegraph/sourcegraph/internal/repoupdater"
 	"github.com/sourcegraph/sourcegraph/internal/types"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 	"github.com/sourcegraph/sourcegraph/schema"
 )
 
@@ -136,7 +136,7 @@ func (h *GitLabWebhook) getExternalServiceFromRawID(ctx context.Context, raw str
 
 // handleEvent is essentially a router: it dispatches based on the event type
 // to perform whatever changeset action is appropriate for that event.
-func (h *GitLabWebhook) handleEvent(ctx context.Context, extSvc *types.ExternalService, event interface{}) *httpError {
+func (h *GitLabWebhook) handleEvent(ctx context.Context, extSvc *types.ExternalService, event any) *httpError {
 	log15.Debug("GitLab webhook received", "type", fmt.Sprintf("%T", event))
 
 	esID, err := extractExternalServiceID(extSvc)

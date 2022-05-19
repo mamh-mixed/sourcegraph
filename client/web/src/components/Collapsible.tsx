@@ -1,9 +1,10 @@
+import React, { useCallback, useState } from 'react'
+
 import classNames from 'classnames'
 import ChevronDownIcon from 'mdi-react/ChevronDownIcon'
 import ChevronRightIcon from 'mdi-react/ChevronRightIcon'
-import React, { useCallback, useState } from 'react'
 
-import { Button } from '@sourcegraph/wildcard'
+import { Button, Icon } from '@sourcegraph/wildcard'
 
 import styles from './Collapsible.module.scss'
 
@@ -16,7 +17,7 @@ interface Props {
     /**
      * Sub-content always visible in the title bar.
      */
-    detail?: string
+    detail?: string | React.ReactElement
 
     /**
      * Optional children that appear below the title bar that can be expanded/collapsed. If present,
@@ -50,7 +51,7 @@ interface Props {
  * Collapsible is an element with a title that is always displayed and children that are displayed
  * only when expanded.
  */
-export const Collapsible: React.FunctionComponent<Props> = ({
+export const Collapsible: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
     title,
     detail,
     children,
@@ -62,6 +63,7 @@ export const Collapsible: React.FunctionComponent<Props> = ({
     buttonClassName = '',
     expandedButtonClassName = '',
     wholeTitleClickable = true,
+    ...rest
 }) => {
     const [isExpanded, setIsExpanded] = useState(defaultExpanded)
     const toggleIsExpanded = useCallback<React.MouseEventHandler<HTMLButtonElement>>(
@@ -82,7 +84,7 @@ export const Collapsible: React.FunctionComponent<Props> = ({
     )
 
     return (
-        <div className={className}>
+        <div className={className} {...rest}>
             <div
                 className={classNames(
                     'd-flex justify-content-between align-items-center position-relative',
@@ -98,9 +100,9 @@ export const Collapsible: React.FunctionComponent<Props> = ({
                     onClick={toggleIsExpanded}
                 >
                     {isExpanded ? (
-                        <ChevronDownIcon className="icon-inline" aria-label="Close section" />
+                        <Icon aria-label="Close section" as={ChevronDownIcon} />
                     ) : (
-                        <ChevronRightIcon className="icon-inline" aria-label="Expand section" />
+                        <Icon aria-label="Expand section" as={ChevronRightIcon} />
                     )}
                 </Button>
                 {!titleAtStart && titleNode}

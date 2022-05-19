@@ -1,15 +1,14 @@
-import classNames from 'classnames'
-import { upperFirst } from 'lodash'
 import React from 'react'
 
-import { asError } from '@sourcegraph/common'
+import classNames from 'classnames'
+import { upperFirst } from 'lodash'
+
+import { HoverMerged } from '@sourcegraph/client-api'
+import { asError, renderMarkdown } from '@sourcegraph/common'
 import { Alert, AlertProps, Badge } from '@sourcegraph/wildcard'
 
-import { HoverMerged } from '../../../api/client/types/hover'
-import { renderMarkdown } from '../../../util/markdown'
 import hoverOverlayStyle from '../../HoverOverlay.module.scss'
 import hoverOverlayContentsStyle from '../../HoverOverlayContents.module.scss'
-
 import style from './HoverOverlayContent.module.scss'
 
 interface HoverOverlayContentProps {
@@ -34,7 +33,9 @@ function tryMarkdownRender(content: string): string | Error {
     }
 }
 
-export const HoverOverlayContent: React.FunctionComponent<HoverOverlayContentProps> = props => {
+export const HoverOverlayContent: React.FunctionComponent<
+    React.PropsWithChildren<HoverOverlayContentProps>
+> = props => {
     const { content, aggregatedBadges = [], index, errorAlertClassName, errorAlertVariant, badgeClassName } = props
 
     if (content.kind !== 'markdown') {

@@ -1,8 +1,10 @@
-import { camelCase } from 'lodash'
-
-import { getSanitizedRepositories } from '../../../../../components/creation-ui-kit/sanitizers/repositories'
-import { InsightExecutionType, InsightType, InsightTypePrefix, SearchBasedInsight } from '../../../../../core/types'
-import { SearchBasedInsightSeries } from '../../../../../core/types/insight/search-insight'
+import { getSanitizedRepositories } from '../../../../../components/creation-ui-kit'
+import {
+    MinimalSearchBasedInsightData,
+    InsightExecutionType,
+    InsightType,
+    SearchBasedInsightSeries,
+} from '../../../../../core'
 import { CreateInsightFormFields, EditableDataSeries } from '../types'
 
 export function getSanitizedLine(line: EditableDataSeries): SearchBasedInsightSeries {
@@ -26,28 +28,25 @@ export function getSanitizedSeries(rawSeries: EditableDataSeries[]): SearchBased
  * Function converter from form shape insight to insight as it is
  * presented in user/org settings.
  */
-export function getSanitizedSearchInsight(rawInsight: CreateInsightFormFields): SearchBasedInsight {
-    // Backend type of insight.
+export function getSanitizedSearchInsight(rawInsight: CreateInsightFormFields): MinimalSearchBasedInsightData {
     if (rawInsight.allRepos) {
         return {
-            id: `${InsightTypePrefix.search}.${camelCase(rawInsight.title)}`,
-            type: InsightExecutionType.Backend,
-            viewType: InsightType.SearchBased,
+            executionType: InsightExecutionType.Backend,
+            type: InsightType.SearchBased,
             title: rawInsight.title,
             series: getSanitizedSeries(rawInsight.series),
-            visibility: rawInsight.visibility,
             step: { [rawInsight.step]: +rawInsight.stepValue },
-            filters: { includeRepoRegexp: '', excludeRepoRegexp: '' },
+            filters: {
+                excludeRepoRegexp: '',
+                includeRepoRegexp: '',
+                context: '',
+            },
         }
     }
 
     return {
-        id: `${InsightTypePrefix.search}.${camelCase(rawInsight.title)}`,
-        // ID generated according to our naming insight convention
-        // <Type of insight>.insight.<name of insight>
-        type: InsightExecutionType.Runtime,
-        viewType: InsightType.SearchBased,
-        visibility: rawInsight.visibility,
+        executionType: InsightExecutionType.Runtime,
+        type: InsightType.SearchBased,
         title: rawInsight.title,
         repositories: getSanitizedRepositories(rawInsight.repositories),
         series: getSanitizedSeries(rawInsight.series),

@@ -7,9 +7,8 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/cockroachdb/errors"
-
 	"github.com/sourcegraph/sourcegraph/internal/search/query"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 type Alert struct {
@@ -57,7 +56,7 @@ func (q *ProposedQuery) QueryString() string {
 		switch q.PatternType {
 		case query.SearchTypeRegex:
 			return q.Query + " patternType:regexp"
-		case query.SearchTypeLiteral:
+		case query.SearchTypeLiteralDefault:
 			return q.Query + " patternType:literal"
 		case query.SearchTypeStructural:
 			return q.Query + " patternType:structural"
@@ -183,6 +182,40 @@ func AlertForMissingRepoRevs(missingRepoRevs []*RepositoryRevisions) *Alert {
 		PrometheusType: "missing_repo_revs",
 		Title:          "Some repositories could not be searched",
 		Description:    description,
+	}
+}
+
+func AlertForMissingDependencyRepoRevs(missingRepoRevs []*RepositoryRevisions) *Alert {
+	var description string
+	if len(missingRepoRevs) == 1 {
+		if len(missingRepoRevs[0].RevSpecs()) == 1 {
+			description = fmt.Sprintf("The dependency %s matched by your repo:deps(...) predicate could not be searched because it does not yet contain the revision %q.", missingRepoRevs[0].Repo.Name, missingRepoRevs[0].RevSpecs()[0])
+		} else {
+			description = fmt.Sprintf("The dependency %s matched by your repo:deps(...) predicate could not be searched because it has multiple missing revisions: @%s.", missingRepoRevs[0].Repo.Name, strings.Join(missingRepoRevs[0].RevSpecs(), ","))
+		}
+	} else {
+		sampleSize := 10
+		if sampleSize > len(missingRepoRevs) {
+			sampleSize = len(missingRepoRevs)
+		}
+		repoRevs := make([]string, 0, sampleSize)
+		for _, r := range missingRepoRevs[:sampleSize] {
+			repoRevs = append(repoRevs, string(r.Repo.Name)+"@"+strings.Join(r.RevSpecs(), ","))
+		}
+		b := strings.Builder{}
+		_, _ = fmt.Fprintf(&b, "%d dependencies matched by your repo:deps(...) predicate could not be searched because the following revisions either don't exist or aren't yet cloned:", len(missingRepoRevs))
+		for _, rr := range repoRevs {
+			_, _ = fmt.Fprintf(&b, "\n* %s", rr)
+		}
+		if sampleSize < len(missingRepoRevs) {
+			b.WriteString("\n* ...")
+		}
+		description = b.String()
+	}
+	return &Alert{
+		PrometheusType: "missing_dependency_repo_revs",
+		Title:          "Some dependencies could not be searched",
+		Description:    description + "\n\nDependency repository revisions are cloned on demand. Try again in a few seconds.",
 	}
 }
 

@@ -1,5 +1,6 @@
-import { noop } from 'lodash'
 import React, { useCallback, useState } from 'react'
+
+import { noop } from 'lodash'
 
 /**
  * The current selection state: either a set of IDs or "all", in which case all
@@ -74,11 +75,13 @@ export const MultiSelectContext = React.createContext<MultiSelectContextState>(d
  * that has the correct state handling for normal use, including providing the
  * various callbacks that are used by consumers.
  */
-export const MultiSelectContextProvider: React.FunctionComponent<{
-    // These props are only for testing purposes.
-    initialSelected?: MultiSelectContextSelected | string[]
-    initialVisible?: string[]
-}> = ({ children, initialSelected, initialVisible }) => {
+export const MultiSelectContextProvider: React.FunctionComponent<
+    React.PropsWithChildren<{
+        // These props are only for testing purposes.
+        initialSelected?: MultiSelectContextSelected | string[]
+        initialVisible?: string[]
+    }>
+> = ({ children, initialSelected, initialVisible }) => {
     // Set up state and callbacks for the visible items.
     const [visible, setVisibleInternal] = useState<Set<string>>(new Set(initialVisible ?? []))
     const setVisible = useCallback((ids: string[]) => {

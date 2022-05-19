@@ -6,6 +6,8 @@ import (
 	"text/template"
 	"unicode/utf8"
 
+	"github.com/go-enry/go-enry/v2"
+
 	"github.com/sourcegraph/sourcegraph/internal/search/result"
 )
 
@@ -50,7 +52,7 @@ const varAllowed = "abcdefghijklmnopqrstuvwxyzABCEDEFGHIJKLMNOPQRSTUVWXYZ1234567
 
 // scanTemplate scans an input string to produce a Template. Recognized
 // metavariable syntax is `$(varAllowed+)`.
-func scanTemplate(buf []byte) (*Template, error) {
+func scanTemplate(buf []byte) *Template {
 	// Tracks whether the current token is a variable.
 	var isVariable bool
 
@@ -148,10 +150,10 @@ func scanTemplate(buf []byte) (*Template, error) {
 		}
 	}
 	t := Template(result)
-	return &t, nil
+	return &t
 }
 
-func toJSON(atom Atom) interface{} {
+func toJSON(atom Atom) any {
 	switch a := atom.(type) {
 	case Constant:
 		return struct {
@@ -172,7 +174,7 @@ func toJSON(atom Atom) interface{} {
 }
 
 func toJSONString(template *Template) string {
-	var jsons []interface{}
+	var jsons []any
 	for _, atom := range *template {
 		jsons = append(jsons, toJSON(atom))
 	}
@@ -188,6 +190,7 @@ type MetaEnvironment struct {
 	Author  string
 	Date    string
 	Email   string
+	Lang    string
 }
 
 var empty = struct{}{}
@@ -200,13 +203,11 @@ var builtinVariables = map[string]struct{}{
 	"author":  empty,
 	"date":    empty,
 	"email":   empty,
+	"lang":    empty,
 }
 
-func templatize(pattern string) (string, error) {
-	t, err := scanTemplate([]byte(pattern))
-	if err != nil {
-		return "", err
-	}
+func templatize(pattern string) string {
+	t := scanTemplate([]byte(pattern))
 	var templatized []string
 	for _, atom := range *t {
 		switch a := atom.(type) {
@@ -223,14 +224,11 @@ func templatize(pattern string) (string, error) {
 			templatized = append(templatized, a.Name)
 		}
 	}
-	return strings.Join(templatized, ""), nil
+	return strings.Join(templatized, "")
 }
 
 func substituteMetaVariables(pattern string, env *MetaEnvironment) (string, error) {
-	templated, err := templatize(pattern)
-	if err != nil {
-		return "", err
-	}
+	templated := templatize(pattern)
 	t, err := template.New("").Parse(templated)
 	if err != nil {
 		return "", err
@@ -246,12 +244,19 @@ func substituteMetaVariables(pattern string, env *MetaEnvironment) (string, erro
 // metavariables can be referenced and substituted for in an output template.
 func NewMetaEnvironment(r result.Match, content string) *MetaEnvironment {
 	switch m := r.(type) {
+	case *result.RepoMatch:
+		return &MetaEnvironment{
+			Repo:    string(m.Name),
+			Content: string(m.Name),
+		}
 	case *result.FileMatch:
+		lang, _ := enry.GetLanguageByExtension(m.Path)
 		return &MetaEnvironment{
 			Repo:    string(m.Repo.Name),
 			Path:    m.Path,
 			Commit:  string(m.CommitID),
 			Content: content,
+			Lang:    lang,
 		}
 	case *result.CommitMatch:
 		return &MetaEnvironment{
@@ -260,6 +265,19 @@ func NewMetaEnvironment(r result.Match, content string) *MetaEnvironment {
 			Author:  m.Commit.Author.Name,
 			Date:    m.Commit.Committer.Date.Format("2006-01-02"),
 			Email:   m.Commit.Author.Email,
+			Content: content,
+		}
+	case *result.CommitDiffMatch:
+		path := m.Path()
+		lang, _ := enry.GetLanguageByExtension(path)
+		return &MetaEnvironment{
+			Repo:    string(m.Repo.Name),
+			Commit:  string(m.Commit.ID),
+			Author:  m.Commit.Author.Name,
+			Date:    m.Commit.Committer.Date.Format("2006-01-02"),
+			Email:   m.Commit.Author.Email,
+			Path:    path,
+			Lang:    lang,
 			Content: content,
 		}
 	}

@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/cockroachdb/errors"
 	"github.com/graph-gophers/graphql-go"
 	"github.com/inconshreveable/log15"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/authz"
 	"github.com/sourcegraph/sourcegraph/internal/conf"
 	"github.com/sourcegraph/sourcegraph/internal/database"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 var timeNow = time.Now
@@ -50,13 +50,7 @@ type userEmailResolver struct {
 
 func (r *userEmailResolver) Email() string { return r.userEmail.Email }
 
-func (r *userEmailResolver) IsPrimary(ctx context.Context) (bool, error) {
-	email, _, err := database.UserEmails(r.db).GetPrimaryEmail(ctx, r.user.user.ID)
-	if err != nil {
-		return false, err
-	}
-	return email == r.userEmail.Email, nil
-}
+func (r *userEmailResolver) IsPrimary() bool { return r.userEmail.Primary }
 
 func (r *userEmailResolver) Verified() bool { return r.userEmail.VerifiedAt != nil }
 func (r *userEmailResolver) VerificationPending() bool {

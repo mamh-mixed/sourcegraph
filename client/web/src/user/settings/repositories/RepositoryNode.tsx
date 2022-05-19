@@ -1,3 +1,5 @@
+import React, { useCallback } from 'react'
+
 import classNames from 'classnames'
 import BitbucketIcon from 'mdi-react/BitbucketIcon'
 import ChevronRightIcon from 'mdi-react/ChevronRightIcon'
@@ -6,14 +8,14 @@ import GithubIcon from 'mdi-react/GithubIcon'
 import GitlabIcon from 'mdi-react/GitlabIcon'
 import SourceRepositoryIcon from 'mdi-react/SourceRepositoryIcon'
 import TickIcon from 'mdi-react/TickIcon'
-import React, { useCallback } from 'react'
 
 import { RepoLink } from '@sourcegraph/shared/src/components/RepoLink'
-import { Badge, LoadingSpinner, Link } from '@sourcegraph/wildcard'
+import { Badge, LoadingSpinner, Link, Icon, Checkbox } from '@sourcegraph/wildcard'
 
 import { ExternalServiceKind } from '../../../graphql-operations'
 
 import { RepositoryNodeContainer } from './components'
+
 import styles from './RepositoryNode.module.scss'
 
 interface RepositoryNodeProps {
@@ -36,7 +38,7 @@ interface StatusIconProps {
     }
 }
 
-const StatusIcon: React.FunctionComponent<StatusIconProps> = ({ mirrorInfo }) => {
+const StatusIcon: React.FunctionComponent<React.PropsWithChildren<StatusIconProps>> = ({ mirrorInfo }) => {
     if (mirrorInfo === undefined) {
         return null
     }
@@ -53,13 +55,13 @@ const StatusIcon: React.FunctionComponent<StatusIconProps> = ({ mirrorInfo }) =>
                 className="mr-2 text-muted"
                 data-tooltip="Visit the repository to clone it. See its mirroring settings for diagnostics."
             >
-                <CloudOutlineIcon className="icon-inline" />
+                <Icon as={CloudOutlineIcon} />
             </small>
         )
     }
     return (
         <small className="mr-2">
-            <TickIcon className={classNames('icon-inline', styles.check)} />
+            <Icon className={styles.check} as={TickIcon} />
         </small>
     )
 }
@@ -68,36 +70,36 @@ interface CodeHostIconProps {
     hostType: string
 }
 
-const CodeHostIcon: React.FunctionComponent<CodeHostIconProps> = ({ hostType }) => {
+const CodeHostIcon: React.FunctionComponent<React.PropsWithChildren<CodeHostIconProps>> = ({ hostType }) => {
     switch (hostType) {
         case ExternalServiceKind.GITHUB:
             return (
                 <small className="mr-2">
-                    <GithubIcon className={classNames('icon-inline', styles.github)} />
+                    <Icon className={styles.github} as={GithubIcon} />
                 </small>
             )
         case ExternalServiceKind.GITLAB:
             return (
                 <small className="mr-2">
-                    <GitlabIcon className={classNames('icon-inline', styles.gitlab)} />
+                    <Icon className={styles.gitlab} as={GitlabIcon} />
                 </small>
             )
         case ExternalServiceKind.BITBUCKETCLOUD:
             return (
                 <small className="mr-2">
-                    <BitbucketIcon className="icon-inline" />
+                    <Icon as={BitbucketIcon} />
                 </small>
             )
         default:
             return (
                 <small className="mr-2">
-                    <SourceRepositoryIcon className="icon-inline" />
+                    <Icon as={SourceRepositoryIcon} />
                 </small>
             )
     }
 }
 
-export const RepositoryNode: React.FunctionComponent<RepositoryNodeProps> = ({
+export const RepositoryNode: React.FunctionComponent<React.PropsWithChildren<RepositoryNodeProps>> = ({
     name,
     mirrorInfo,
     url,
@@ -136,7 +138,7 @@ export const RepositoryNode: React.FunctionComponent<RepositoryNodeProps> = ({
                                 Private
                             </Badge>
                         )}
-                        <ChevronRightIcon className="icon-inline ml-2 text-primary" />
+                        <Icon className="ml-2 text-primary" as={ChevronRightIcon} />
                     </div>
                 </Link>
             </td>
@@ -156,7 +158,7 @@ interface CheckboxRepositoryNodeProps {
     isPrivate: boolean
 }
 
-export const CheckboxRepositoryNode: React.FunctionComponent<CheckboxRepositoryNodeProps> = ({
+export const CheckboxRepositoryNode: React.FunctionComponent<React.PropsWithChildren<CheckboxRepositoryNodeProps>> = ({
     name,
     mirrorInfo,
     onClick,
@@ -182,9 +184,8 @@ export const CheckboxRepositoryNode: React.FunctionComponent<CheckboxRepositoryN
                 onClick={onClick}
             >
                 <div className="d-flex align-items-center">
-                    <input
+                    <Checkbox
                         className="mr-3"
-                        type="checkbox"
                         aria-label={`select ${name} repository`}
                         onChange={onClick}
                         checked={checked}

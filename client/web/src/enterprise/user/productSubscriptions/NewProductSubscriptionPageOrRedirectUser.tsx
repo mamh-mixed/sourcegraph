@@ -1,4 +1,5 @@
 import React from 'react'
+
 import { Redirect, RouteComponentProps } from 'react-router'
 
 import { ThemeProps } from '@sourcegraph/shared/src/theme'
@@ -20,7 +21,9 @@ interface Props extends RouteComponentProps<{}>, ThemeProps {
  * sign in to actually buy it). This friendlier behavior for unauthed viewers (compared to dumping them on a
  * sign-in page) is the reason why this component exists.
  */
-export const NewProductSubscriptionPageOrRedirectUser: React.FunctionComponent<Props> = props =>
+export const NewProductSubscriptionPageOrRedirectUser: React.FunctionComponent<
+    React.PropsWithChildren<Props>
+> = props =>
     props.authenticatedUser ? (
         <Redirect to={`${props.authenticatedUser.settingsURL!}/subscriptions/new`} />
     ) : (

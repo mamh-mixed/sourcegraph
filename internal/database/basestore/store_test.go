@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cockroachdb/errors"
 	"github.com/google/go-cmp/cmp"
 	"github.com/keegancsmith/sqlf"
 
 	"github.com/sourcegraph/sourcegraph/internal/database/dbtest"
 	"github.com/sourcegraph/sourcegraph/internal/database/dbutil"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 func TestTransaction(t *testing.T) {
@@ -84,6 +84,48 @@ func TestSavepoints(t *testing.T) {
 			}
 			assertCounts(t, db, expected)
 		})
+	}
+}
+
+func TestSetLocal(t *testing.T) {
+	db := dbtest.NewDB(t)
+	setupStoreTest(t, db)
+	store := testStore(db)
+
+	_, err := store.SetLocal(context.Background(), "sourcegraph.banana", "phone")
+	if err == nil {
+		t.Fatalf("unexpected nil error")
+	}
+	if !errors.Is(err, ErrNotInTransaction) {
+		t.Fatalf("unexpected error. want=%q have=%q", ErrNotInTransaction, err)
+	}
+
+	store, _ = store.Transact(context.Background())
+	defer store.Done(err)
+	func() {
+		unset, err := store.SetLocal(context.Background(), "sourcegraph.banana", "phone")
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		defer unset(context.Background())
+
+		str, _, err := ScanFirstString(store.Query(context.Background(), sqlf.Sprintf("SELECT current_setting('sourcegraph.banana')")))
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+
+		if str != "phone" {
+			t.Fatalf("unexpected value. want=%q got=%q", "phone", str)
+		}
+	}()
+
+	str, _, err := ScanFirstString(store.Query(context.Background(), sqlf.Sprintf("SELECT current_setting('sourcegraph.banana', true)")))
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+
+	if str != "" {
+		t.Fatalf("unexpected value. want=%q got=%q", "", str)
 	}
 }
 

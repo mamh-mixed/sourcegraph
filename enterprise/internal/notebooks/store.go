@@ -8,13 +8,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cockroachdb/errors"
 	"github.com/keegancsmith/sqlf"
 
 	"github.com/sourcegraph/sourcegraph/internal/actor"
 	"github.com/sourcegraph/sourcegraph/internal/database/basestore"
 	"github.com/sourcegraph/sourcegraph/internal/database/dbutil"
 	"github.com/sourcegraph/sourcegraph/internal/lazyregexp"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 var ErrNotebookNotFound = errors.New("notebook not found")
@@ -53,7 +53,7 @@ func (blocks NotebookBlocks) Value() (driver.Value, error) {
 	return json.Marshal(blocks)
 }
 
-func (blocks *NotebookBlocks) Scan(value interface{}) error {
+func (blocks *NotebookBlocks) Scan(value any) error {
 	b, ok := value.([]byte)
 	if !ok {
 		return errors.New("type assertion to []byte failed")

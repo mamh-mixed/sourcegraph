@@ -1,6 +1,5 @@
 import { storiesOf } from '@storybook/react'
 import { createBrowserHistory } from 'history'
-import React from 'react'
 import { EMPTY, NEVER, of } from 'rxjs'
 import sinon from 'sinon'
 
@@ -16,7 +15,6 @@ import {
 
 import { AuthenticatedUser } from '../../auth'
 import { WebStory } from '../../components/WebStory'
-import { EMPTY_FEATURE_FLAGS } from '../../featureFlags/featureFlags'
 import { useExperimentalFeatures, useNavbarQueryState } from '../../stores'
 
 import { StreamingSearchResults, StreamingSearchResultsProps } from './StreamingSearchResults'
@@ -58,8 +56,6 @@ const defaultProps: StreamingSearchResultsProps = {
     streamSearch: () => of(streamingSearchResult),
 
     fetchHighlightedFileLineRanges: () => of(HIGHLIGHTED_FILE_LINES_LONG),
-    featureFlags: EMPTY_FEATURE_FLAGS,
-    extensionViews: () => null,
     isSourcegraphDotCom: false,
     searchContextsEnabled: true,
 }

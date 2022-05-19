@@ -1,14 +1,29 @@
 #!/usr/bin/env bash
 
+cd "$(dirname "${BASH_SOURCE[0]}")"/../..
+
 set -euo pipefail
+
+REPO_ROOT="$PWD"
 
 function usage {
   cat <<EOF
 Usage: go-test.sh [only|exclude package-path-1 package-path-2 ...]
 
-Run go tests, optionally restricting which ones based on the only and exclude coommands.
+Run go tests, optionally restricting which ones based on the only and exclude commands.
 
 EOF
+}
+
+# https://github.com/sourcegraph/sourcegraph/issues/28469
+function go-junit-report() {
+  go run github.com/jstemmer/go-junit-report@latest
+}
+
+# Set up richgo for better output
+function richgo() {
+  # This fork gives us the `anyStyle` configuration required to hide log lines
+  go run github.com/jhchabran/richgo@installable "$@"
 }
 
 function go_test() {
@@ -30,44 +45,26 @@ function go_test() {
     -covermode=atomic \
     -race \
     -v \
-    $test_packages | tee "$tmpfile"
-  # Save the test exit code so we can return it after submitting the test run to the analytics.
+    $test_packages | tee "$tmpfile" | richgo testfilter
+  # Save the test exit code so we can return it after saving the test report
   test_exit_code="${PIPESTATUS[0]}"
+  echo "--- Tests complete with status $test_exit_code"
   set -eo pipefail # resume being strict about errors
 
-  local xml
-  xml=$(go-junit-report <"$tmpfile")
-  # escape xml output properly for JSON
-  local quoted_xml
-  quoted_xml="$(echo "$xml" | jq -R -s '.')"
+  mkdir -p './test-reports'
+  go-junit-report <"$tmpfile" >>./test-reports/go-test-junit.xml
 
-  local data
-  data=$(
-    cat <<EOF
-{
-  "format": "junit",
-  "run_env": {
-    "CI": "buildkite",
-    "key": "$BUILDKITE_BUILD_ID",
-    "job_id": "$BUILDKITE_JOB_ID",
-    "branch": "$BUILDKITE_BRANCH",
-    "commit_sha": "$BUILDKITE_COMMIT",
-    "message": "$BUILDKITE_MESSAGE",
-    "url": "$BUILDKITE_BUILD_URL"
-  },
-  "data": $quoted_xml
-}
-EOF
-  )
-
-  echo "$data" | curl \
-    --request POST \
-    --url https://analytics-api.buildkite.com/v1/uploads \
-    --header "Authorization: Token token=\"$BUILDKITE_ANALYTICS_BACKEND_TEST_SUITE_API_KEY\";" \
-    --header 'Content-Type: application/json' \
-    --data-binary @-
-
-  echo -e "\n--- :information_source: Succesfully uploaded test results to Buildkite analytics"
+  # Create annotation from test failure
+  if [ "$test_exit_code" -ne 0 ]; then
+    set -x
+    echo "~~~ Creating test failures anotation"
+    RICHGO_CONFIG="./.richstyle.yml"
+    cp "$REPO_ROOT/dev/ci/go-test-failures.richstyle.yml" $RICHGO_CONFIG
+    mkdir -p ./annotations
+    richgo testfilter <"$tmpfile" >>./annotations/go-test
+    rm -rf $RICHGO_CONFIG
+    set +x
+  fi
 
   return "$test_exit_code"
 }
@@ -88,28 +85,41 @@ if [ -n "$FILTER_ACTION" ]; then
   echo -e "--- :information_source: \033[0;34mFiltering go tests: $FILTER_ACTION $FILTER_TARGETS\033[0m"
 fi
 
-# Buildkite analytics
-
-# https://github.com/sourcegraph/sourcegraph/issues/28469
-# TODO is that the best way to handle this?
-go install github.com/jstemmer/go-junit-report@latest
-asdf reshim golang
-
-# TODO move to manifest
-# https://github.com/sourcegraph/sourcegraph/issues/28469
-BUILDKITE_ANALYTICS_BACKEND_TEST_SUITE_API_KEY=$(gcloud secrets versions access latest --secret="BUILDKITE_ANALYTICS_BACKEND_TEST_SUITE_API_KEY" --project="sourcegraph-ci" --quiet)
-
 # For searcher
 echo "--- comby install"
 ./dev/comby-install-or-upgrade.sh
 
-# For code insights test
-./dev/codeinsights-db.sh &
-export CODEINSIGHTS_PGDATASOURCE=postgres://postgres:password@127.0.0.1:5435/postgres
-export DB_STARTUP_TIMEOUT=360s # codeinsights-db needs more time to start in some instances.
+# Temporary fix to keep the backcompat test operational until the next release.
+# This is needed because the go-test.sh is protected and the backcompat tests are
+# not checking out the old version when the tests with the old code against the latest
+# commit database schema.
+# TODO @jhchabran remove this when we release the next version.
+if [ "v3.38.0" == "$(git describe --tags)" ]; then
+  # For code insights test
+  ./dev/codeinsights-db.sh &
+  export CODEINSIGHTS_PGDATASOURCE=postgres://postgres:password@127.0.0.1:5435/postgres
+  export DB_STARTUP_TIMEOUT=360s # codeinsights-db needs more time to start in some instances.
+fi
+
+# Disable GraphQL logs which are wildly noisy
+export NO_GRAPHQL_LOG=true
+
+# Used to ignore directories (for example, when using submodules)
+#   (It appears to be unused, but it's actually used doing -v below)
+#
+# shellcheck disable=SC2034
+declare -A IGNORED_DIRS=(
+  ["./docker-images/syntax-highlighter"]=1
+)
 
 # We have multiple go.mod files and go list doesn't recurse into them.
-find . -name go.mod -exec dirname '{}' \; | while read -r d; do
+find . -name go.mod -type f -exec dirname '{}' \; | while read -r d; do
+
+  # Skip any ignored directories.
+  if [ -v "IGNORED_DIRS[$d]" ]; then
+    continue
+  fi
+
   pushd "$d" >/dev/null
 
   # Separate out time for go mod from go test
@@ -121,24 +131,24 @@ find . -name go.mod -exec dirname '{}' \; | while read -r d; do
     exclude)
       TEST_PACKAGES=$(go list ./... | { grep -v "$patterns" || true; }) # -v to reject
       if [ -n "$TEST_PACKAGES" ]; then
-        echo "--- $d go test"
+        echo "+++ $d go test"
         go_test "$TEST_PACKAGES"
       else
-        echo "--- $d go test (skipping)"
+        echo "~~~ $d go test (skipping)"
       fi
       ;;
     only)
       TEST_PACKAGES=$(go list ./... | { grep "$patterns" || true; }) # select only what we need
       if [ -n "$TEST_PACKAGES" ]; then
-        echo "--- $d go test"
+        echo "+++ $d go test"
         go_test "$TEST_PACKAGES"
       else
-        echo "--- $d go test (skipping)"
+        echo "~~~ $d go test (skipping)"
       fi
       ;;
     *)
       TEST_PACKAGES="./..."
-      echo "--- $d go test"
+      echo "+++ $d go test"
       go_test "$TEST_PACKAGES"
       ;;
   esac

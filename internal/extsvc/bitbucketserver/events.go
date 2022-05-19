@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/cockroachdb/errors"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 const (
@@ -17,7 +17,7 @@ func WebhookEventType(r *http.Request) string {
 	return r.Header.Get(eventTypeHeader)
 }
 
-func ParseWebhookEvent(eventType string, payload []byte) (e interface{}, err error) {
+func ParseWebhookEvent(eventType string, payload []byte) (e any, err error) {
 	switch eventType {
 	case "ping":
 		return PingEvent{}, nil

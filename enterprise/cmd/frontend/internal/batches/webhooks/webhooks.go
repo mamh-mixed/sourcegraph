@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/cockroachdb/errors"
 	"github.com/inconshreveable/log15"
 
 	"github.com/sourcegraph/sourcegraph/enterprise/internal/batches/state"
@@ -18,6 +17,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc"
 	"github.com/sourcegraph/sourcegraph/internal/types"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 	"github.com/sourcegraph/sourcegraph/schema"
 )
 
@@ -73,6 +73,8 @@ func extractExternalServiceID(extSvc *types.ExternalService) (string, error) {
 	case *schema.BitbucketServerConnection:
 		serviceID = c.Url
 	case *schema.GitLabConnection:
+		serviceID = c.Url
+	case *schema.BitbucketCloudConnection:
 		serviceID = c.Url
 	}
 	if serviceID == "" {
@@ -189,7 +191,7 @@ func (e httpError) Error() string {
 	return fmt.Sprintf("HTTP %d: %s", e.code, http.StatusText(e.code))
 }
 
-func respond(w http.ResponseWriter, code int, v interface{}) {
+func respond(w http.ResponseWriter, code int, v any) {
 	switch val := v.(type) {
 	case nil:
 		w.WriteHeader(code)

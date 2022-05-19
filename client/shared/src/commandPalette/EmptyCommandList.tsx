@@ -5,15 +5,19 @@ import { ButtonLink } from '@sourcegraph/wildcard'
 import { onlyDefaultExtensionsAdded } from '../extensions/extensions'
 import { SettingsCascadeOrError } from '../settings/settings'
 
-import styles from './EmptyCommandList.module.scss'
 import { EmptyCommandListContainer } from './EmptyCommandListContainer'
+
+import styles from './EmptyCommandList.module.scss'
 
 interface Props {
     settingsCascade?: SettingsCascadeOrError
     sourcegraphURL: string
 }
 
-export const EmptyCommandList: React.FunctionComponent<Props> = ({ settingsCascade, sourcegraphURL }) => {
+export const EmptyCommandList: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
+    settingsCascade,
+    sourcegraphURL,
+}) => {
     // if no settings cascade, default to 'no active extensions'
     const onlyDefault = settingsCascade ? onlyDefaultExtensionsAdded(settingsCascade) : false
 

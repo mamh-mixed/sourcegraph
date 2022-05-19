@@ -1,7 +1,8 @@
-import classNames from 'classnames'
 import React from 'react'
 
-import { CardBody, Card } from '@sourcegraph/wildcard'
+import classNames from 'classnames'
+
+import { CardBody, Card, Typography } from '@sourcegraph/wildcard'
 
 import styles from './ProductCertificate.module.scss'
 
@@ -28,14 +29,14 @@ interface Props {
  * In most cases, you should use a component that wraps this component and handles fetching the data to display.
  * Such components exist; check this component's TypeScript references.
  */
-export const ProductCertificate: React.FunctionComponent<Props> = ({
+export const ProductCertificate: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
     title,
     subtitle,
     detail,
     footer,
     className = '',
 }) => (
-    <Card className={classNames(className, 'test-product-certificate')}>
+    <Card className={className} data-testid="product-certificate">
         <CardBody className="d-flex align-items-center">
             <img
                 className={classNames(styles.logo, 'mr-1', 'p-2')}
@@ -43,8 +44,8 @@ export const ProductCertificate: React.FunctionComponent<Props> = ({
                 alt="Sourcegraph logo"
             />
             <div>
-                <h2 className="font-weight-normal mb-1">{title}</h2>
-                {subtitle && <h3 className="text-muted font-weight-normal">{subtitle}</h3>}
+                <Typography.H2 className="font-weight-normal mb-1">{title}</Typography.H2>
+                {subtitle && <Typography.H3 className="text-muted font-weight-normal">{subtitle}</Typography.H3>}
                 {detail && <p className="text-muted mb-0">{detail}</p>}
             </div>
         </CardBody>

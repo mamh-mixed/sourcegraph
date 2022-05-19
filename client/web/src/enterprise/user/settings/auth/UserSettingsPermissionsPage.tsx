@@ -1,5 +1,6 @@
-import * as H from 'history'
 import React, { useEffect, useMemo } from 'react'
+
+import * as H from 'history'
 
 import { Container, PageHeader, LoadingSpinner, useObservable, Alert, Link } from '@sourcegraph/wildcard'
 
@@ -10,15 +11,18 @@ import { ActionContainer } from '../../../../repo/settings/components/ActionCont
 import { eventLogger } from '../../../../tracking/eventLogger'
 
 import { scheduleUserPermissionsSync, userPermissionsInfo } from './backend'
+
 import styles from './UserSettingsPermissionsPage.module.scss'
 
 /**
  * The user settings permissions page.
  */
-export const UserSettingsPermissionsPage: React.FunctionComponent<{
-    user: UserSettingsAreaUserFields
-    history: H.History
-}> = ({ user, history }) => {
+export const UserSettingsPermissionsPage: React.FunctionComponent<
+    React.PropsWithChildren<{
+        user: UserSettingsAreaUserFields
+        history: H.History
+    }>
+> = ({ user, history }) => {
     useEffect(() => eventLogger.logViewEvent('UserSettingsPermissions'))
     const permissionsInfo = useObservable(useMemo(() => userPermissionsInfo(user.id), [user.id]))
 

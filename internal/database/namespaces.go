@@ -4,11 +4,10 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/cockroachdb/errors"
 	"github.com/keegancsmith/sqlf"
 
 	"github.com/sourcegraph/sourcegraph/internal/database/basestore"
-	"github.com/sourcegraph/sourcegraph/internal/database/dbutil"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 // A Namespace is a username or an organization name. No user may have a username that is equal to
@@ -41,12 +40,7 @@ type namespaceStore struct {
 	*basestore.Store
 }
 
-// Namespaces instantiates and returns a new NamespaceStore with prepared statements.
-func Namespaces(db dbutil.DB) NamespaceStore {
-	return &namespaceStore{Store: basestore.NewWithDB(db, sql.TxOptions{})}
-}
-
-// NewNamespaceStoreWithDB instantiates and returns a new NamespaceStore using the other store handle.
+// NamespacesWith instantiates and returns a new NamespaceStore using the other store handle.
 func NamespacesWith(other basestore.ShareableStore) NamespaceStore {
 	return &namespaceStore{Store: basestore.NewWithHandle(other.Handle())}
 }

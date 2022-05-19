@@ -28,7 +28,7 @@ See our [query syntax](../reference/queries.md#diff-and-commit-searches-only) do
 
 ## Symbol search
 
-Searching for symbols makes it easier to find specific functions, variables, and more. Use the `type:symbol` filter to search for symbol results. Symbol results also appear in typeahead suggestions, so you can jump directly to symbols by name.
+Searching for symbols makes it easier to find specific functions, variables, and more. Use the `type:symbol` filter to search for symbol results. Symbol results also appear in typeahead suggestions, so you can jump directly to symbols by name. When on an [indexed](../../admin/search.md#indexed-search) commit it uses Zoekt, otherwise it uses the [symbols service](../../code_intelligence/explanations/features.md#symbol-search)
 
 ## Saved searches
 
@@ -89,7 +89,7 @@ Your site admin can configure indexed branches in site configuration under the `
 }
 ```
 
-Indexing multiple branches will add additional resource requirements to Sourcegraph (particularly memory). The indexer will deduplicate documents between branches. So the size of your index will grow in relation to the number of unique documents. Refer to our [resource estimator](../../../admin/install/resource_estimator.md) to estimate whether additional resources are required.
+Indexing multiple branches will add additional resource requirements to Sourcegraph (particularly memory). The indexer will deduplicate documents between branches. So the size of your index will grow in relation to the number of unique documents. Refer to our [resource estimator](../../../admin/deploy/resource_estimator.md) to estimate whether additional resources are required.
 
 > NOTE: The default branch (`HEAD`) is always indexed.
 

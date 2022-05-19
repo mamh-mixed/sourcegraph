@@ -12,24 +12,23 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/cockroachdb/errors"
 	"github.com/fsnotify/fsnotify"
 	"github.com/inconshreveable/log15"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-
-	"github.com/sourcegraph/sourcegraph/internal/database/migration/schemas"
-	"github.com/sourcegraph/sourcegraph/internal/database/postgresdsn"
-	"github.com/sourcegraph/sourcegraph/internal/endpoint"
 
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/globals"
 	"github.com/sourcegraph/sourcegraph/internal/api"
 	"github.com/sourcegraph/sourcegraph/internal/conf"
 	"github.com/sourcegraph/sourcegraph/internal/conf/conftypes"
 	"github.com/sourcegraph/sourcegraph/internal/database"
+	"github.com/sourcegraph/sourcegraph/internal/database/migration/schemas"
+	"github.com/sourcegraph/sourcegraph/internal/database/postgresdsn"
+	"github.com/sourcegraph/sourcegraph/internal/endpoint"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc"
 	"github.com/sourcegraph/sourcegraph/internal/jsonc"
 	"github.com/sourcegraph/sourcegraph/internal/types"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 	"github.com/sourcegraph/sourcegraph/schema"
 )
 
@@ -180,7 +179,7 @@ func overrideExtSvcConfig(ctx context.Context, db database.DB) error {
 	if path == "" {
 		return nil
 	}
-	extsvcs := database.ExternalServices(db)
+	extsvcs := db.ExternalServices()
 	cs := &configurationSource{db: db}
 
 	update := func(ctx context.Context) error {
@@ -449,9 +448,9 @@ func serviceConnections() conftypes.ServiceConnections {
 		}
 
 		serviceConnectionsVal = conftypes.ServiceConnections{
-			PostgresDSN:              dsns["frontend"],
-			CodeIntelPostgresDSN:     dsns["codeintel"],
-			CodeInsightsTimescaleDSN: dsns["codeinsights"],
+			PostgresDSN:          dsns["frontend"],
+			CodeIntelPostgresDSN: dsns["codeintel"],
+			CodeInsightsDSN:      dsns["codeinsights"],
 		}
 	})
 
@@ -461,9 +460,9 @@ func serviceConnections() conftypes.ServiceConnections {
 	}
 
 	return conftypes.ServiceConnections{
-		GitServers:               addrs,
-		PostgresDSN:              serviceConnectionsVal.PostgresDSN,
-		CodeIntelPostgresDSN:     serviceConnectionsVal.CodeIntelPostgresDSN,
-		CodeInsightsTimescaleDSN: serviceConnectionsVal.CodeInsightsTimescaleDSN,
+		GitServers:           addrs,
+		PostgresDSN:          serviceConnectionsVal.PostgresDSN,
+		CodeIntelPostgresDSN: serviceConnectionsVal.CodeIntelPostgresDSN,
+		CodeInsightsDSN:      serviceConnectionsVal.CodeInsightsDSN,
 	}
 }

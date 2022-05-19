@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/cockroachdb/errors"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/schema"
 	"github.com/graph-gophers/graphql-go"
@@ -35,7 +34,17 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/search"
 	"github.com/sourcegraph/sourcegraph/internal/search/searchcontexts"
 	"github.com/sourcegraph/sourcegraph/internal/trace"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
+
+type Handlers struct {
+	GitHubWebhook             webhooks.Registerer
+	GitLabWebhook             http.Handler
+	BitbucketServerWebhook    http.Handler
+	BitbucketCloudWebhook     http.Handler
+	NewCodeIntelUploadHandler enterprise.NewCodeIntelUploadHandler
+	NewComputeStreamHandler   enterprise.NewComputeStreamHandler
+}
 
 // NewHandler returns a new API handler that uses the provided API
 // router, which must have been created by httpapi/router.New, or
@@ -47,12 +56,8 @@ func NewHandler(
 	db database.DB,
 	m *mux.Router,
 	schema *graphql.Schema,
-	githubWebhook webhooks.Registerer,
-	gitlabWebhook,
-	bitbucketServerWebhook http.Handler,
-	newCodeIntelUploadHandler enterprise.NewCodeIntelUploadHandler,
-	newComputeStreamHandler enterprise.NewComputeStreamHandler,
 	rateLimiter graphqlbackend.LimitWatcher,
+	handlers *Handlers,
 ) http.Handler {
 	if m == nil {
 		m = apirouter.New(nil)
@@ -72,7 +77,7 @@ func NewHandler(
 	m.Get(apirouter.RepoRefresh).Handler(trace.Route(handler(serveRepoRefresh(db))))
 
 	gh := webhooks.GitHubWebhook{
-		ExternalServices: database.ExternalServices(db),
+		ExternalServices: db.ExternalServices(),
 	}
 
 	webhookhandlers.Init(db, &gh)
@@ -80,13 +85,14 @@ func NewHandler(
 		database.WebhookLogs(db, keyring.Default().WebhookLogKey),
 	)
 
-	githubWebhook.Register(&gh)
+	handlers.GitHubWebhook.Register(&gh)
 
 	m.Get(apirouter.GitHubWebhooks).Handler(trace.Route(webhookMiddleware.Logger(&gh)))
-	m.Get(apirouter.GitLabWebhooks).Handler(trace.Route(webhookMiddleware.Logger(gitlabWebhook)))
-	m.Get(apirouter.BitbucketServerWebhooks).Handler(trace.Route(webhookMiddleware.Logger(bitbucketServerWebhook)))
-	m.Get(apirouter.LSIFUpload).Handler(trace.Route(newCodeIntelUploadHandler(false)))
-	m.Get(apirouter.ComputeStream).Handler(trace.Route(newComputeStreamHandler()))
+	m.Get(apirouter.GitLabWebhooks).Handler(trace.Route(webhookMiddleware.Logger(handlers.GitLabWebhook)))
+	m.Get(apirouter.BitbucketServerWebhooks).Handler(trace.Route(webhookMiddleware.Logger(handlers.BitbucketServerWebhook)))
+	m.Get(apirouter.BitbucketCloudWebhooks).Handler(trace.Route(webhookMiddleware.Logger(handlers.BitbucketCloudWebhook)))
+	m.Get(apirouter.LSIFUpload).Handler(trace.Route(handlers.NewCodeIntelUploadHandler(false)))
+	m.Get(apirouter.ComputeStream).Handler(trace.Route(handlers.NewComputeStreamHandler()))
 
 	if envvar.SourcegraphDotComMode() {
 		m.Path("/updates").Methods("GET", "POST").Name("updatecheck").Handler(trace.Route(http.HandlerFunc(updatecheck.Handler)))
@@ -116,7 +122,7 @@ func NewHandler(
 // 🚨 SECURITY: This handler should not be served on a publicly exposed port. 🚨
 // This handler is not guaranteed to provide the same authorization checks as
 // public API handlers.
-func NewInternalHandler(m *mux.Router, db database.DB, schema *graphql.Schema, newCodeIntelUploadHandler enterprise.NewCodeIntelUploadHandler, rateLimitWatcher graphqlbackend.LimitWatcher) http.Handler {
+func NewInternalHandler(m *mux.Router, db database.DB, schema *graphql.Schema, newCodeIntelUploadHandler enterprise.NewCodeIntelUploadHandler, newComputeStreamHandler enterprise.NewComputeStreamHandler, rateLimitWatcher graphqlbackend.LimitWatcher) http.Handler {
 	if m == nil {
 		m = apirouter.New(nil)
 	}
@@ -133,7 +139,8 @@ func NewInternalHandler(m *mux.Router, db database.DB, schema *graphql.Schema, n
 
 	// zoekt-indexserver endpoints
 	indexer := &searchIndexerServer{
-		ListIndexable: backend.NewRepos(db.Repos()).ListIndexable,
+		db:            db,
+		ListIndexable: backend.NewRepos(db).ListIndexable,
 		RepoStore:     database.Repos(db),
 		SearchContextsRepoRevs: func(ctx context.Context, repoIDs []api.RepoID) (map[api.RepoID][]string, error) {
 			return searchcontexts.RepoRevs(ctx, db, repoIDs)
@@ -155,18 +162,19 @@ func NewInternalHandler(m *mux.Router, db database.DB, schema *graphql.Schema, n
 	m.Get(apirouter.CanSendEmail).Handler(trace.Route(handler(serveCanSendEmail)))
 	m.Get(apirouter.SendEmail).Handler(trace.Route(handler(serveSendEmail)))
 	m.Get(apirouter.GitExec).Handler(trace.Route(handler(serveGitExec(db))))
-	m.Get(apirouter.GitResolveRevision).Handler(trace.Route(handler(serveGitResolveRevision)))
-	m.Get(apirouter.GitTar).Handler(trace.Route(handler(serveGitTar)))
+	m.Get(apirouter.GitResolveRevision).Handler(trace.Route(handler(serveGitResolveRevision(db))))
+	m.Get(apirouter.GitTar).Handler(trace.Route(handler(serveGitTar(db))))
 	gitService := &gitServiceHandler{
-		Gitserver: gitserver.DefaultClient,
+		Gitserver: gitserver.NewClient(db),
 	}
-	m.Get(apirouter.GitInfoRefs).Handler(trace.Route(http.HandlerFunc(gitService.serveInfoRefs)))
-	m.Get(apirouter.GitUploadPack).Handler(trace.Route(http.HandlerFunc(gitService.serveGitUploadPack)))
+	m.Get(apirouter.GitInfoRefs).Handler(trace.Route(handler(gitService.serveInfoRefs())))
+	m.Get(apirouter.GitUploadPack).Handler(trace.Route(handler(gitService.serveGitUploadPack())))
 	m.Get(apirouter.Telemetry).Handler(trace.Route(telemetryHandler(db)))
 	m.Get(apirouter.GraphQL).Handler(trace.Route(handler(serveGraphQL(schema, rateLimitWatcher, true))))
 	m.Get(apirouter.Configuration).Handler(trace.Route(handler(serveConfiguration)))
 	m.Path("/ping").Methods("GET").Name("ping").HandlerFunc(handlePing)
 	m.Get(apirouter.StreamingSearch).Handler(trace.Route(frontendsearch.StreamHandler(db)))
+	m.Get(apirouter.ComputeStream).Handler(trace.Route(newComputeStreamHandler()))
 
 	m.Get(apirouter.LSIFUpload).Handler(trace.Route(newCodeIntelUploadHandler(true)))
 
@@ -222,7 +230,7 @@ func (h *errorHandler) Handle(w http.ResponseWriter, r *http.Request, status int
 	}
 	http.Error(w, displayErrBody, status)
 	traceID := trace.ID(r.Context())
-	traceURL := trace.URL(traceID, conf.ExternalURL())
+	traceURL := trace.URL(traceID, conf.ExternalURL(), conf.Tracer())
 
 	if status < 200 || status >= 500 {
 		log15.Error("API HTTP handler error response", "method", r.Method, "request_uri", r.URL.RequestURI(), "status_code", status, "error", err, "trace", traceURL, "traceID", traceID)

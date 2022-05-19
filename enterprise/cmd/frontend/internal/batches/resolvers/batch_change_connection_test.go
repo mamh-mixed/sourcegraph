@@ -104,7 +104,7 @@ func TestBatchChangeConnectionResolver(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(fmt.Sprintf("first=%d", tc.firstParam), func(t *testing.T) {
-			input := map[string]interface{}{"first": int64(tc.firstParam)}
+			input := map[string]any{"first": int64(tc.firstParam)}
 			var response struct{ BatchChanges apitest.BatchChangeConnection }
 			apitest.MustExec(actor.WithActor(context.Background(), actor.FromUser(userID)), t, s, input, &response, queryBatchChangesConnection)
 
@@ -127,7 +127,7 @@ func TestBatchChangeConnectionResolver(t *testing.T) {
 	t.Run("Cursor based pagination", func(t *testing.T) {
 		var endCursor *string
 		for i := range nodes {
-			input := map[string]interface{}{"first": 1}
+			input := map[string]any{"first": 1}
 			if endCursor != nil {
 				input["after"] = *endCursor
 			}
@@ -205,7 +205,6 @@ func TestBatchChangesListing(t *testing.T) {
 	createBatchChange := func(t *testing.T, c *btypes.BatchChange) {
 		t.Helper()
 
-		c.Name = "n"
 		if err := store.CreateBatchChange(ctx, c); err != nil {
 			t.Fatal(err)
 		}
@@ -216,6 +215,7 @@ func TestBatchChangesListing(t *testing.T) {
 		createBatchSpec(t, spec)
 
 		batchChange := &btypes.BatchChange{
+			Name:            "batch-change-1",
 			NamespaceUserID: userID,
 			BatchSpecID:     spec.ID,
 			CreatorID:       userID,
@@ -225,7 +225,7 @@ func TestBatchChangesListing(t *testing.T) {
 		createBatchChange(t, batchChange)
 
 		userAPIID := string(graphqlbackend.MarshalUserID(userID))
-		input := map[string]interface{}{"node": userAPIID}
+		input := map[string]any{"node": userAPIID}
 
 		var response struct{ Node apitest.User }
 		apitest.MustExec(actorCtx, t, s, input, &response, listNamespacesBatchChanges)
@@ -249,6 +249,7 @@ func TestBatchChangesListing(t *testing.T) {
 
 		// This batch change has never been applied -- it is a draft.
 		batchChange2 := &btypes.BatchChange{
+			Name:            "batch-change-2",
 			NamespaceUserID: userID,
 			BatchSpecID:     spec2.ID,
 		}
@@ -298,6 +299,7 @@ func TestBatchChangesListing(t *testing.T) {
 		createBatchSpec(t, spec)
 
 		batchChange := &btypes.BatchChange{
+			Name:           "batch-change-1",
 			NamespaceOrgID: orgID,
 			BatchSpecID:    spec.ID,
 			CreatorID:      userID,
@@ -307,7 +309,7 @@ func TestBatchChangesListing(t *testing.T) {
 		createBatchChange(t, batchChange)
 
 		orgAPIID := string(graphqlbackend.MarshalOrgID(orgID))
-		input := map[string]interface{}{"node": orgAPIID}
+		input := map[string]any{"node": orgAPIID}
 
 		var response struct{ Node apitest.Org }
 		apitest.MustExec(actorCtx, t, s, input, &response, listNamespacesBatchChanges)
@@ -331,6 +333,7 @@ func TestBatchChangesListing(t *testing.T) {
 
 		// This batch change has never been applied -- it is a draft.
 		batchChange2 := &btypes.BatchChange{
+			Name:           "batch-change-2",
 			NamespaceOrgID: orgID,
 			BatchSpecID:    spec2.ID,
 		}

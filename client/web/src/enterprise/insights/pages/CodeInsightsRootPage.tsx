@@ -1,17 +1,24 @@
+import React, { useEffect } from 'react'
+
 import PlusIcon from 'mdi-react/PlusIcon'
-import React from 'react'
-import { matchPath, useHistory, useRouteMatch } from 'react-router'
+import { matchPath, useHistory } from 'react-router'
 import { useLocation } from 'react-router-dom'
 
+import { useTemporarySetting } from '@sourcegraph/shared/src/settings/temporary/useTemporarySetting'
 import { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryService'
-import { Button, Link, PageHeader, Tabs, TabList, Tab } from '@sourcegraph/wildcard'
+import { lazyComponent } from '@sourcegraph/shared/src/util/lazyComponent'
+import { Button, Link, PageHeader, Tabs, TabList, Tab, Icon, TabPanels, TabPanel } from '@sourcegraph/wildcard'
 
-import { Page } from '../../../components/Page'
 import { CodeInsightsIcon } from '../../../insights/Icons'
-import { ALL_INSIGHTS_DASHBOARD_ID } from '../core/types/dashboard/virtual-dashboard'
+import { CodeInsightsPage } from '../components/code-insights-page/CodeInsightsPage'
+import { ALL_INSIGHTS_DASHBOARD } from '../core'
 
-import { DashboardPageContent } from './dashboards/dashboard-page/DashboardsPage'
-import { CodeInsightsGettingStartedPage } from './getting-started/CodeInsightsGettingStartedPage'
+import { DashboardsContentPage } from './dashboards/dashboard-page/DashboardsContentPage'
+
+const LazyCodeInsightsGettingStartedPage = lazyComponent(
+    () => import('./landing/getting-started/CodeInsightsGettingStartedPage'),
+    'CodeInsightsGettingStartedPage'
+)
 
 export enum CodeInsightsRootPageURLPaths {
     CodeInsights = '/dashboards/:dashboardId?',
@@ -33,19 +40,23 @@ interface CodeInsightsRootPageProps extends TelemetryProps {
     activeView: CodeInsightsRootPageTab
 }
 
-export const CodeInsightsRootPage: React.FunctionComponent<CodeInsightsRootPageProps> = props => {
+export const CodeInsightsRootPage: React.FunctionComponent<
+    React.PropsWithChildren<CodeInsightsRootPageProps>
+> = props => {
     const { telemetryService, activeView } = props
-    const match = useRouteMatch()
+    const location = useLocation()
     const query = useQuery()
     const history = useHistory()
 
     const { params } =
-        matchPath<{ dashboardId?: string }>(window.location.pathname, {
-            path: match.path,
+        matchPath<{ dashboardId?: string }>(location.pathname, {
+            path: `/insights${CodeInsightsRootPageURLPaths.CodeInsights}`,
         }) ?? {}
 
-    const dashboardId = params?.dashboardId ?? ALL_INSIGHTS_DASHBOARD_ID
-    const queryParameterDashboardId = query.get('dashboardId') ?? ALL_INSIGHTS_DASHBOARD_ID
+    const [hasInsightPageBeenViewed, markMainPageAsViewed] = useTemporarySetting('insights.wasMainPageOpen', false)
+
+    const dashboardId = params?.dashboardId ?? ALL_INSIGHTS_DASHBOARD.id
+    const queryParameterDashboardId = query.get('dashboardId') ?? ALL_INSIGHTS_DASHBOARD.id
 
     const handleTabNavigationChange = (selectedTab: CodeInsightsRootPageTab): void => {
         switch (selectedTab) {
@@ -56,14 +67,20 @@ export const CodeInsightsRootPage: React.FunctionComponent<CodeInsightsRootPageP
         }
     }
 
+    useEffect(() => {
+        if (hasInsightPageBeenViewed === false) {
+            markMainPageAsViewed(true)
+        }
+    }, [hasInsightPageBeenViewed, markMainPageAsViewed])
+
     return (
-        <Page>
+        <CodeInsightsPage>
             <PageHeader
-                path={[{ icon: CodeInsightsIcon }, { text: 'Insights' }]}
+                path={[{ icon: CodeInsightsIcon, text: 'Insights' }]}
                 actions={
                     <>
                         <Button as={Link} to="/insights/add-dashboard" variant="secondary" className="mr-2">
-                            <PlusIcon className="icon-inline" /> Create dashboard
+                            <Icon as={PlusIcon} /> Add dashboard
                         </Button>
                         <Button
                             as={Link}
@@ -71,26 +88,28 @@ export const CodeInsightsRootPage: React.FunctionComponent<CodeInsightsRootPageP
                             variant="primary"
                             onClick={() => telemetryService.log('InsightAddMoreClick')}
                         >
-                            <PlusIcon className="icon-inline" /> Create insight
+                            <Icon as={PlusIcon} /> Create insight
                         </Button>
                     </>
                 }
                 className="align-items-start mb-3"
             />
 
-            <Tabs index={activeView} size="medium" className="mb-3" onChange={handleTabNavigationChange}>
+            <Tabs index={activeView} size="medium" className="mb-3" onChange={handleTabNavigationChange} lazy={true}>
                 <TabList>
                     <Tab index={CodeInsightsRootPageTab.CodeInsights}>Code Insights</Tab>
 
                     <Tab index={CodeInsightsRootPageTab.GettingStarted}>Getting started</Tab>
                 </TabList>
+                <TabPanels className="mt-3">
+                    <TabPanel>
+                        <DashboardsContentPage telemetryService={telemetryService} dashboardID={params?.dashboardId} />
+                    </TabPanel>
+                    <TabPanel>
+                        <LazyCodeInsightsGettingStartedPage telemetryService={telemetryService} />
+                    </TabPanel>
+                </TabPanels>
             </Tabs>
-
-            {activeView === CodeInsightsRootPageTab.CodeInsights && (
-                <DashboardPageContent telemetryService={telemetryService} dashboardID={params?.dashboardId} />
-            )}
-
-            {activeView === CodeInsightsRootPageTab.GettingStarted && <CodeInsightsGettingStartedPage />}
-        </Page>
+        </CodeInsightsPage>
     )
 }

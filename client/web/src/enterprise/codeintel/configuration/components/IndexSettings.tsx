@@ -1,13 +1,14 @@
 import React, { FunctionComponent } from 'react'
 
 import { Toggle } from '@sourcegraph/branded/src/components/Toggle'
-import { Alert } from '@sourcegraph/wildcard'
+import { Alert, Typography } from '@sourcegraph/wildcard'
 
 import { RadioButtons } from '../../../../components/RadioButtons'
 import { CodeIntelligenceConfigurationPolicyFields, GitObjectType } from '../../../../graphql-operations'
 import { nullPolicy } from '../hooks/types'
 
 import { DurationSelect } from './DurationSelect'
+
 // This uses the same styles as the RetentionSettings component to style radio buttons
 import styles from './RetentionSettings.module.scss'
 
@@ -22,7 +23,7 @@ export interface IndexingSettingsProps {
     allowGlobalPolicies?: boolean
 }
 
-export const IndexingSettings: FunctionComponent<IndexingSettingsProps> = ({
+export const IndexingSettings: FunctionComponent<React.PropsWithChildren<IndexingSettingsProps>> = ({
     policy,
     repo,
     setPolicy,
@@ -52,7 +53,7 @@ export const IndexingSettings: FunctionComponent<IndexingSettingsProps> = ({
 
     return (
         <div className="form-group">
-            <h3>Auto-indexing</h3>
+            <Typography.H3>Auto-indexing</Typography.H3>
             <div className="mb-4 form-group">
                 <RadioButtons
                     nodes={radioButtons}

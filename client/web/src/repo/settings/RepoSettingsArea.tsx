@@ -1,8 +1,9 @@
+import React, { useMemo } from 'react'
+
 import classNames from 'classnames'
 import AlertCircleIcon from 'mdi-react/AlertCircleIcon'
 import MapSearchIcon from 'mdi-react/MapSearchIcon'
 import MinusCircleIcon from 'mdi-react/MinusCircleIcon'
-import React, { useMemo } from 'react'
 import { Route, RouteComponentProps, Switch } from 'react-router'
 import { of } from 'rxjs'
 import { catchError } from 'rxjs/operators'
@@ -20,10 +21,11 @@ import { RepositoryFields, SettingsAreaRepositoryFields } from '../../graphql-op
 import { RouteDescriptor } from '../../util/contributions'
 
 import { fetchSettingsAreaRepository } from './backend'
-import styles from './RepoSettingsArea.module.scss'
 import { RepoSettingsSidebar, RepoSettingsSideBarGroups } from './RepoSettingsSidebar'
 
-const NotFoundPage: React.FunctionComponent = () => (
+import styles from './RepoSettingsArea.module.scss'
+
+const NotFoundPage: React.FunctionComponent<React.PropsWithChildren<unknown>> = () => (
     <HeroPage
         icon={MapSearchIcon}
         title="404: Not Found"
@@ -48,7 +50,7 @@ interface Props extends RouteComponentProps<{}>, BreadcrumbSetters, ThemeProps, 
  * Renders a layout of a sidebar and a content area to display pages related to
  * a repository's settings.
  */
-export const RepoSettingsArea: React.FunctionComponent<Props> = ({
+export const RepoSettingsArea: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
     useBreadcrumb,
 
     ...props

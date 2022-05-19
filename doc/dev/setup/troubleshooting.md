@@ -21,41 +21,17 @@ If you see an error like this you need to upgrade the version of node installed.
 
 ## dial tcp 127.0.0.1:3090: connect: connection refused
 
-This means the `frontend` server failed to start, for some reason. Look through
-the previous logs for possible explanations, such as failure to contact the
-`redis` server, or database migrations failing.
-
-## Database migration failures
-
-While developing Sourcegraph, you may run into:
-
-`frontend | failed to migrate the DB. Please contact hi@sourcegraph.com for further assistance:Dirty database version 1514702776. Fix and force version.`
-
-You may have to run migrations manually. First, install the Go [migrate](https://github.com/golang-migrate/migrate/tree/master/cli#installation) CLI, then run `dev/db/migrate.sh <db_name> up` where the database name is either `frontend` or `codeintel`.
-
-If you get something like `error: Dirty database version 1514702776. Fix and force version.`, you need to roll things back and start from scratch.
-
-```bash
-dev/db/migrate.sh <db_name> drop
-dev/db/migrate.sh <db_name> up
-```
-
-If you receive errors while migrating, try dropping the database
-
-```bash
-dev/db/drop-entire-local-database-and-redis.sh
-dev/db/migrate.sh <db_name> up
-```
+This means the `frontend` server failed to start, for some reason. Look through the previous logs for possible explanations, such as failure to contact the `redis` server, or database migrations failing.
 
 ## Internal Server Error
 
 If you see this error when opening the app:
 
-`500 Internal Server Error template: app.html:21:70: executing "app.html" at <version "styles/styl...>: error calling version: open ui/assets/styles/app.bundle.css: no such file or directory`
+```
+500 Internal Server Error template: app.html:21:70: executing "app.html" at <version "styles/styl...>: error calling version: open ui/assets/styles/app.bundle.css: no such file or directory
+```
 
-that means Webpack hasn't finished compiling the styles yet (it takes about 3 minutes).
-Simply wait a little while for a message from webpack like `web | Time: 180000ms` to appear
-in the terminal.
+that means Webpack hasn't finished compiling the styles yet (it takes about 3 minutes). Simply wait a little while for a message from webpack like `web | Time: 180000ms` to appear in the terminal.
 
 ## Increase maximum available file descriptors.
 
@@ -69,8 +45,7 @@ permanent for every shell session by adding the following line to your
 ulimit -n 10000
 ```
 
-On Linux, it may also be necessary to increase `sysctl -n fs.inotify.max_user_watches`, which can be
-done by running one of the following:
+On Linux, it may also be necessary to increase `sysctl -n fs.inotify.max_user_watches`, which can be done by running one of the following:
 
 ```bash
 echo 524288 | sudo tee -a /proc/sys/fs/inotify/max_user_watches
@@ -104,11 +79,15 @@ certutil.exe -addstore -user Root "$(find /usr/local/share/ca-certificates/ -nam
 
 This command will add the certificate to the `Trusted Root Certification Authorities` for your Windows user.
 
+### Enabling Caddy certificates in Firefox
+
+Firefox on Windows and macOS will not look for enterprise roots by default. If you are getting certificate errors in Firefox only, toggling `security.enterprise_roots.enabled` on in `about:config` should fix the problem.
+
 ### Certificate expiry
 
 If you see a certificate expiry warning you may need to delete your certificate and restart your server.
 
-On MaCOS, the certificate can be removed from here: `~/Library/Application\ Support/Caddy/certificates/local/sourcegraph.test`
+On macOS, the certificate can be removed from here: `~/Library/Application\ Support/Caddy/certificates/local/sourcegraph.test`
 
 ## Running out of disk space
 
@@ -128,14 +107,9 @@ SRC_REPOS_DESIRED_PERCENT_FREE=5
 
 ## CPU/RAM/bandwidth/battery usage
 
-On first install, the program will use quite a bit of bandwidth to concurrently
-download all of the Go and Node packages. After packages have been installed,
-the Javascript assets will be compiled into a single Javascript file, which
-can take up to 5 minutes, and can be heavy on the CPU at times.
+On first install, the program will use quite a bit of bandwidth to concurrently download all the Go and Node packages. After packages have been installed, the Javascript assets will be compiled into a single Javascript file, which can take up to 5 minutes, and can be heavy on the CPU at times.
 
-After the initial install/compile is complete, the Docker for Mac binary uses
-about 1.5GB of RAM. The numerous different Go binaries don't use that much RAM
-or CPU each, about 5MB of RAM each.
+After the initial install/compile is complete, the Docker for Mac binary uses about 1.5GB of RAM. The numerous different Go binaries don't use that much RAM or CPU each, about 5MB of RAM each.
 
 If you notice heavy battery and CPU usage running `gulp --color watch`, please first [double check that Spotlight is not indexing your Sourcegraph repository](https://www.macobserver.com/tips/how-to/stop-spotlight-indexing/), as this can lead to additional, unnecessary, poll events.
 
@@ -148,8 +122,7 @@ If you're running macOS 10.15.x (Catalina) reinstalling the Xcode Command Line T
 
 ## Permission errors for Grafana and Prometheus containers
 
-The Grafana and Prometheus containers need group read access for specific files.
-Otherwise you will see errors such as
+The Grafana and Prometheus containers need group read access for specific files. Otherwise, you will see errors such as:
 
 ```
 grafana | standard_init_linux.go:228: exec user process caused: permission denied
@@ -163,8 +136,7 @@ prometheus | t=2021-05-26T10:05:26+0000 lvl=eror msg="command [/prometheus.sh --
 prometheus | t=2021-05-26T10:05:26+0000 lvl=eror msg="command [/alertmanager.sh --config.file=/sg_config_prometheus/alertmanag
 ```
 
-If files do not normally have group permissions in your environment
-(e.g. if you set `umask 077`), then you need to
+If files do not normally have group permissions in your environment (e.g. if you set `umask 077`), then you need to:
 
 1. Set group read permissions for the Grafana and Prometheus docker images, with
 
@@ -181,7 +153,7 @@ If files do not normally have group permissions in your environment
    ```
 
 ## Installing `sg` with Windows Subsystem for Linux (WSL2)
+
 When trying to install `sg` with the pre-built binaries on WSL2 you may run into this error message: `failed to set max open files: invalid argument`. The default configuration of WSL2 does not allow the user to modify the number of open files by default [which `sg` requires](https://github.com/sourcegraph/sourcegraph/blob/379369e3d92c9b28d5891d3251922c7737ed810b/dev/sg/main.go#L75:L90) to start. To work around this you can modify the file limits for your given session with `sudo prlimit --nofile=20000 --pid $$; ulimit -n 20000` then re-run the installation script.
 
 Note: this change will be reverted when your session ends. You will need to reset these limits every time you open a new session and want to use `sg`.
-

@@ -1,13 +1,14 @@
+import React from 'react'
+
 import { ListboxButton } from '@reach/listbox'
 import classNames from 'classnames'
 import ChevronDownIcon from 'mdi-react/ChevronDownIcon'
 import ChevronUpIcon from 'mdi-react/ChevronUpIcon'
-import React from 'react'
 
-import { InsightDashboard, isRealDashboard } from '../../../../../../../core/types'
+import { TruncatedText } from '../../../../../../../components'
+import { InsightDashboard, isCustomDashboard } from '../../../../../../../core'
 import { getDashboardOwnerName, getDashboardTitle } from '../../helpers/get-dashboard-title'
 import { InsightsBadge } from '../insights-badge/InsightsBadge'
-import { TruncatedText } from '../trancated-text/TrancatedText'
 
 import styles from './MenuButton.module.scss'
 
@@ -19,7 +20,7 @@ interface MenuButtonProps {
 /**
  * Renders ListBox menu button for dashboard select component.
  */
-export const MenuButton: React.FunctionComponent<MenuButtonProps> = props => {
+export const MenuButton: React.FunctionComponent<React.PropsWithChildren<MenuButtonProps>> = props => {
     const { dashboards, className } = props
 
     return (
@@ -34,7 +35,7 @@ export const MenuButton: React.FunctionComponent<MenuButtonProps> = props => {
                 return (
                     <MenuButtonContent
                         title={getDashboardTitle(dashboard)}
-                        badge={isRealDashboard(dashboard) ? getDashboardOwnerName(dashboard) : undefined}
+                        badge={isCustomDashboard(dashboard) ? getDashboardOwnerName(dashboard) : undefined}
                         isExpanded={isExpanded}
                     />
                 )
@@ -49,7 +50,7 @@ interface MenuButtonContentProps {
     badge?: string
 }
 
-const MenuButtonContent: React.FunctionComponent<MenuButtonContentProps> = props => {
+const MenuButtonContent: React.FunctionComponent<React.PropsWithChildren<MenuButtonContentProps>> = props => {
     const { title, isExpanded, badge } = props
     const ListboxButtonIcon = isExpanded ? ChevronUpIcon : ChevronDownIcon
 

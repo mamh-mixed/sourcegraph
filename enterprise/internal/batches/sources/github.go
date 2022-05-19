@@ -6,8 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/cockroachdb/errors"
-
 	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc/auth"
@@ -17,6 +15,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/jsonc"
 	"github.com/sourcegraph/sourcegraph/internal/types"
 	"github.com/sourcegraph/sourcegraph/internal/vcs/git"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 	"github.com/sourcegraph/sourcegraph/schema"
 )
 
@@ -32,10 +31,10 @@ func NewGithubSource(svc *types.ExternalService, cf *httpcli.Factory) (*GithubSo
 	if err := jsonc.Unmarshal(svc.Config, &c); err != nil {
 		return nil, errors.Errorf("external service id=%d config error: %s", svc.ID, err)
 	}
-	return newGithubSource(&c, cf, nil)
+	return newGithubSource(svc.URN(), &c, cf, nil)
 }
 
-func newGithubSource(c *schema.GitHubConnection, cf *httpcli.Factory, au auth.Authenticator) (*GithubSource, error) {
+func newGithubSource(urn string, c *schema.GitHubConnection, cf *httpcli.Factory, au auth.Authenticator) (*GithubSource, error) {
 	baseURL, err := url.Parse(c.Url)
 	if err != nil {
 		return nil, err
@@ -48,15 +47,11 @@ func newGithubSource(c *schema.GitHubConnection, cf *httpcli.Factory, au auth.Au
 		cf = httpcli.ExternalClientFactory
 	}
 
-	opts := []httpcli.Opt{
+	opts := httpClientCertificateOptions([]httpcli.Opt{
 		// Use a 30s timeout to avoid running into EOF errors, because GitHub
 		// closes idle connections after 60s
 		httpcli.NewIdleConnTimeoutOpt(30 * time.Second),
-	}
-
-	if c.Certificate != "" {
-		opts = append(opts, httpcli.NewCertPoolOpt(c.Certificate))
-	}
+	}, c.Certificate)
 
 	cli, err := cf.Doer(opts...)
 	if err != nil {
@@ -70,7 +65,7 @@ func newGithubSource(c *schema.GitHubConnection, cf *httpcli.Factory, au auth.Au
 
 	return &GithubSource{
 		au:     authr,
-		client: github.NewV4Client(apiURL, authr, cli),
+		client: github.NewV4Client(urn, apiURL, authr, cli),
 	}, nil
 }
 

@@ -10,13 +10,13 @@ import (
 	"net/textproto"
 	"strconv"
 
-	"github.com/cockroachdb/errors"
 	"github.com/jordan-wright/email"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"github.com/sourcegraph/sourcegraph/internal/conf"
 	"github.com/sourcegraph/sourcegraph/internal/txemail/txtypes"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 // Message describes an email message to be sent.
@@ -28,7 +28,7 @@ type Message struct {
 	References []string // optional "References" header list
 
 	Template txtypes.Templates // unparsed subject/body templates
-	Data     interface{}       // template data
+	Data     any               // template data
 }
 
 var emailSendCounter = promauto.NewCounterVec(prometheus.CounterOpts{

@@ -1,10 +1,10 @@
 package gqltestutil
 
 import (
-	"github.com/cockroachdb/errors"
 	jsoniter "github.com/json-iterator/go"
 
 	"github.com/sourcegraph/sourcegraph/internal/jsonc"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 	"github.com/sourcegraph/sourcegraph/schema"
 )
 
@@ -30,7 +30,7 @@ query SettingsCascade($subject: ID!) {
 	}
 }
 `
-	variables := map[string]interface{}{
+	variables := map[string]any{
 		"subject": subjectID,
 	}
 	var resp struct {
@@ -67,7 +67,7 @@ mutation OverwriteSettings($subject: ID!, $lastID: Int, $contents: String!) {
 	}
 }
 `
-	variables := map[string]interface{}{
+	variables := map[string]any{
 		"subject":  subjectID,
 		"lastID":   lastID,
 		"contents": contents,
@@ -199,7 +199,7 @@ mutation UpdateSiteConfiguration($input: String!) {
 	updateSiteConfiguration(lastID: 0, input: $input)
 }
 `
-	variables := map[string]interface{}{
+	variables := map[string]any{
 		"input": string(input),
 	}
 	err = c.GraphQL("", query, variables, nil)

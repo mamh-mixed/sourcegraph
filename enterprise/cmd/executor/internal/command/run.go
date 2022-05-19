@@ -9,11 +9,11 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/cockroachdb/errors"
 	"github.com/inconshreveable/log15"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/sourcegraph/sourcegraph/internal/observation"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 type command struct {
@@ -34,7 +34,7 @@ func runCommand(ctx context.Context, command command, logger *Logger) (err error
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	ctx, endObservation := command.Operation.With(ctx, &err, observation.Args{})
+	ctx, _, endObservation := command.Operation.With(ctx, &err, observation.Args{})
 	defer endObservation(1, observation.Args{})
 
 	log15.Info(fmt.Sprintf("Running command: %s", strings.Join(command.Command, " ")))

@@ -7,7 +7,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/cockroachdb/errors"
 	"github.com/graph-gophers/graphql-go"
 	"github.com/graph-gophers/graphql-go/relay"
 
@@ -21,6 +20,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/errcode"
 	"github.com/sourcegraph/sourcegraph/lib/batches"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 const batchSpecIDKind = "BatchSpec"
@@ -610,6 +610,7 @@ func (r *batchSpecResolver) computeState(ctx context.Context) (btypes.BatchSpecS
 }
 
 func (r *batchSpecResolver) computeCanAdminister(ctx context.Context) (bool, error) {
+	// TODO: This should only check namespace access.
 	r.canAdministerOnce.Do(func() {
 		r.canAdminister, r.canAdministerErr = checkSiteAdminOrSameUser(ctx, r.store.DatabaseDB(), r.batchSpec.UserID)
 	})

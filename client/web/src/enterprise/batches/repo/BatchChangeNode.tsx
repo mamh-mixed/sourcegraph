@@ -1,9 +1,10 @@
-import classNames from 'classnames'
-import * as H from 'history'
 import React, { useState, useEffect } from 'react'
 
+import classNames from 'classnames'
+import * as H from 'history'
+
 import { ThemeProps } from '@sourcegraph/shared/src/theme'
-import { Link, Button } from '@sourcegraph/wildcard'
+import { Link, Button, Typography } from '@sourcegraph/wildcard'
 
 import { Timestamp } from '../../../components/time/Timestamp'
 import { RepoBatchChange } from '../../../graphql-operations'
@@ -11,6 +12,7 @@ import { queryExternalChangesetWithFileDiffs as _queryExternalChangesetWithFileD
 import { ChangesetNode } from '../detail/changesets/ChangesetNode'
 
 import { MAX_CHANGESETS_COUNT } from './backend'
+
 import styles from './BatchChangeNode.module.scss'
 
 export interface BatchChangeNodeProps extends ThemeProps {
@@ -26,7 +28,7 @@ export interface BatchChangeNodeProps extends ThemeProps {
     now?: () => Date
 }
 
-export const BatchChangeNode: React.FunctionComponent<BatchChangeNodeProps> = ({
+export const BatchChangeNode: React.FunctionComponent<React.PropsWithChildren<BatchChangeNodeProps>> = ({
     node: initialNode,
     now = () => new Date(),
     ...props
@@ -63,7 +65,7 @@ export const BatchChangeNode: React.FunctionComponent<BatchChangeNodeProps> = ({
             <span className={styles.nodeSeparator} />
             <div className={styles.nodeFullWidth}>
                 <div className="mt-1 mb-2 d-md-flex d-block align-items-baseline">
-                    <h2 className="m-0 d-md-inline-block d-block">
+                    <Typography.H2 className="m-0 d-md-inline-block d-block">
                         <div className="d-md-inline-block d-block">
                             <Link
                                 className="text-muted test-batches-namespace-link"
@@ -83,7 +85,7 @@ export const BatchChangeNode: React.FunctionComponent<BatchChangeNodeProps> = ({
                         >
                             {node.name}
                         </Link>
-                    </h2>
+                    </Typography.H2>
                     <small className="text-muted d-sm-block">
                         created <Timestamp date={node.createdAt} now={now} />
                     </small>

@@ -1,10 +1,11 @@
-import * as H from 'history'
 import React, { useState, useCallback, useMemo } from 'react'
+
+import * as H from 'history'
 import { map, tap } from 'rxjs/operators'
 
+import { HoverMerged } from '@sourcegraph/client-api'
 import { Hoverifier } from '@sourcegraph/codeintellify'
 import { ActionItemAction } from '@sourcegraph/shared/src/actions/ActionItem'
-import { HoverMerged } from '@sourcegraph/shared/src/api/client/types/hover'
 import { ExtensionsControllerProps } from '@sourcegraph/shared/src/extensions/controller'
 import { ThemeProps } from '@sourcegraph/shared/src/theme'
 import { RepoSpec, RevisionSpec, FileSpec, ResolvedRevisionSpec } from '@sourcegraph/shared/src/util/url'
@@ -30,7 +31,7 @@ export interface ChangesetFileDiffProps extends ThemeProps {
     queryExternalChangesetWithFileDiffs?: typeof _queryExternalChangesetWithFileDiffs
 }
 
-export const ChangesetFileDiff: React.FunctionComponent<ChangesetFileDiffProps> = ({
+export const ChangesetFileDiff: React.FunctionComponent<React.PropsWithChildren<ChangesetFileDiffProps>> = ({
     isLightTheme,
     changesetID,
     history,
@@ -146,7 +147,7 @@ function commitOIDForGitRevision(revision: GitRefSpecFields): string {
     }
 }
 
-const DiffRenderingNotSupportedAlert: React.FunctionComponent<{}> = () => (
+const DiffRenderingNotSupportedAlert: React.FunctionComponent<React.PropsWithChildren<{}>> = () => (
     <Alert className="mb-0" variant="info">
         Diffs for processing, merged, closed and deleted changesets are currently only available on the code host.
     </Alert>

@@ -80,7 +80,7 @@ func TestChangesetCountsOverTimeIntegration(t *testing.T) {
 	userID := ct.CreateTestUser(t, db, false).ID
 
 	repoStore := database.Repos(db)
-	esStore := database.ExternalServices(db)
+	esStore := db.ExternalServices()
 
 	gitHubToken := os.Getenv("GITHUB_TOKEN")
 	if gitHubToken == "" {
@@ -101,7 +101,7 @@ func TestChangesetCountsOverTimeIntegration(t *testing.T) {
 		t.Fatalf("Failed to Upsert external service: %s", err)
 	}
 
-	githubSrc, err := repos.NewGithubSource(githubExtSvc, cf)
+	githubSrc, err := repos.NewGithubSource(db.ExternalServices(), githubExtSvc, cf)
 	if err != nil {
 		t.Fatal(t)
 	}
@@ -206,7 +206,7 @@ func TestChangesetCountsOverTimeIntegration(t *testing.T) {
 	// End time is when PR1 was merged
 	end := parseJSONTime(t, "2019-10-07T13:13:45Z")
 
-	input := map[string]interface{}{
+	input := map[string]any{
 		"batchChange": string(marshalBatchChangeID(batchChange.ID)),
 		"from":        start,
 		"to":          end,

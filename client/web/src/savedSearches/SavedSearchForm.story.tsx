@@ -1,6 +1,4 @@
 import { storiesOf } from '@storybook/react'
-import { SuiteFunction } from 'mocha'
-import React from 'react'
 
 import { WebStory } from '../components/WebStory'
 import { SourcegraphContext } from '../jscontext'
@@ -12,7 +10,7 @@ const { add } = storiesOf('web/savedSearches/SavedSearchForm', module).addParame
 })
 
 if (!window.context) {
-    window.context = {} as SourcegraphContext & SuiteFunction
+    window.context = {} as SourcegraphContext & Mocha.SuiteFunction
 }
 window.context.emailEnabled = true
 

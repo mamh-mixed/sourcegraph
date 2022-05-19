@@ -1,15 +1,17 @@
+import React, { useState } from 'react'
+
 import { action } from '@storybook/addon-actions'
 import { boolean, text } from '@storybook/addon-knobs'
 import { DecoratorFn, Meta, Story } from '@storybook/react'
 import GithubIcon from 'mdi-react/GithubIcon'
-import React, { useState } from 'react'
 import { Observable, of } from 'rxjs'
 
 import { BrandedStory } from '@sourcegraph/branded/src/components/BrandedStory'
-
-import brandedStyles from '../../branded.scss'
+import { Typography } from '@sourcegraph/wildcard'
 
 import { OptionsPage, OptionsPageProps } from './OptionsPage'
+
+import brandedStyles from '../../branded.scss'
 
 const validateSourcegraphUrl = (): Observable<string | undefined> => of(undefined)
 const invalidSourcegraphUrl = (): Observable<string | undefined> => of('Arbitrary error string')
@@ -21,14 +23,13 @@ const decorator: DecoratorFn = story => <BrandedStory styles={brandedStyles}>{()
 const config: Meta = {
     title: 'browser/Options/OptionsPage',
     decorators: [decorator],
-    parameters: { chromatic: { delay: 500, enableDarkMode: true } },
 }
 
 export default config
 
-const OptionsPageWrapper: React.FunctionComponent<Partial<OptionsPageProps>> = props => (
+const OptionsPageWrapper: React.FunctionComponent<React.PropsWithChildren<Partial<OptionsPageProps>>> = props => (
     <OptionsPage
-        isFullPage={true}
+        isFullPage={false}
         isActivated={true}
         onToggleActivated={action('onToggleActivated')}
         optionFlags={[
@@ -40,48 +41,111 @@ const OptionsPageWrapper: React.FunctionComponent<Partial<OptionsPageProps>> = p
         sourcegraphUrl={text('sourcegraphUrl', 'https://sourcegraph.com')}
         validateSourcegraphUrl={validateSourcegraphUrl}
         onChangeSourcegraphUrl={action('onChangeSourcegraphUrl')}
-        showPrivateRepositoryAlert={boolean('showPrivateRepositoryAlert', false)}
         showSourcegraphCloudAlert={boolean('showSourcegraphCloudAlert', false)}
         suggestedSourcegraphUrls={['https://k8s.sgdev.org', 'https://sourcegraph.com']}
         {...props}
     />
 )
 
-export const Default: Story = () => <OptionsPageWrapper />
-
-export const Interactive: Story = () => {
+const Interactive: Story = () => {
     const [isActivated, setIsActivated] = useState(false)
     return <OptionsPageWrapper isActivated={isActivated} onToggleActivated={setIsActivated} />
 }
-export const UrlValidationError: Story = () => {
-    const [isActivated, setIsActivated] = useState(false)
+
+const WithAdvancedSettings: Story = () => {
+    const [optionFlagValues, setOptionFlagValues] = useState([
+        { key: 'allowErrorReporting', label: 'Allow error reporting', value: false },
+        { key: 'experimentalLinkPreviews', label: 'Experimental link previews', value: true },
+    ])
+    const setOptionFlag = (key: string, value: boolean) => {
+        setOptionFlagValues(optionFlagValues.map(flag => (flag.key === key ? { ...flag, value } : flag)))
+    }
+
     return (
         <OptionsPageWrapper
-            isActivated={isActivated}
-            onToggleActivated={setIsActivated}
-            validateSourcegraphUrl={invalidSourcegraphUrl}
-            sourcegraphUrl={text('sourcegraphUrl', 'https://not-sourcegraph.com')}
+            initialShowAdvancedSettings={true}
+            optionFlags={optionFlagValues}
+            onChangeOptionFlag={setOptionFlag}
         />
     )
 }
 
-UrlValidationError.storyName = 'URL validation error'
+export const AllOptionsPages: Story = () => (
+    <div>
+        <Typography.H1 className="text-center mb-3">All Options Pages</Typography.H1>
+        <div>
+            <div className="d-flex justify-content-center">
+                <div className="mx-4">
+                    <Typography.H3 className="text-center">Interactive</Typography.H3>
+                    <Interactive />
+                </div>
+                <div className="mx-4">
+                    <Typography.H3 className="text-center">URL validation error</Typography.H3>
+                    <OptionsPageWrapper
+                        validateSourcegraphUrl={invalidSourcegraphUrl}
+                        sourcegraphUrl={text('sourcegraphUrl', 'https://not-sourcegraph.com')}
+                    />
+                </div>
+                <div className="mx-4">
+                    <Typography.H3 className="text-center">With advanced settings</Typography.H3>
+                    <WithAdvancedSettings />
+                </div>
+            </div>
 
-export const AskingForPermission: Story = () => (
-    <OptionsPageWrapper
-        permissionAlert={{ name: 'GitHub', icon: GithubIcon }}
-        requestPermissionsHandler={requestPermissionsHandler}
-    />
+            <div className="d-flex justify-content-center mt-5">
+                <div className="mx-4">
+                    <Typography.H3 className="text-center">On Sourcegraph Cloud</Typography.H3>
+                    <OptionsPageWrapper
+                        requestPermissionsHandler={requestPermissionsHandler}
+                        showSourcegraphCloudAlert={true}
+                    />
+                </div>
+                <div className="mx-4">
+                    <Typography.H3 className="text-center">Asking for permission</Typography.H3>
+                    <OptionsPageWrapper
+                        permissionAlert={{ name: 'GitHub', icon: GithubIcon }}
+                        requestPermissionsHandler={requestPermissionsHandler}
+                    />
+                </div>
+            </div>
+
+            <Typography.H2 className="mt-5 text-center">Not synced repository</Typography.H2>
+            <div className="d-flex justify-content-center mb-3">
+                <div className="mx-4">
+                    <Typography.H3 className="text-center">Sourcegraph Cloud</Typography.H3>
+                    <OptionsPageWrapper
+                        sourcegraphUrl="https://sourcegraph.com"
+                        currentUser={{ settingsURL: '/users/john-doe/settings', siteAdmin: false }}
+                        hasRepoSyncError={true}
+                        requestPermissionsHandler={requestPermissionsHandler}
+                    />
+                </div>
+                <div className="mx-4">
+                    <Typography.H3 className="text-center">Self-hosted</Typography.H3>
+                    <OptionsPageWrapper
+                        sourcegraphUrl={text('sourcegraphUrl', 'https://k8s.sgdev.org')}
+                        currentUser={{ settingsURL: '/users/john-doe/settings', siteAdmin: false }}
+                        hasRepoSyncError={true}
+                        requestPermissionsHandler={requestPermissionsHandler}
+                    />
+                </div>
+                <div className="mx-4">
+                    <Typography.H3 className="text-center">Self-hosted instance, user is admin</Typography.H3>
+                    <OptionsPageWrapper
+                        sourcegraphUrl={text('sourcegraphUrl', 'https://k8s.sgdev.org')}
+                        currentUser={{ settingsURL: '/users/john-doe/settings', siteAdmin: true }}
+                        hasRepoSyncError={true}
+                        requestPermissionsHandler={requestPermissionsHandler}
+                    />
+                </div>
+            </div>
+        </div>
+    </div>
 )
 
-AskingForPermission.storyName = 'Asking for permission'
-
-export const OnPrivateRepository: Story = () => (
-    <OptionsPageWrapper showPrivateRepositoryAlert={true} requestPermissionsHandler={requestPermissionsHandler} />
-)
-
-OnPrivateRepository.storyName = 'On private repository'
-
-export const OnSourcegraphCloud: Story = () => (
-    <OptionsPageWrapper requestPermissionsHandler={requestPermissionsHandler} showSourcegraphCloudAlert={true} />
-)
+AllOptionsPages.parameters = {
+    chromatic: {
+        enableDarkMode: true,
+        disableSnapshot: false,
+    },
+}

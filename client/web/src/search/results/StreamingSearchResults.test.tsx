@@ -1,7 +1,8 @@
+import React from 'react'
+
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createBrowserHistory } from 'history'
-import React from 'react'
 import { BrowserRouter } from 'react-router-dom'
 import { EMPTY, NEVER, of } from 'rxjs'
 import sinon from 'sinon'
@@ -21,7 +22,6 @@ import {
 } from '@sourcegraph/shared/src/testing/searchTestHelpers'
 
 import { AuthenticatedUser } from '../../auth'
-import { EMPTY_FEATURE_FLAGS } from '../../featureFlags/featureFlags'
 import { useExperimentalFeatures, useNavbarQueryState } from '../../stores'
 import * as helpers from '../helpers'
 
@@ -51,8 +51,6 @@ describe('StreamingSearchResults', () => {
 
         fetchHighlightedFileLineRanges: HIGHLIGHTED_FILE_LINES_REQUEST,
         isLightTheme: true,
-        featureFlags: EMPTY_FEATURE_FLAGS,
-        extensionViews: () => null,
         isSourcegraphDotCom: false,
         searchContextsEnabled: true,
     }
@@ -246,7 +244,7 @@ describe('StreamingSearchResults', () => {
         })
 
         for (const [index, test] of tests.entries()) {
-            await cleanup()
+            cleanup()
 
             const results: AggregateStreamingSearchResults = {
                 ...streamingSearchResult,
@@ -270,7 +268,7 @@ describe('StreamingSearchResults', () => {
             renderWrapper(<StreamingSearchResults {...defaultProps} streamSearch={() => of(results)} />)
 
             userEvent.click(await screen.findByText(/some results excluded/i))
-            const allChecks = await screen.findAllByTestId('streaming-progress-skipped-suggest-check')
+            const allChecks = await screen.findAllByTestId(/^streaming-progress-skipped-suggest-check/)
 
             for (const check of allChecks) {
                 userEvent.click(check, undefined, { skipPointerEventsCheck: true })

@@ -7,14 +7,14 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cockroachdb/errors"
-
 	"github.com/sourcegraph/sourcegraph/internal/search/streaming/api"
 	streamhttp "github.com/sourcegraph/sourcegraph/internal/search/streaming/http"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 type SearchRepositoryResult struct {
 	Name string `json:"name"`
+	URL  string `json:"url"`
 }
 
 type SearchRepositoryResults []*SearchRepositoryResult
@@ -55,13 +55,14 @@ query Search($query: String!) {
 			results {
 				... on Repository {
 					name
+					url
 				}
 			}
 		}
 	}
 }
 `
-	variables := map[string]interface{}{
+	variables := map[string]any{
 		"query": query,
 	}
 	var resp struct {
@@ -153,7 +154,7 @@ query Search($query: String!) {
 	}
 }
 `
-	variables := map[string]interface{}{
+	variables := map[string]any{
 		"query": query,
 	}
 	var resp struct {
@@ -197,7 +198,7 @@ query Search($query: String!) {
 	}
 }
 `
-	variables := map[string]interface{}{
+	variables := map[string]any{
 		"query": query,
 	}
 	var resp struct {
@@ -218,7 +219,7 @@ query Search($query: String!) {
 }
 
 type AnyResult struct {
-	Inner interface{}
+	Inner any
 }
 
 func (r *AnyResult) UnmarshalJSON(b []byte) error {
@@ -263,7 +264,7 @@ type FileResult struct {
 	LineMatches []struct {
 		OffsetAndLengths [][2]int32 `json:"offsetAndLengths"`
 	} `json:"lineMatches"`
-	Symbols []interface{} `json:"symbols"`
+	Symbols []any `json:"symbols"`
 }
 
 type CommitResult struct {
@@ -308,7 +309,7 @@ query Search($query: String!) {
 	}
 }
 `
-	variables := map[string]interface{}{
+	variables := map[string]any{
 		"query": query,
 	}
 	var resp struct {
@@ -349,7 +350,7 @@ query SearchResultsStats($query: String!) {
 	}
 }
 `
-	variables := map[string]interface{}{
+	variables := map[string]any{
 		"query": query,
 	}
 	var resp struct {
@@ -368,7 +369,7 @@ query SearchResultsStats($query: String!) {
 }
 
 type SearchSuggestionsResult struct {
-	inner interface{}
+	inner any
 }
 
 func (srr *SearchSuggestionsResult) UnmarshalJSON(data []byte) error {
@@ -520,7 +521,7 @@ query SearchSuggestions($query: String!) {
 	}
 }`
 
-	variables := map[string]interface{}{
+	variables := map[string]any{
 		"query": query,
 	}
 
@@ -552,10 +553,18 @@ func (s *SearchStreamClient) SearchRepositories(query string) (SearchRepositoryR
 				if !ok {
 					continue
 				}
-				results = append(results, &SearchRepositoryResult{
-					Name: r.Repository,
-				})
+
+				result := &SearchRepositoryResult{Name: r.Repository}
+
+				if len(r.Branches) > 0 {
+					result.URL = "/" + r.Repository + "@" + r.Branches[0]
+				}
+
+				results = append(results, result)
 			}
+		},
+		OnError: func(e *streamhttp.EventError) {
+			panic(e.Message)
 		},
 	})
 	return results, err
@@ -624,7 +633,7 @@ func (s *SearchStreamClient) SearchFiles(query string) (*SearchFileResults, erro
 	return &results, err
 }
 func (s *SearchStreamClient) SearchAll(query string) ([]*AnyResult, error) {
-	var results []interface{}
+	var results []any
 	err := s.search(query, streamhttp.FrontendStreamDecoder{
 		OnMatches: func(matches []streamhttp.EventMatch) {
 			for _, m := range matches {
@@ -657,7 +666,7 @@ func (s *SearchStreamClient) SearchAll(query string) ([]*AnyResult, error) {
 					var r FileResult
 					r.File.Path = v.Path
 					r.Repository.Name = v.Repository
-					r.Symbols = make([]interface{}, len(v.Symbols))
+					r.Symbols = make([]any, len(v.Symbols))
 					results = append(results, &r)
 
 				case *streamhttp.EventCommitMatch:

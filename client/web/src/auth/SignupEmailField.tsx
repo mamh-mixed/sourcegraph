@@ -1,5 +1,6 @@
-import classNames from 'classnames'
 import React from 'react'
+
+import classNames from 'classnames'
 
 import { LoaderInput } from '@sourcegraph/branded/src/components/LoaderInput'
 import { deriveInputClassName, InputValidationState } from '@sourcegraph/shared/src/util/useInputValidation'
@@ -14,7 +15,7 @@ interface SignupEmailFieldProps {
     emailInputReference: React.Ref<HTMLInputElement>
 }
 
-export const SignupEmailField: React.FunctionComponent<SignupEmailFieldProps> = ({
+export const SignupEmailField: React.FunctionComponent<React.PropsWithChildren<SignupEmailFieldProps>> = ({
     emailState,
     loading,
     label,

@@ -1,11 +1,9 @@
 import { storiesOf } from '@storybook/react'
-import React from 'react'
 import sinon from 'sinon'
 
 import { NOOP_TELEMETRY_SERVICE } from '@sourcegraph/shared/src/telemetry/telemetryService'
 
 import { WebStory } from '../components/WebStory'
-import { EMPTY_FEATURE_FLAGS } from '../featureFlags/featureFlags'
 import { SourcegraphContext } from '../jscontext'
 
 import { CloudSignUpPage } from './CloudSignUpPage'
@@ -40,7 +38,6 @@ add('default', () => (
                 context={context}
                 showEmailForm={false}
                 telemetryService={NOOP_TELEMETRY_SERVICE}
-                featureFlags={EMPTY_FEATURE_FLAGS}
             />
         )}
     </WebStory>
@@ -56,7 +53,6 @@ add('email form', () => (
                 context={context}
                 showEmailForm={true}
                 telemetryService={NOOP_TELEMETRY_SERVICE}
-                featureFlags={EMPTY_FEATURE_FLAGS}
             />
         )}
     </WebStory>
@@ -72,7 +68,6 @@ add('invalid source', () => (
                 context={context}
                 showEmailForm={false}
                 telemetryService={NOOP_TELEMETRY_SERVICE}
-                featureFlags={EMPTY_FEATURE_FLAGS}
             />
         )}
     </WebStory>
@@ -88,7 +83,6 @@ add('Optimization signup', () => (
                 context={context}
                 showEmailForm={false}
                 telemetryService={NOOP_TELEMETRY_SERVICE}
-                featureFlags={new Map([])}
             />
         )}
     </WebStory>

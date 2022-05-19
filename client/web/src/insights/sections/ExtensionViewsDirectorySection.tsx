@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react'
+
 import { EMPTY, from } from 'rxjs'
 import { map, switchMap } from 'rxjs/operators'
 
@@ -19,7 +20,9 @@ export interface ExtensionViewsDirectorySectionProps extends ExtensionViewsSecti
  * Renders extension views section for the directory page. Note that this component is used only for
  * OSS version. For Sourcegraph enterprise see `./enterprise/insights/sections` components.
  */
-export const ExtensionViewsDirectorySection: React.FunctionComponent<ExtensionViewsDirectorySectionProps> = props => {
+export const ExtensionViewsDirectorySection: React.FunctionComponent<
+    React.PropsWithChildren<ExtensionViewsDirectorySectionProps>
+> = props => {
     const { settingsCascade, extensionsController, uri, className = '' } = props
 
     const showCodeInsights = isCodeInsightsEnabled(settingsCascade, { directory: true })

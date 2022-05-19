@@ -4,8 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/cockroachdb/errors"
-	gh "github.com/google/go-github/v28/github"
+	gh "github.com/google/go-github/v43/github"
 	"github.com/inconshreveable/log15"
 
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/globals"
@@ -17,12 +16,13 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/repoupdater"
 	"github.com/sourcegraph/sourcegraph/internal/repoupdater/protocol"
 	"github.com/sourcegraph/sourcegraph/internal/types"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 // handleGithubRepoAuthzEvent handles any github event containing a repository field, and enqueues the contained
 // repo for permissions synchronisation.
-func handleGitHubRepoAuthzEvent(db database.DB, opts authz.FetchPermsOptions) func(ctx context.Context, extSvc *types.ExternalService, payload interface{}) error {
-	return func(ctx context.Context, extSvc *types.ExternalService, payload interface{}) error {
+func handleGitHubRepoAuthzEvent(db database.DB, opts authz.FetchPermsOptions) func(ctx context.Context, extSvc *types.ExternalService, payload any) error {
+	return func(ctx context.Context, extSvc *types.ExternalService, payload any) error {
 		if !conf.ExperimentalFeatures().EnablePermissionsWebhooks {
 			return nil
 		}

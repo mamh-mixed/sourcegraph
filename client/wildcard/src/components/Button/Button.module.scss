@@ -28,8 +28,6 @@
     line-height: 1.4285714286;
     border-radius: var(--border-radius);
     padding: 0.375rem 0.75rem;
-    transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out,
-        box-shadow 0.15s ease-in-out;
 
     &:disabled {
         cursor: not-allowed;
@@ -79,7 +77,7 @@
     }
 }
 
-.btn-block {
+.btn.btn-block {
     display: block;
     width: 100%;
 }
@@ -208,7 +206,8 @@
 
         &:not(:disabled):not(:global(.disabled)) {
             // Set inlined icons to match outline border
-            svg {
+            // except [data-caret] attribute (which can be used for button carret
+            svg:not([data-caret]) {
                 fill: $base-color;
             }
 

@@ -3,14 +3,16 @@
 exports[`LicenseExpirationAlert expired 1`] = `
 <DocumentFragment>
   <div
-    class="container align-items-center"
+    aria-live="assertive"
+    class="alert alertWarning container align-items-center"
+    role="alert"
   >
     <div
       class="content"
     >
       Your Sourcegraph license expired 3 months ago. 
       <a
-        class="site-alert__link"
+        class="anchorLink site-alert__link"
         href="/site-admin/license"
       >
         <span
@@ -21,7 +23,7 @@ exports[`LicenseExpirationAlert expired 1`] = `
       </a>
        or 
       <a
-        class="site-alert__link"
+        class="anchorLink site-alert__link"
         href="https://about.sourcegraph.com/contact"
       >
         <span
@@ -37,7 +39,7 @@ exports[`LicenseExpirationAlert expired 1`] = `
       type="button"
     >
       <svg
-        class="mdi-icon icon-inline"
+        class="mdi-icon iconInline"
         fill="currentColor"
         height="24"
         viewBox="0 0 24 24"
@@ -55,14 +57,16 @@ exports[`LicenseExpirationAlert expired 1`] = `
 exports[`LicenseExpirationAlert expiring soon 1`] = `
 <DocumentFragment>
   <div
-    class="container align-items-center"
+    aria-live="assertive"
+    class="alert alertWarning container align-items-center"
+    role="alert"
   >
     <div
       class="content"
     >
       Your Sourcegraph license will expire in 3 days. 
       <a
-        class="site-alert__link"
+        class="anchorLink site-alert__link"
         href="/site-admin/license"
       >
         <span
@@ -73,7 +77,7 @@ exports[`LicenseExpirationAlert expiring soon 1`] = `
       </a>
        or 
       <a
-        class="site-alert__link"
+        class="anchorLink site-alert__link"
         href="https://about.sourcegraph.com/contact"
       >
         <span
@@ -89,7 +93,7 @@ exports[`LicenseExpirationAlert expiring soon 1`] = `
       type="button"
     >
       <svg
-        class="mdi-icon icon-inline"
+        class="mdi-icon iconInline"
         fill="currentColor"
         height="24"
         viewBox="0 0 24 24"

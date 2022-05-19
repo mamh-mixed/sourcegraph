@@ -5,18 +5,18 @@ import (
 	"sort"
 	"time"
 
-	"github.com/cockroachdb/errors"
 	"github.com/opentracing/opentracing-go/log"
 
-	"github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/stores/lsifstore"
+	"github.com/sourcegraph/sourcegraph/internal/codeintel/stores/lsifstore"
 	"github.com/sourcegraph/sourcegraph/internal/observation"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 const slowStencilRequestThreshold = time.Second
 
 // Stencil return all ranges within a single document.
 func (r *queryResolver) Stencil(ctx context.Context) (adjustedRanges []lsifstore.Range, err error) {
-	ctx, trace, endObservation := observeResolver(ctx, &err, "Stencil", r.operations.stencil, slowStencilRequestThreshold, observation.Args{
+	ctx, trace, endObservation := observeResolver(ctx, &err, r.operations.stencil, slowStencilRequestThreshold, observation.Args{
 		LogFields: []log.Field{
 			log.Int("repositoryID", r.repositoryID),
 			log.String("commit", r.commit),

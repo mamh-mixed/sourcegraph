@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/cockroachdb/errors"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 func NewTest(h http.Handler) *Client {
@@ -98,11 +98,11 @@ func (c Client) GetNoFollowRedirects(url_ string) (*http.Response, error) {
 	return c.DoNoFollowRedirects(req)
 }
 
-func (c *Client) GetJSON(url string, v interface{}) error {
+func (c *Client) GetJSON(url string, v any) error {
 	return c.DoJSON("GET", url, nil, v)
 }
 
-func (c *Client) DoJSON(method, url string, in, out interface{}) error {
+func (c *Client) DoJSON(method, url string, in, out any) error {
 	var reqBody io.Reader
 	if in != nil {
 		b, err := json.Marshal(in)

@@ -1,10 +1,11 @@
-import { DecoratorFn, Meta, Story } from '@storybook/react'
 import React, { useCallback, useEffect, useState } from 'react'
+
+import { DecoratorFn, Meta, Story } from '@storybook/react'
 
 import { BrandedStory } from '@sourcegraph/branded/src/components/BrandedStory'
 import webStyles from '@sourcegraph/web/src/SourcegraphWebApp.scss'
 
-import { Button, Grid } from '..'
+import { Button, Grid, Typography } from '..'
 
 import { Tooltip } from './Tooltip'
 import { TooltipController } from './TooltipController'
@@ -21,14 +22,18 @@ const config: Meta = {
 
     parameters: {
         component: Tooltip,
-        chromatic: {
-            enableDarkMode: true,
-        },
-        design: {
-            type: 'figma',
-            name: 'Figma',
-            url: 'https://www.figma.com/file/NIsN34NH7lPu04olBzddTw/Wildcard-Design-System?node-id=3131%3A38534',
-        },
+        design: [
+            {
+                type: 'figma',
+                name: 'Figma Light',
+                url: 'https://www.figma.com/file/NIsN34NH7lPu04olBzddTw/Wildcard-Design-System?node-id=3131%3A38534',
+            },
+            {
+                type: 'figma',
+                name: 'Figma Dark',
+                url: 'https://www.figma.com/file/NIsN34NH7lPu04olBzddTw/Wildcard-Design-System?node-id=3131%3A38727',
+            },
+        ],
     },
 }
 
@@ -50,8 +55,8 @@ Basic.parameters = {
 
 export const Positions: Story = () => (
     <>
-        <h1>Tooltip</h1>
-        <h2>Positions</h2>
+        <Typography.H1>Tooltip</Typography.H1>
+        <Typography.H2>Positions</Typography.H2>
 
         <Grid columnCount={4}>
             <div>
@@ -76,7 +81,7 @@ export const Positions: Story = () => (
             </div>
         </Grid>
 
-        <h2>Max width</h2>
+        <Typography.H2>Max width</Typography.H2>
         <Grid columnCount={1}>
             <div>
                 <Button
@@ -100,7 +105,7 @@ Positions.parameters = {
     If you take a look at the handleEvent function in useTooltipState, you can see that the listeners are being added to the 'document',
     which means any 'mouseover/click' event will cause the tooltip to disappear.
 */
-const PinnedTooltip: React.FunctionComponent = () => {
+export const Pinned: Story = () => {
     const clickElement = useCallback((element: HTMLElement | null) => {
         if (element) {
             // The tooltip takes some time to set-up.
@@ -126,12 +131,12 @@ const PinnedTooltip: React.FunctionComponent = () => {
     )
 }
 
-export const Pinned: Story = () => <PinnedTooltip />
-
 Pinned.parameters = {
     chromatic: {
         // Chromatic pauses CSS animations by default and resets them to their initial state
         pauseAnimationAtEnd: true,
+        enableDarkMode: true,
+        disableSnapshot: false,
     },
 }
 
@@ -154,9 +159,9 @@ const ForceUpdateTooltip = () => {
 
     return (
         <>
-            <h2>
+            <Typography.H2>
                 Force update tooltip with <code>TooltipController.forceUpdate()</code>
-            </h2>
+            </Typography.H2>
             <p>
                 <Button variant="primary" onClick={onClick} data-tooltip={copied ? 'Copied!' : 'Click to copy'}>
                     Button

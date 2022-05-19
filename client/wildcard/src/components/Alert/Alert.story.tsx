@@ -1,13 +1,16 @@
+import React from 'react'
+
 import { action } from '@storybook/addon-actions'
 import { Story, Meta } from '@storybook/react'
 import classNames from 'classnames'
 import { flow } from 'lodash'
-import React from 'react'
 
 import { BrandedStory } from '@sourcegraph/branded/src/components/BrandedStory'
 import webStyles from '@sourcegraph/web/src/SourcegraphWebApp.scss'
 
 import 'storybook-addon-designs'
+
+import { Typography } from '..'
 
 import { Alert } from './Alert'
 import { ALERT_VARIANTS } from './constants'
@@ -30,6 +33,7 @@ const config: Meta = {
         component: Alert,
         chromatic: {
             enableDarkMode: true,
+            disableSnapshot: false,
         },
         design: [
             {
@@ -52,7 +56,7 @@ export default config
 
 export const Alerts: Story = () => (
     <>
-        <h1>Alerts</h1>
+        <Typography.H1>Alerts</Typography.H1>
         <p>
             Provide contextual feedback messages for typical user actions with the handful of available and flexible
             alert messages.
@@ -60,13 +64,13 @@ export const Alerts: Story = () => (
         <div className="mb-2">
             {ALERT_VARIANTS.map(variant => (
                 <Alert key={variant} variant={variant}>
-                    <h4>Too many matching repositories</h4>
+                    <Typography.H4>Too many matching repositories</Typography.H4>
                     Use a 'repo:' or 'repogroup:' filter to narrow your search.
                 </Alert>
             ))}
             <Alert variant="info" className="d-flex align-items-center">
                 <div className="flex-grow-1">
-                    <h4>Too many matching repositories</h4>
+                    <Typography.H4>Too many matching repositories</Typography.H4>
                     Use a 'repo:' or 'repogroup:' filter to narrow your search.
                 </div>
                 <AlertLink className="mr-2" to="/" onClick={flow(preventDefault, action(classNames('link clicked')))}>

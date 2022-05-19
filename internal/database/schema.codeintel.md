@@ -1,14 +1,3 @@
-# Table "public.codeintel_schema_migrations"
-```
- Column  |  Type   | Collation | Nullable | Default 
----------+---------+-----------+----------+---------
- version | bigint  |           | not null | 
- dirty   | boolean |           | not null | 
-Indexes:
-    "codeintel_schema_migrations_pkey" PRIMARY KEY, btree (version)
-
-```
-
 # Table "public.lsif_data_apidocs_num_dumps"
 ```
  Column |  Type  | Collation | Nullable | Default 
@@ -270,7 +259,7 @@ A tsvector search index over API documentation (private repos only)
 
 **lang_name_id**: The programming language (or indexer name) that produced the result. Foreign key into lsif_data_docs_search_lang_names_private.
 
-**path_id**: The fully qualified documentation page path ID, e.g. including "#section". See GraphQL codeintel.schema:documentationPage for what this is.
+**path_id**: The fully qualified documentation page path ID, e.g. including &#34;#section&#34;. See GraphQL codeintel.schema:documentationPage for what this is.
 
 **repo_id**: The repo ID, from the main app DB repo table. Used to search over a select set of repos by ID.
 
@@ -340,7 +329,7 @@ A tsvector search index over API documentation (public repos only)
 
 **lang_name_id**: The programming language (or indexer name) that produced the result. Foreign key into lsif_data_docs_search_lang_names_public.
 
-**path_id**: The fully qualified documentation page path ID, e.g. including "#section". See GraphQL codeintel.schema:documentationPage for what this is.
+**path_id**: The fully qualified documentation page path ID, e.g. including &#34;#section&#34;. See GraphQL codeintel.schema:documentationPage for what this is.
 
 **repo_id**: The repo ID, from the main app DB repo table. Used to search over a select set of repos by ID.
 
@@ -751,5 +740,53 @@ Associates result set identifiers with the (document path, range identifier) pai
  error_message                 | text                     |           |          | 
 Indexes:
     "migration_logs_pkey" PRIMARY KEY, btree (id)
+
+```
+
+# Table "public.rockskip_ancestry"
+```
+  Column   |         Type          | Collation | Nullable |                    Default                    
+-----------+-----------------------+-----------+----------+-----------------------------------------------
+ id        | integer               |           | not null | nextval('rockskip_ancestry_id_seq'::regclass)
+ repo_id   | integer               |           | not null | 
+ commit_id | character varying(40) |           | not null | 
+ height    | integer               |           | not null | 
+ ancestor  | integer               |           | not null | 
+Indexes:
+    "rockskip_ancestry_pkey" PRIMARY KEY, btree (id)
+    "rockskip_ancestry_repo_id_commit_id_key" UNIQUE CONSTRAINT, btree (repo_id, commit_id)
+    "rockskip_ancestry_repo_commit_id" btree (repo_id, commit_id)
+
+```
+
+# Table "public.rockskip_repos"
+```
+      Column      |           Type           | Collation | Nullable |                  Default                   
+------------------+--------------------------+-----------+----------+--------------------------------------------
+ id               | integer                  |           | not null | nextval('rockskip_repos_id_seq'::regclass)
+ repo             | text                     |           | not null | 
+ last_accessed_at | timestamp with time zone |           | not null | 
+Indexes:
+    "rockskip_repos_pkey" PRIMARY KEY, btree (id)
+    "rockskip_repos_repo_key" UNIQUE CONSTRAINT, btree (repo)
+    "rockskip_repos_last_accessed_at" btree (last_accessed_at)
+    "rockskip_repos_repo" btree (repo)
+
+```
+
+# Table "public.rockskip_symbols"
+```
+ Column  |   Type    | Collation | Nullable |                   Default                    
+---------+-----------+-----------+----------+----------------------------------------------
+ id      | integer   |           | not null | nextval('rockskip_symbols_id_seq'::regclass)
+ added   | integer[] |           | not null | 
+ deleted | integer[] |           | not null | 
+ repo_id | integer   |           | not null | 
+ path    | text      |           | not null | 
+ name    | text      |           | not null | 
+Indexes:
+    "rockskip_symbols_pkey" PRIMARY KEY, btree (id)
+    "rockskip_symbols_gin" gin (singleton_integer(repo_id) gin__int_ops, added gin__int_ops, deleted gin__int_ops, name gin_trgm_ops, singleton(name), singleton(lower(name)), path gin_trgm_ops, singleton(path), path_prefixes(path), singleton(lower(path)), path_prefixes(lower(path)), singleton(get_file_extension(path)), singleton(get_file_extension(lower(path))))
+    "rockskip_symbols_repo_id_path_name" btree (repo_id, path, name)
 
 ```

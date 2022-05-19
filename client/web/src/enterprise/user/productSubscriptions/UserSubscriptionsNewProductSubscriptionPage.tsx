@@ -1,6 +1,7 @@
+import React, { useEffect, useCallback } from 'react'
+
 import * as H from 'history'
 import AlertCircleIcon from 'mdi-react/AlertCircleIcon'
-import React, { useEffect, useCallback } from 'react'
 import { RouteComponentProps } from 'react-router'
 import { Observable } from 'rxjs'
 import { catchError, map, mapTo, startWith, switchMap, tap } from 'rxjs/operators'
@@ -9,7 +10,7 @@ import { asError, createAggregateError } from '@sourcegraph/common'
 import { gql } from '@sourcegraph/http-client'
 import * as GQL from '@sourcegraph/shared/src/schema'
 import { ThemeProps } from '@sourcegraph/shared/src/theme'
-import { useEventObservable, Link } from '@sourcegraph/wildcard'
+import { useEventObservable, Link, Typography } from '@sourcegraph/wildcard'
 
 import { mutateGraphQL } from '../../../backend/graphql'
 import { HeroPage } from '../../../components/HeroPage'
@@ -38,7 +39,7 @@ const LOADING = 'loading' as const
  * view it at /subscriptions/new and are allowed to price out a subscription, but they must sign in
  * to buy the subscription.
  */
-export const UserSubscriptionsNewProductSubscriptionPage: React.FunctionComponent<Props> = ({
+export const UserSubscriptionsNewProductSubscriptionPage: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
     user,
     location,
     history,
@@ -78,7 +79,7 @@ export const UserSubscriptionsNewProductSubscriptionPage: React.FunctionComponen
         <div className="user-subscriptions-new-product-subscription-page">
             <PageTitle title="New product subscription" />
             {user && <BackToAllSubscriptionsLink user={user} />}
-            <h2>New subscription</h2>
+            <Typography.H2>New subscription</Typography.H2>
             <ProductSubscriptionForm
                 accountID={user ? user.id : null}
                 subscriptionID={null}

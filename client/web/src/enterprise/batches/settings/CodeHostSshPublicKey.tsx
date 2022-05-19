@@ -1,9 +1,10 @@
+import React, { useCallback, useState } from 'react'
+
 import copy from 'copy-to-clipboard'
 import { noop } from 'lodash'
 import ContentCopyIcon from 'mdi-react/ContentCopyIcon'
-import React, { useCallback, useState } from 'react'
 
-import { Button, TextArea, Link } from '@sourcegraph/wildcard'
+import { Button, TextArea, Link, Icon } from '@sourcegraph/wildcard'
 
 import { ExternalServiceKind } from '../../../graphql-operations'
 
@@ -15,13 +16,16 @@ const configInstructionLinks: Record<ExternalServiceKind, string> = {
         'https://confluence.atlassian.com/bitbucketserver/ssh-user-keys-for-personal-use-776639793.html',
     [ExternalServiceKind.AWSCODECOMMIT]: 'unsupported',
     [ExternalServiceKind.BITBUCKETCLOUD]: 'unsupported',
+    [ExternalServiceKind.GERRIT]: 'unsupported',
     [ExternalServiceKind.GITOLITE]: 'unsupported',
+    [ExternalServiceKind.GOMODULES]: 'unsupported',
     [ExternalServiceKind.JVMPACKAGES]: 'unsupported',
     [ExternalServiceKind.NPMPACKAGES]: 'unsupported',
     [ExternalServiceKind.OTHER]: 'unsupported',
     [ExternalServiceKind.PERFORCE]: 'unsupported',
     [ExternalServiceKind.PAGURE]: 'unsupported',
     [ExternalServiceKind.PHABRICATOR]: 'unsupported',
+    [ExternalServiceKind.PYTHONPACKAGES]: 'unsupported',
 }
 
 export interface CodeHostSshPublicKeyProps {
@@ -32,7 +36,7 @@ export interface CodeHostSshPublicKeyProps {
     showCopyButton?: boolean
 }
 
-export const CodeHostSshPublicKey: React.FunctionComponent<CodeHostSshPublicKeyProps> = ({
+export const CodeHostSshPublicKey: React.FunctionComponent<React.PropsWithChildren<CodeHostSshPublicKeyProps>> = ({
     externalServiceKind,
     sshPublicKey,
     showInstructionsLink = true,
@@ -50,7 +54,7 @@ export const CodeHostSshPublicKey: React.FunctionComponent<CodeHostSshPublicKeyP
                 <label htmlFor={LABEL_ID}>{label}</label>
                 {showCopyButton && (
                     <Button onClick={onCopy} variant="secondary">
-                        <ContentCopyIcon className="icon-inline" />
+                        <Icon as={ContentCopyIcon} />
                         {copied ? 'Copied!' : 'Copy'}
                     </Button>
                 )}

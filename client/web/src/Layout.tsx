@@ -1,8 +1,10 @@
 import React, { Suspense, useCallback, useEffect, useMemo } from 'react'
+
 import { Redirect, Route, RouteComponentProps, Switch, matchPath } from 'react-router'
 import { Observable } from 'rxjs'
 
-import { ResizablePanel } from '@sourcegraph/branded/src/components/panel/Panel'
+import { TabbedPanelContent } from '@sourcegraph/branded/src/components/panel/TabbedPanelContent'
+import { isMacPlatform } from '@sourcegraph/common'
 import { SearchContextProps } from '@sourcegraph/search'
 import { ActivationProps } from '@sourcegraph/shared/src/components/activation/Activation'
 import { FetchFileParameters } from '@sourcegraph/shared/src/components/CodeExcerpt'
@@ -18,9 +20,8 @@ import { Settings } from '@sourcegraph/shared/src/schema/settings.schema'
 import { getGlobalSearchContextFilter } from '@sourcegraph/shared/src/search/query/query'
 import { SettingsCascadeProps } from '@sourcegraph/shared/src/settings/settings'
 import { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryService'
-import { isMacPlatform } from '@sourcegraph/shared/src/util/browserDetection'
 import { parseQueryAndHash } from '@sourcegraph/shared/src/util/url'
-import { LoadingSpinner, useObservable } from '@sourcegraph/wildcard'
+import { LoadingSpinner, Panel, useObservable } from '@sourcegraph/wildcard'
 
 import { AuthenticatedUser, authRequired as authRequiredObservable } from './auth'
 import { BatchChangesProps } from './batches'
@@ -35,17 +36,13 @@ import { ExtensionAreaRoute } from './extensions/extension/ExtensionArea'
 import { ExtensionAreaHeaderNavItem } from './extensions/extension/ExtensionAreaHeader'
 import { ExtensionsAreaRoute } from './extensions/ExtensionsArea'
 import { ExtensionsAreaHeaderActionButton } from './extensions/ExtensionsAreaHeader'
-import { FeatureFlagProps } from './featureFlags/featureFlags'
 import { GlobalAlerts } from './global/GlobalAlerts'
 import { GlobalDebug } from './global/GlobalDebug'
-import { CodeInsightsContextProps, CodeInsightsProps } from './insights/types'
-import styles from './Layout.module.scss'
 import { SurveyToast } from './marketing/SurveyToast'
 import { GlobalNavbar } from './nav/GlobalNavbar'
 import { useExtensionAlertAnimation } from './nav/UserNavItem'
 import { OrgAreaRoute } from './org/area/OrgArea'
 import { OrgAreaHeaderNavItem } from './org/area/OrgHeader'
-import { fetchHighlightedFileLineRanges } from './repo/backend'
 import { RepoContainerRoute } from './repo/RepoContainer'
 import { RepoHeaderActionButton } from './repo/RepoHeader'
 import { RepoRevisionContainerRoute } from './repo/RepoRevisionContainer'
@@ -65,6 +62,8 @@ import { UserSettingsSidebarItems } from './user/settings/UserSettingsSidebar'
 import { UserExternalServicesOrRepositoriesUpdateProps } from './util'
 import { parseBrowserRepoURL } from './util/url'
 
+import styles from './Layout.module.scss'
+
 export interface LayoutProps
     extends RouteComponentProps<{}>,
         SettingsCascadeProps<Settings>,
@@ -78,17 +77,14 @@ export interface LayoutProps
         SearchStreamingProps,
         UserExternalServicesOrRepositoriesUpdateProps,
         CodeIntelligenceProps,
-        BatchChangesProps,
-        CodeInsightsProps,
-        CodeInsightsContextProps,
-        FeatureFlagProps {
+        BatchChangesProps {
     extensionAreaRoutes: readonly ExtensionAreaRoute[]
     extensionAreaHeaderNavItems: readonly ExtensionAreaHeaderNavItem[]
     extensionsAreaRoutes: readonly ExtensionsAreaRoute[]
     extensionsAreaHeaderActionButtons: readonly ExtensionsAreaHeaderActionButton[]
     siteAdminAreaRoutes: readonly SiteAdminAreaRoute[]
     siteAdminSideBarGroups: SiteAdminSideBarGroups
-    siteAdminOverviewComponents: readonly React.ComponentType[]
+    siteAdminOverviewComponents: readonly React.ComponentType<React.PropsWithChildren<unknown>>[]
     userAreaHeaderNavItems: readonly UserAreaHeaderNavItem[]
     userAreaRoutes: readonly UserAreaRoute[]
     userSettingsSideBarItems: UserSettingsSidebarItems
@@ -115,11 +111,10 @@ export interface LayoutProps
 
     globbing: boolean
     isSourcegraphDotCom: boolean
-    fetchSavedSearches: () => Observable<GQL.ISavedSearch[]>
     children?: never
 }
 
-export const Layout: React.FunctionComponent<LayoutProps> = props => {
+export const Layout: React.FunctionComponent<React.PropsWithChildren<LayoutProps>> = props => {
     const routeMatch = props.routes.find(({ path, exact }) => matchPath(props.location.pathname, { path, exact }))?.path
     const isSearchRelatedPage = (routeMatch === '/:repoRevAndRest+' || routeMatch?.startsWith('/search')) ?? false
     const minimalNavLinks = routeMatch === '/cncf'
@@ -206,7 +201,7 @@ export const Layout: React.FunctionComponent<LayoutProps> = props => {
         ...themeProps,
         ...breadcrumbProps,
         onExtensionAlertDismissed,
-        isMacPlatform,
+        isMacPlatform: isMacPlatform(),
     }
 
     return (
@@ -272,12 +267,14 @@ export const Layout: React.FunctionComponent<LayoutProps> = props => {
             </ErrorBoundary>
             {parseQueryAndHash(props.location.search, props.location.hash).viewState &&
                 props.location.pathname !== PageRoutes.SignIn && (
-                    <ResizablePanel
-                        {...props}
-                        {...themeProps}
-                        repoName={`git://${parseBrowserRepoURL(props.location.pathname).repoName}`}
-                        fetchHighlightedFileLineRanges={fetchHighlightedFileLineRanges}
-                    />
+                    <Panel className={styles.panel} position="bottom" defaultSize={350} storageKey="panel-size">
+                        <TabbedPanelContent
+                            {...props}
+                            {...themeProps}
+                            repoName={`git://${parseBrowserRepoURL(props.location.pathname).repoName}`}
+                            fetchHighlightedFileLineRanges={props.fetchHighlightedFileLineRanges}
+                        />
+                    </Panel>
                 )}
             <GlobalContributions
                 key={3}

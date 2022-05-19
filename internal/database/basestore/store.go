@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cockroachdb/errors"
 	"github.com/keegancsmith/sqlf"
 
 	"github.com/sourcegraph/sourcegraph/internal/database/dbutil"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 // Store is an abstract Postgres-backed data access layer. Instances of this struct
@@ -54,7 +54,7 @@ type ShareableStore interface {
 
 var _ ShareableStore = &Store{}
 
-// NewHandleWithDB returns a new base store connected to the given connection.
+// NewWithDB returns a new base store connected to the given connection.
 func NewWithDB(db dbutil.DB, txOptions sql.TxOptions) *Store {
 	return NewWithHandle(NewHandleWithDB(db, txOptions))
 }
@@ -109,6 +109,19 @@ func (s *Store) Exec(ctx context.Context, query *sqlf.Query) error {
 func (s *Store) ExecResult(ctx context.Context, query *sqlf.Query) (sql.Result, error) {
 	res, err := s.handle.db.ExecContext(ctx, query.Query(sqlf.PostgresBindVar), query.Args()...)
 	return res, s.wrapError(query, err)
+}
+
+// SetLocal performs the `SET LOCAL` query and returns a function to clear (aka to empty string) the setting.
+// Calling this method only makes sense within a transaction, as the setting is unset after the transaction
+// is either rolled back or committed. This does not perform argument parameterization.
+func (s *Store) SetLocal(ctx context.Context, key, value string) (func(context.Context) error, error) {
+	if !s.InTransaction() {
+		return func(ctx context.Context) error { return nil }, ErrNotInTransaction
+	}
+
+	return func(ctx context.Context) error {
+		return s.Exec(ctx, sqlf.Sprintf(fmt.Sprintf(`SET LOCAL "%s" TO ''`, key)))
+	}, s.Exec(ctx, sqlf.Sprintf(fmt.Sprintf(`SET LOCAL "%s" TO "%s"`, key, value)))
 }
 
 // InTransaction returns true if the underlying database handle is in a transaction.

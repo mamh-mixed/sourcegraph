@@ -1,5 +1,4 @@
 import { storiesOf } from '@storybook/react'
-import React from 'react'
 import { of } from 'rxjs'
 
 import { WebStory } from '../../../components/WebStory'
@@ -18,6 +17,7 @@ const { add } = storiesOf('web/batches/repo/BatchChangeRepoPage', module)
     .addParameters({
         chromatic: {
             viewports: [320, 576, 978, 1440],
+            disableSnapshot: false,
         },
     })
 

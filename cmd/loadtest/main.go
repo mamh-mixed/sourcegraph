@@ -9,10 +9,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/cockroachdb/errors"
 	"github.com/inconshreveable/log15"
 
 	"github.com/sourcegraph/sourcegraph/internal/env"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 var (
@@ -60,7 +60,7 @@ func run() error {
 				if count, err := search(v); err != nil {
 					log15.Error("Error issuing search query", "query", v.Query, "error", err)
 				} else {
-					log15.Info("Search results", "query", v.Query, "resultCount", count)
+					log15.Info("Search results", "query", v.Query, "matchCount", count)
 				}
 			}(v)
 		}
@@ -89,15 +89,15 @@ type GraphQLResponseSearch struct {
 	Data struct {
 		Search struct {
 			Results struct {
-				Results []interface{} `json:"results"`
+				Results []any `json:"results"`
 			} `json:"results"`
 		} `json:"search"`
 	} `json:"data"`
 }
 
 type GraphQLQuery struct {
-	Query     string      `json:"query"`
-	Variables interface{} `json:"variables"`
+	Query     string `json:"query"`
+	Variables any    `json:"variables"`
 }
 
 const gqlSearch = `query Search(

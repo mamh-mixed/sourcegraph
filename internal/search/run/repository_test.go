@@ -5,12 +5,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/google/zoekt"
 	"github.com/sourcegraph/sourcegraph/internal/search"
 	searchbackend "github.com/sourcegraph/sourcegraph/internal/search/backend"
+	"github.com/sourcegraph/sourcegraph/internal/search/job"
 	"github.com/sourcegraph/sourcegraph/internal/search/result"
-	"github.com/sourcegraph/sourcegraph/internal/search/streaming"
-	"github.com/sourcegraph/sourcegraph/internal/search/unindexed"
 	"github.com/sourcegraph/sourcegraph/internal/types"
 )
 
@@ -24,26 +22,17 @@ func TestRepoShouldBeAdded(t *testing.T) {
 
 	t.Run("repo should be included in results, query has repoHasFile filter", func(t *testing.T) {
 		repo := &search.RepositoryRevisions{Repo: types.MinimalRepo{ID: 123, Name: "foo/one"}, Revs: []search.RevisionSpecifier{{RevSpec: ""}}}
-		unindexed.MockSearchFilesInRepos = func() ([]result.Match, *streaming.Stats, error) {
+		MockReposContainingPath = func() ([]*result.FileMatch, error) {
 			rev := "1a2b3c"
-			return []result.Match{&result.FileMatch{
+			return []*result.FileMatch{{
 				File: result.File{
 					Repo:     types.MinimalRepo{ID: 123, Name: repo.Repo.Name},
 					InputRev: &rev,
 					Path:     "foo.go",
 				},
-			}}, &streaming.Stats{}, nil
+			}}, nil
 		}
-		pat := &search.TextPatternInfo{
-			Pattern:                      "",
-			FilePatternsReposMustInclude: []string{"foo"},
-			IsRegExp:                     true,
-			FileMatchLimit:               1,
-			PathPatternsAreCaseSensitive: false,
-			PatternMatchesContent:        true,
-			PatternMatchesPath:           true,
-		}
-		shouldBeAdded, err := repoShouldBeAdded(context.Background(), zoekt, repo, pat)
+		shouldBeAdded, err := repoShouldBeAdded(context.Background(), job.RuntimeClients{Zoekt: zoekt}, repo, []string{"foo"}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -54,19 +43,10 @@ func TestRepoShouldBeAdded(t *testing.T) {
 
 	t.Run("repo shouldn't be included in results, query has repoHasFile filter ", func(t *testing.T) {
 		repo := &search.RepositoryRevisions{Repo: types.MinimalRepo{Name: "foo/no-match"}, Revs: []search.RevisionSpecifier{{RevSpec: ""}}}
-		unindexed.MockSearchFilesInRepos = func() ([]result.Match, *streaming.Stats, error) {
-			return nil, &streaming.Stats{}, nil
+		MockReposContainingPath = func() ([]*result.FileMatch, error) {
+			return nil, nil
 		}
-		pat := &search.TextPatternInfo{
-			Pattern:                      "",
-			FilePatternsReposMustInclude: []string{"foo"},
-			IsRegExp:                     true,
-			FileMatchLimit:               1,
-			PathPatternsAreCaseSensitive: false,
-			PatternMatchesContent:        true,
-			PatternMatchesPath:           true,
-		}
-		shouldBeAdded, err := repoShouldBeAdded(context.Background(), zoekt, repo, pat)
+		shouldBeAdded, err := repoShouldBeAdded(context.Background(), job.RuntimeClients{Zoekt: zoekt}, repo, []string{"foo"}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -77,26 +57,17 @@ func TestRepoShouldBeAdded(t *testing.T) {
 
 	t.Run("repo shouldn't be included in results, query has -repoHasFile filter", func(t *testing.T) {
 		repo := &search.RepositoryRevisions{Repo: types.MinimalRepo{ID: 123, Name: "foo/one"}, Revs: []search.RevisionSpecifier{{RevSpec: ""}}}
-		unindexed.MockSearchFilesInRepos = func() ([]result.Match, *streaming.Stats, error) {
+		MockReposContainingPath = func() ([]*result.FileMatch, error) {
 			rev := "1a2b3c"
-			return []result.Match{&result.FileMatch{
+			return []*result.FileMatch{{
 				File: result.File{
 					Repo:     types.MinimalRepo{ID: 123, Name: repo.Repo.Name},
 					InputRev: &rev,
 					Path:     "foo.go",
 				},
-			}}, &streaming.Stats{}, nil
+			}}, nil
 		}
-		pat := &search.TextPatternInfo{
-			Pattern:                      "",
-			FilePatternsReposMustExclude: []string{"foo"},
-			IsRegExp:                     true,
-			FileMatchLimit:               1,
-			PathPatternsAreCaseSensitive: false,
-			PatternMatchesContent:        true,
-			PatternMatchesPath:           true,
-		}
-		shouldBeAdded, err := repoShouldBeAdded(context.Background(), zoekt, repo, pat)
+		shouldBeAdded, err := repoShouldBeAdded(context.Background(), job.RuntimeClients{Zoekt: zoekt}, repo, nil, []string{"foo"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -107,19 +78,10 @@ func TestRepoShouldBeAdded(t *testing.T) {
 
 	t.Run("repo should be included in results, query has -repoHasFile filter", func(t *testing.T) {
 		repo := &search.RepositoryRevisions{Repo: types.MinimalRepo{Name: "foo/no-match"}, Revs: []search.RevisionSpecifier{{RevSpec: ""}}}
-		unindexed.MockSearchFilesInRepos = func() ([]result.Match, *streaming.Stats, error) {
-			return nil, &streaming.Stats{}, nil
+		MockReposContainingPath = func() ([]*result.FileMatch, error) {
+			return nil, nil
 		}
-		pat := &search.TextPatternInfo{
-			Pattern:                      "",
-			FilePatternsReposMustExclude: []string{"foo"},
-			IsRegExp:                     true,
-			FileMatchLimit:               1,
-			PathPatternsAreCaseSensitive: false,
-			PatternMatchesContent:        true,
-			PatternMatchesPath:           true,
-		}
-		shouldBeAdded, err := repoShouldBeAdded(context.Background(), zoekt, repo, pat)
+		shouldBeAdded, err := repoShouldBeAdded(context.Background(), job.RuntimeClients{Zoekt: zoekt}, repo, nil, []string{"foo"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -131,13 +93,13 @@ func TestRepoShouldBeAdded(t *testing.T) {
 
 // repoShouldBeAdded determines whether a repository should be included in the result set based on whether the repository fits in the subset
 // of repostiories specified in the query's `repohasfile` and `-repohasfile` fields if they exist.
-func repoShouldBeAdded(ctx context.Context, zoekt zoekt.Streamer, repo *search.RepositoryRevisions, pattern *search.TextPatternInfo) (bool, error) {
+func repoShouldBeAdded(ctx context.Context, clients job.RuntimeClients, repo *search.RepositoryRevisions, filePatternsInclude, filePatternsExclude []string) (bool, error) {
 	repos := []*search.RepositoryRevisions{repo}
-	args := search.TextParameters{
-		PatternInfo: pattern,
-		Zoekt:       zoekt,
+	s := RepoSearchJob{
+		FilePatternsReposMustInclude: filePatternsInclude,
+		FilePatternsReposMustExclude: filePatternsExclude,
 	}
-	rsta, err := reposToAdd(ctx, &args, repos)
+	rsta, err := s.reposToAdd(ctx, clients, repos)
 	if err != nil {
 		return false, err
 	}

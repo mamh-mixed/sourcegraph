@@ -1,9 +1,10 @@
+import * as React from 'react'
+
 import ChevronDownIcon from 'mdi-react/ChevronDownIcon'
 import ChevronRightIcon from 'mdi-react/ChevronRightIcon'
-import * as React from 'react'
 import { FileDecoration } from 'sourcegraph'
 
-import { LoadingSpinner } from '@sourcegraph/wildcard'
+import { LoadingSpinner, Icon } from '@sourcegraph/wildcard'
 
 import {
     TreeLayerRowContentsText,
@@ -37,7 +38,9 @@ interface TreeChildProps extends TreeLayerProps {
  *
  * @param props
  */
-export const Directory: React.FunctionComponent<TreeChildProps> = (props: TreeChildProps): JSX.Element => (
+export const Directory: React.FunctionComponent<React.PropsWithChildren<TreeChildProps>> = (
+    props: TreeChildProps
+): JSX.Element => (
     <TreeRow
         key={props.entryInfo.path}
         className={props.className}
@@ -57,11 +60,7 @@ export const Directory: React.FunctionComponent<TreeChildProps> = (props: TreeCh
                             onClick={props.noopRowClick}
                             tabIndex={-1}
                         >
-                            {props.isExpanded ? (
-                                <ChevronDownIcon className="icon-inline" />
-                            ) : (
-                                <ChevronRightIcon className="icon-inline" />
-                            )}
+                            <Icon as={props.isExpanded ? ChevronDownIcon : ChevronRightIcon} />
                         </TreeRowIconLink>
                         <TreeRowLabelLink
                             to={props.entryInfo.url}

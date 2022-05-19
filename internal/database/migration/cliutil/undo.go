@@ -2,48 +2,56 @@ package cliutil
 
 import (
 	"context"
-	"flag"
 	"fmt"
 
-	"github.com/peterbourgon/ff/v3/ffcli"
+	"github.com/urfave/cli/v2"
 
 	"github.com/sourcegraph/sourcegraph/internal/database/migration/runner"
 	"github.com/sourcegraph/sourcegraph/lib/output"
 )
 
-func Undo(commandName string, run RunFunc, out *output.Output) *ffcli.Command {
-	var (
-		flagSet        = flag.NewFlagSet(fmt.Sprintf("%s undo", commandName), flag.ExitOnError)
-		schemaNameFlag = flagSet.String("db", "", `The target schema to migrate.`)
-	)
+func Undo(commandName string, factory RunnerFactory, outFactory func() *output.Output, development bool) *cli.Command {
+	schemaNameFlag := &cli.StringFlag{
+		Name:     "db",
+		Usage:    "The target `schema` to modify.",
+		Required: true,
+	}
+	ignoreSingleDirtyLogFlag := &cli.BoolFlag{
+		Name:  "ignore-single-dirty-log",
+		Usage: `Ignore a previously failed attempt if it will be immediately retried by this operation.`,
+		Value: development,
+	}
 
-	exec := func(ctx context.Context, args []string) error {
-		if len(args) != 0 {
-			out.WriteLine(output.Linef("", output.StyleWarning, "ERROR: too many arguments"))
-			return flag.ErrHelp
-		}
-
-		if *schemaNameFlag == "" {
-			out.WriteLine(output.Linef("", output.StyleWarning, "ERROR: supply a schema via -db"))
-			return flag.ErrHelp
-		}
-
-		return run(ctx, runner.Options{
+	makeOptions := func(cmd *cli.Context) runner.Options {
+		return runner.Options{
 			Operations: []runner.MigrationOperation{
 				{
-					SchemaName: *schemaNameFlag,
+					SchemaName: schemaNameFlag.Get(cmd),
 					Type:       runner.MigrationOperationTypeRevert,
 				},
 			},
-		})
+			IgnoreSingleDirtyLog: ignoreSingleDirtyLogFlag.Get(cmd),
+		}
 	}
 
-	return &ffcli.Command{
-		Name:       "undo",
-		ShortUsage: fmt.Sprintf("%s undo -db=<schema>", commandName),
-		ShortHelp:  `Revert the last migration applied - useful in local development`,
-		FlagSet:    flagSet,
-		Exec:       exec,
-		LongHelp:   ConstructLongHelp(),
+	action := makeAction(outFactory, func(ctx context.Context, cmd *cli.Context, out *output.Output) error {
+		r, err := setupRunner(ctx, factory, schemaNameFlag.Get(cmd))
+		if err != nil {
+			return err
+		}
+
+		return r.Run(ctx, makeOptions(cmd))
+	})
+
+	return &cli.Command{
+		Name:        "undo",
+		UsageText:   fmt.Sprintf("%s undo -db=<schema>", commandName),
+		Usage:       `Revert the last migration applied - useful in local development`,
+		Description: ConstructLongHelp(),
+		Action:      action,
+		Flags: []cli.Flag{
+			schemaNameFlag,
+			ignoreSingleDirtyLogFlag,
+		},
 	}
 }

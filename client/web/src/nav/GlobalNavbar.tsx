@@ -1,17 +1,18 @@
+import React, { useEffect, useMemo } from 'react'
+
 import classNames from 'classnames'
 import * as H from 'history'
 import BarChartIcon from 'mdi-react/BarChartIcon'
+import BookOutlineIcon from 'mdi-react/BookOutlineIcon'
 import MagnifyIcon from 'mdi-react/MagnifyIcon'
 import PuzzleOutlineIcon from 'mdi-react/PuzzleOutlineIcon'
-import React, { useEffect, useMemo } from 'react'
 import { of } from 'rxjs'
 import { startWith } from 'rxjs/operators'
 
+import { ContributableMenu } from '@sourcegraph/client-api'
 import { isErrorLike } from '@sourcegraph/common'
 import { SearchContextInputProps, isSearchContextSpecAvailable } from '@sourcegraph/search'
-import { ContributableMenu } from '@sourcegraph/shared/src/api/protocol'
 import { ActivationProps } from '@sourcegraph/shared/src/components/activation/Activation'
-import { ActivationDropdown } from '@sourcegraph/shared/src/components/activation/ActivationDropdown'
 import { ExtensionsControllerProps } from '@sourcegraph/shared/src/extensions/controller'
 import {
     KeyboardShortcutsProps,
@@ -26,14 +27,16 @@ import { SettingsCascadeProps } from '@sourcegraph/shared/src/settings/settings'
 import { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryService'
 import { ThemeProps } from '@sourcegraph/shared/src/theme'
 import { buildGetStartedURL } from '@sourcegraph/shared/src/util/url'
-import { ProductStatusBadge, useObservable, Button, Link, ButtonLink } from '@sourcegraph/wildcard'
+import { useObservable, Button, Link, FeedbackPrompt, ButtonLink, PopoverTrigger } from '@sourcegraph/wildcard'
 
 import { AuthenticatedUser } from '../auth'
 import { BatchChangesProps } from '../batches'
 import { BatchChangesNavItem } from '../batches/BatchChangesNavItem'
 import { CodeMonitoringLogo } from '../code-monitoring/CodeMonitoringLogo'
+import { ActivationDropdown } from '../components/ActivationDropdown'
 import { BrandLogo } from '../components/branding/BrandLogo'
 import { WebCommandListPopoverButton } from '../components/shared'
+import { useHandleSubmitFeedback, useRoutesMatch } from '../hooks'
 import { CodeInsightsProps } from '../insights/types'
 import { isCodeInsightsEnabled } from '../insights/utils/is-code-insights-enabled'
 import { LayoutRouteProps } from '../routes'
@@ -44,13 +47,13 @@ import { ThemePreferenceProps } from '../theme'
 import { userExternalServicesEnabledFromTags } from '../user/settings/cloud-ga'
 import { showDotComMarketing } from '../util/features'
 
-import { FeedbackPrompt } from './Feedback'
-import styles from './GlobalNavbar.module.scss'
 import { NavDropdown, NavDropdownItem } from './NavBar/NavDropdown'
 import { StatusMessagesNavItem } from './StatusMessagesNavItem'
 import { ExtensionAlertAnimationProps, UserNavItem } from './UserNavItem'
 
 import { NavGroup, NavItem, NavBar, NavLink, NavActions, NavAction } from '.'
+
+import styles from './GlobalNavbar.module.scss'
 
 interface Props
     extends SettingsCascadeProps<Settings>,
@@ -92,7 +95,7 @@ interface Props
     branding?: typeof window.context.branding
 }
 
-export const GlobalNavbar: React.FunctionComponent<Props> = ({
+export const GlobalNavbar: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
     authRequired,
     showSearchBox,
     variant,
@@ -137,6 +140,11 @@ export const GlobalNavbar: React.FunctionComponent<Props> = ({
         )
     )
 
+    const routeMatch = useRoutesMatch(props.routes)
+    const { handleSubmitFeedback } = useHandleSubmitFeedback({
+        routeMatch,
+    })
+
     const onNavbarQueryChange = useNavbarQueryState(state => state.setQueryState)
     const showSearchContext = useExperimentalFeatures(features => features.showSearchContext)
     const enableCodeMonitoring = useExperimentalFeatures(features => features.codeMonitoring)
@@ -174,7 +182,7 @@ export const GlobalNavbar: React.FunctionComponent<Props> = ({
 
     // CodeInsightsEnabled props controls insights appearance over OSS and Enterprise version
     // isCodeInsightsEnabled selector controls appearance based on user settings flags
-    const codeInsights = props.authenticatedUser && codeInsightsEnabled && isCodeInsightsEnabled(props.settingsCascade)
+    const codeInsights = codeInsightsEnabled && isCodeInsightsEnabled(props.settingsCascade)
 
     const searchNavBar = (
         <SearchNavbarItem
@@ -192,17 +200,9 @@ export const GlobalNavbar: React.FunctionComponent<Props> = ({
         const items: (NavDropdownItem | false)[] = [
             searchContextsEnabled &&
                 !!showSearchContext && { path: EnterprisePageRoutes.Contexts, content: 'Contexts' },
-            !!showSearchNotebook && {
-                path: PageRoutes.Notebooks,
-                content: (
-                    <>
-                        Notebooks <ProductStatusBadge className="ml-1" status="beta" />
-                    </>
-                ),
-            },
         ]
         return items.filter<NavDropdownItem>((item): item is NavDropdownItem => !!item)
-    }, [searchContextsEnabled, showSearchNotebook, showSearchContext])
+    }, [searchContextsEnabled, showSearchContext])
 
     return (
         <>
@@ -218,10 +218,21 @@ export const GlobalNavbar: React.FunctionComponent<Props> = ({
             >
                 <NavGroup>
                     <NavDropdown
-                        toggleItem={{ path: '/search', icon: MagnifyIcon, content: 'Code Search' }}
+                        toggleItem={{
+                            path: PageRoutes.Search,
+                            altPath: PageRoutes.RepoContainer,
+                            icon: MagnifyIcon,
+                            content: 'Code Search',
+                        }}
+                        routeMatch={routeMatch}
                         mobileHomeItem={{ content: 'Search home' }}
                         items={searchNavBarItems}
                     />
+                    {showSearchNotebook && (
+                        <NavItem icon={BookOutlineIcon}>
+                            <NavLink to={PageRoutes.Notebooks}>Notebooks</NavLink>
+                        </NavItem>
+                    )}
                     {enableCodeMonitoring && (
                         <NavItem icon={CodeMonitoringLogo}>
                             <NavLink to="/code-monitoring">Monitoring</NavLink>
@@ -233,7 +244,7 @@ export const GlobalNavbar: React.FunctionComponent<Props> = ({
                     {(props.batchChangesEnabled || isSourcegraphDotCom) && <BatchChangesNavItem />}
                     {codeInsights && (
                         <NavItem icon={BarChartIcon}>
-                            <NavLink to="/insights/dashboards/all">Insights</NavLink>
+                            <NavLink to="/insights">Insights</NavLink>
                         </NavItem>
                     )}
                     <NavItem icon={PuzzleOutlineIcon}>
@@ -269,7 +280,18 @@ export const GlobalNavbar: React.FunctionComponent<Props> = ({
                     )}
                     {props.authenticatedUser && (
                         <NavAction>
-                            <FeedbackPrompt routes={props.routes} />
+                            <FeedbackPrompt onSubmit={handleSubmitFeedback} productResearchEnabled={true}>
+                                <PopoverTrigger
+                                    as={Button}
+                                    aria-label="Feedback"
+                                    variant="secondary"
+                                    outline={true}
+                                    size="sm"
+                                    className={styles.feedbackTrigger}
+                                >
+                                    <span>Feedback</span>
+                                </PopoverTrigger>
+                            </FeedbackPrompt>
                         </NavAction>
                     )}
                     {props.authenticatedUser && (
@@ -277,7 +299,6 @@ export const GlobalNavbar: React.FunctionComponent<Props> = ({
                             <WebCommandListPopoverButton
                                 {...props}
                                 location={location}
-                                buttonClassName="btn btn-link p-0 m-0"
                                 menu={ContributableMenu.CommandPalette}
                                 keyboardShortcutForShow={KEYBOARD_SHORTCUT_SHOW_COMMAND_PALETTE}
                             />
@@ -311,7 +332,7 @@ export const GlobalNavbar: React.FunctionComponent<Props> = ({
                                     >
                                         Log in
                                     </Button>
-                                    <ButtonLink className={styles.signUp} href={buildGetStartedURL('nav')} size="sm">
+                                    <ButtonLink className={styles.signUp} to={buildGetStartedURL('nav')} size="sm">
                                         Get started
                                     </ButtonLink>
                                 </div>
@@ -321,7 +342,6 @@ export const GlobalNavbar: React.FunctionComponent<Props> = ({
                         <NavAction>
                             <UserNavItem
                                 {...props}
-                                location={location}
                                 isLightTheme={isLightTheme}
                                 authenticatedUser={props.authenticatedUser}
                                 showDotComMarketing={showDotComMarketing}

@@ -8,19 +8,20 @@
     "sourceRoot": "src",
     "baseUrl": "./src",
     "paths": {
-      "*": ["types/*", "../../shared/src/types/*", "*"],
+      "*": ["types/*", "../../shared/src/types/*", "../../common/src/types/*", "*"],
     },
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "strict": true,
-    "jsx": "react",
+    "jsx": "react-jsx",
   },
   "references": [
     { "path": "../shared" },
+    { "path": "../common" },
     { "path": "../branded" },
     { "path": "../search" },
     { "path": "../search-ui" },
   ],
-  "include": ["**/*", ".*", "**/*.d.ts"],
+  "include": ["./package.json", "**/*", ".*", "**/*.d.ts"],
   "exclude": ["node_modules", "../../node_modules", ".vscode-test", "out", "dist"],
 }

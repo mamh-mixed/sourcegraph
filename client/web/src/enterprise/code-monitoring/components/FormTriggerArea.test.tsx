@@ -1,10 +1,9 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import React from 'react'
 import { act } from 'react-dom/test-utils'
 import sinon from 'sinon'
 
-import { renderWithRouter } from '@sourcegraph/shared/src/testing/render-with-router'
+import { renderWithBrandedContext } from '@sourcegraph/shared/src/testing'
 
 import { FormTriggerArea } from './FormTriggerArea'
 
@@ -17,24 +16,6 @@ describe('FormTriggerArea', () => {
 
     afterAll(() => {
         clock.restore()
-    })
-
-    test('Correct checkboxes shown when query does not fulfill requirements', () => {
-        const { asFragment } = renderWithRouter(
-            <FormTriggerArea
-                query="test repo:test"
-                triggerCompleted={false}
-                onQueryChange={sinon.spy()}
-                setTriggerCompleted={sinon.spy()}
-                startExpanded={false}
-            />
-        )
-        userEvent.click(screen.getByTestId('trigger-button'))
-        act(() => {
-            clock.tick(600)
-        })
-
-        expect(asFragment()).toMatchSnapshot()
     })
 
     const testCases = [
@@ -100,13 +81,15 @@ describe('FormTriggerArea', () => {
 
     for (const testCase of testCases) {
         test(`Correct checkboxes checked for query '${testCase.query}'`, () => {
-            renderWithRouter(
+            renderWithBrandedContext(
                 <FormTriggerArea
                     query={testCase.query}
                     triggerCompleted={false}
                     onQueryChange={sinon.spy()}
                     setTriggerCompleted={sinon.spy()}
                     startExpanded={false}
+                    isLightTheme={true}
+                    isSourcegraphDotCom={false}
                 />
             )
             userEvent.click(screen.getByTestId('trigger-button'))
@@ -146,18 +129,20 @@ describe('FormTriggerArea', () => {
 
     test('Append patternType:literal if no patternType is present', () => {
         const onQueryChange = sinon.spy()
-        renderWithRouter(
+        renderWithBrandedContext(
             <FormTriggerArea
                 query=""
                 triggerCompleted={false}
                 onQueryChange={onQueryChange}
                 setTriggerCompleted={sinon.spy()}
                 startExpanded={false}
+                isLightTheme={true}
+                isSourcegraphDotCom={false}
             />
         )
         userEvent.click(screen.getByTestId('trigger-button'))
 
-        const triggerInput = screen.getByTestId('trigger-query-edit')
+        const triggerInput = screen.getByRole('textbox')
         userEvent.type(triggerInput, 'test type:diff repo:test')
         act(() => {
             clock.tick(600)
@@ -169,18 +154,20 @@ describe('FormTriggerArea', () => {
 
     test('Do not append patternType:literal if patternType is present', () => {
         const onQueryChange = sinon.spy()
-        renderWithRouter(
+        renderWithBrandedContext(
             <FormTriggerArea
                 query=""
                 triggerCompleted={false}
                 onQueryChange={onQueryChange}
                 setTriggerCompleted={sinon.spy()}
                 startExpanded={false}
+                isLightTheme={true}
+                isSourcegraphDotCom={false}
             />
         )
         userEvent.click(screen.getByTestId('trigger-button'))
 
-        const triggerInput = screen.getByTestId('trigger-query-edit')
+        const triggerInput = screen.getByRole('textbox')
         userEvent.type(triggerInput, 'test patternType:regexp type:diff repo:test')
         act(() => {
             clock.tick(600)

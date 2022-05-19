@@ -7,19 +7,22 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/errors"
 	"github.com/inconshreveable/log15"
+
 	"github.com/sourcegraph/go-diff/diff"
 
+	bbcs "github.com/sourcegraph/sourcegraph/enterprise/internal/batches/sources/bitbucketcloud"
 	btypes "github.com/sourcegraph/sourcegraph/enterprise/internal/batches/types"
 	"github.com/sourcegraph/sourcegraph/internal/actor"
 	"github.com/sourcegraph/sourcegraph/internal/api"
 	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc"
+	"github.com/sourcegraph/sourcegraph/internal/extsvc/bitbucketcloud"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc/bitbucketserver"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc/github"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc/gitlab"
-	"github.com/sourcegraph/sourcegraph/internal/vcs/git"
+	"github.com/sourcegraph/sourcegraph/internal/gitserver"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 // SetDerivedState will update the external state fields on the Changeset based
@@ -74,7 +77,8 @@ func SetDerivedState(ctx context.Context, repoStore database.RepoStore, c *btype
 	// and new states for the duration of this function, although we'll update
 	// c.SyncState as soon as we can.
 	oldState := c.SyncState
-	newState, err := computeSyncState(ctx, c, repo)
+	db := database.NewDBWith(repoStore)
+	newState, err := computeSyncState(ctx, db, c, repo)
 	if err != nil {
 		log15.Warn("Computing sync state", "err", err)
 		return
@@ -84,7 +88,7 @@ func SetDerivedState(ctx context.Context, repoStore database.RepoStore, c *btype
 	// Now we can update fields that are invalidated when the sync state
 	// changes.
 	if !oldState.Equals(newState) {
-		if stat, err := computeDiffStat(ctx, c, repo); err != nil {
+		if stat, err := computeDiffStat(ctx, db, c, repo); err != nil {
 			log15.Warn("Computing diffstat", "err", err)
 		} else {
 			c.SetDiffStat(stat)
@@ -101,10 +105,13 @@ func computeCheckState(c *btypes.Changeset, events ChangesetEvents) btypes.Chang
 		return computeGitHubCheckState(c.UpdatedAt, m, events)
 
 	case *bitbucketserver.PullRequest:
-		return computeBitbucketBuildStatus(c.UpdatedAt, m, events)
+		return computeBitbucketServerBuildStatus(c.UpdatedAt, m, events)
 
 	case *gitlab.MergeRequest:
 		return computeGitLabCheckState(c.UpdatedAt, m, events)
+
+	case *bbcs.AnnotatedPullRequest:
+		return computeBitbucketCloudBuildState(c.UpdatedAt, m, events)
 	}
 
 	return btypes.ChangesetCheckStateUnknown
@@ -146,7 +153,7 @@ func computeReviewState(c *btypes.Changeset, history []changesetStatesAtTime) (b
 	return newestDataPoint.reviewState, nil
 }
 
-func computeBitbucketBuildStatus(lastSynced time.Time, pr *bitbucketserver.PullRequest, events []*btypes.ChangesetEvent) btypes.ChangesetCheckState {
+func computeBitbucketServerBuildStatus(lastSynced time.Time, pr *bitbucketserver.PullRequest, events []*btypes.ChangesetEvent) btypes.ChangesetCheckState {
 	var latestCommit bitbucketserver.Commit
 	for _, c := range pr.Commits {
 		if latestCommit.CommitterTimestamp <= c.CommitterTimestamp {
@@ -158,7 +165,7 @@ func computeBitbucketBuildStatus(lastSynced time.Time, pr *bitbucketserver.PullR
 
 	// States from last sync
 	for _, status := range pr.CommitStatus {
-		stateMap[status.Key()] = parseBitbucketBuildState(status.Status.State)
+		stateMap[status.Key()] = parseBitbucketServerBuildState(status.Status.State)
 	}
 
 	// Add any events we've received since our last sync
@@ -172,7 +179,7 @@ func computeBitbucketBuildStatus(lastSynced time.Time, pr *bitbucketserver.PullR
 			if dateAdded.Before(lastSynced) {
 				continue
 			}
-			stateMap[m.Key()] = parseBitbucketBuildState(m.Status.State)
+			stateMap[m.Key()] = parseBitbucketServerBuildState(m.Status.State)
 		}
 	}
 
@@ -184,13 +191,57 @@ func computeBitbucketBuildStatus(lastSynced time.Time, pr *bitbucketserver.PullR
 	return combineCheckStates(states)
 }
 
-func parseBitbucketBuildState(s string) btypes.ChangesetCheckState {
+func parseBitbucketServerBuildState(s string) btypes.ChangesetCheckState {
 	switch s {
 	case "FAILED":
 		return btypes.ChangesetCheckStateFailed
 	case "INPROGRESS":
 		return btypes.ChangesetCheckStatePending
 	case "SUCCESSFUL":
+		return btypes.ChangesetCheckStatePassed
+	default:
+		return btypes.ChangesetCheckStateUnknown
+	}
+}
+
+func computeBitbucketCloudBuildState(lastSynced time.Time, apr *bbcs.AnnotatedPullRequest, events []*btypes.ChangesetEvent) btypes.ChangesetCheckState {
+	stateMap := make(map[string]btypes.ChangesetCheckState)
+
+	// States from last sync.
+	for _, status := range apr.Statuses {
+		stateMap[status.Key()] = parseBitbucketCloudBuildState(status.State)
+	}
+
+	// Add any events we've received since our last sync.
+	addState := func(key string, status *bitbucketcloud.CommitStatus) {
+		if lastSynced.Before(status.CreatedOn) {
+			stateMap[key] = parseBitbucketCloudBuildState(status.State)
+		}
+	}
+	for _, e := range events {
+		switch m := e.Metadata.(type) {
+		case *bitbucketcloud.RepoCommitStatusCreatedEvent:
+			addState(m.Key(), &m.CommitStatus)
+		case *bitbucketcloud.RepoCommitStatusUpdatedEvent:
+			addState(m.Key(), &m.CommitStatus)
+		}
+	}
+
+	states := make([]btypes.ChangesetCheckState, 0, len(stateMap))
+	for _, v := range stateMap {
+		states = append(states, v)
+	}
+
+	return combineCheckStates(states)
+}
+
+func parseBitbucketCloudBuildState(s bitbucketcloud.PullRequestStatusState) btypes.ChangesetCheckState {
+	switch s {
+	case bitbucketcloud.PullRequestStatusStateFailed, bitbucketcloud.PullRequestStatusStateStopped:
+		return btypes.ChangesetCheckStateFailed
+	case bitbucketcloud.PullRequestStatusStateInProgress:
+		return btypes.ChangesetCheckStatePending
+	case bitbucketcloud.PullRequestStatusStateSuccessful:
 		return btypes.ChangesetCheckStatePassed
 	default:
 		return btypes.ChangesetCheckStateUnknown
@@ -450,6 +501,17 @@ func computeSingleChangesetExternalState(c *btypes.Changeset) (s btypes.Changese
 		default:
 			return "", errors.Errorf("unknown GitLab merge request state: %s", m.State)
 		}
+	case *bbcs.AnnotatedPullRequest:
+		switch m.State {
+		case bitbucketcloud.PullRequestStateDeclined, bitbucketcloud.PullRequestStateSuperseded:
+			s = btypes.ChangesetExternalStateClosed
+		case bitbucketcloud.PullRequestStateMerged:
+			s = btypes.ChangesetExternalStateMerged
+		case bitbucketcloud.PullRequestStateOpen:
+			s = btypes.ChangesetExternalStateOpen
+		default:
+			return "", errors.Errorf("unknown Bitbucket Cloud pull request state: %s", m.State)
+		}
 	default:
 		return "", errors.New("unknown changeset type")
 	}
@@ -507,6 +569,18 @@ func computeSingleChangesetReviewState(c *btypes.Changeset) (s btypes.ChangesetR
 		}
 		return btypes.ChangesetReviewStatePending, nil
 
+	case *bbcs.AnnotatedPullRequest:
+		for _, participant := range m.Participants {
+			switch participant.State {
+			case bitbucketcloud.ParticipantStateApproved:
+				states[btypes.ChangesetReviewStateApproved] = true
+			case bitbucketcloud.ParticipantStateChangesRequested:
+				states[btypes.ChangesetReviewStateChangesRequested] = true
+			default:
+				states[btypes.ChangesetReviewStatePending] = true
+			}
+		}
+
 	default:
 		return "", errors.New("unknown changeset type")
 	}
@@ -536,8 +610,8 @@ func selectReviewState(states map[btypes.ChangesetReviewState]bool) btypes.Chang
 
 // computeDiffStat computes the up to date diffstat for the changeset, based on
 // the values in c.SyncState.
-func computeDiffStat(ctx context.Context, c *btypes.Changeset, repo api.RepoName) (*diff.Stat, error) {
-	iter, err := git.Diff(ctx, git.DiffOptions{
+func computeDiffStat(ctx context.Context, db database.DB, c *btypes.Changeset, repo api.RepoName) (*diff.Stat, error) {
+	iter, err := gitserver.NewClient(db).Diff(ctx, gitserver.DiffOptions{
 		Repo: repo,
 		Base: c.SyncState.BaseRefOid,
 		Head: c.SyncState.HeadRefOid,
@@ -567,16 +641,16 @@ func computeDiffStat(ctx context.Context, c *btypes.Changeset, repo api.RepoName
 
 // computeSyncState computes the up to date sync state based on the changeset as
 // it currently exists on the external provider.
-func computeSyncState(ctx context.Context, c *btypes.Changeset, repo api.RepoName) (*btypes.ChangesetSyncState, error) {
+func computeSyncState(ctx context.Context, db database.DB, c *btypes.Changeset, repo api.RepoName) (*btypes.ChangesetSyncState, error) {
 	// We compute the revision by first trying to get the OID, then the Ref. //
 	// We then call out to gitserver to ensure that the one we use is available on
 	// gitserver.
-	base, err := computeRev(ctx, repo, c.BaseRefOid, c.BaseRef)
+	base, err := computeRev(ctx, db, repo, c.BaseRefOid, c.BaseRef)
 	if err != nil {
 		return nil, err
 	}
 
-	head, err := computeRev(ctx, repo, c.HeadRefOid, c.HeadRef)
+	head, err := computeRev(ctx, db, repo, c.HeadRefOid, c.HeadRef)
 	if err != nil {
 		return nil, err
 	}
@@ -588,7 +662,7 @@ func computeSyncState(ctx context.Context, c *btypes.Changeset, repo api.RepoNam
 	}, nil
 }
 
-func computeRev(ctx context.Context, repo api.RepoName, getOid, getRef func() (string, error)) (string, error) {
+func computeRev(ctx context.Context, db database.DB, repo api.RepoName, getOid, getRef func() (string, error)) (string, error) {
 	// Try to get the OID first
 	rev, err := getOid()
 	if err != nil {
@@ -605,7 +679,7 @@ func computeRev(ctx context.Context, repo api.RepoName, getOid, getRef func() (s
 
 	// Resolve the revision to make sure it's on gitserver and, in case we did
 	// the fallback to ref, to get the specific revision.
-	gitRev, err := git.ResolveRevision(ctx, repo, rev, git.ResolveRevisionOptions{})
+	gitRev, err := gitserver.NewClient(db).ResolveRevision(ctx, repo, rev, gitserver.ResolveRevisionOptions{})
 	return string(gitRev), err
 }
 

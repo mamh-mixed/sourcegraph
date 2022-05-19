@@ -355,6 +355,8 @@ function getModeFromExtension(extension: string): string | undefined {
         case 'rd':
         case 'rsx':
             return 'r'
+        case 'repro':
+            return 'repro'
 
         // Ruby
         case 'rb':
@@ -394,6 +396,10 @@ function getModeFromExtension(extension: string): string | undefined {
         case 'sc':
         case 'scala':
             return 'scala'
+
+        // Strato
+        case 'strato':
+            return 'strato'
 
         // Scheme
         case 'scm':

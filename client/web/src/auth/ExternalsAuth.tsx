@@ -1,13 +1,15 @@
+import React from 'react'
+
 import classNames from 'classnames'
 import GithubIcon from 'mdi-react/GithubIcon'
-import React from 'react'
 
 import { Link } from '@sourcegraph/wildcard'
 
 import { AuthProvider, SourcegraphContext } from '../jscontext'
 
-import styles from './CloudSignUpPage.module.scss'
 import { maybeAddPostSignUpRedirect } from './SignInSignUpCommon'
+
+import styles from './CloudSignUpPage.module.scss'
 
 interface ExternalsAuthProps {
     context: Pick<SourcegraphContext, 'authProviders' | 'experimentalFeatures'>
@@ -17,7 +19,7 @@ interface ExternalsAuthProps {
     withCenteredText?: boolean
 }
 
-const GitlabColorIcon: React.FunctionComponent<{ className?: string }> = ({ className }) => (
+const GitlabColorIcon: React.FunctionComponent<React.PropsWithChildren<{ className?: string }>> = ({ className }) => (
     <svg
         className={className}
         width="24"
@@ -48,7 +50,7 @@ const GitlabColorIcon: React.FunctionComponent<{ className?: string }> = ({ clas
     </svg>
 )
 
-const ExternalsAuth: React.FunctionComponent<ExternalsAuthProps> = ({
+const ExternalsAuth: React.FunctionComponent<React.PropsWithChildren<ExternalsAuthProps>> = ({
     context,
     githubLabel,
     gitlabLabel,

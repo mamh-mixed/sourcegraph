@@ -1,4 +1,3 @@
-import React from 'react'
 import { RouteComponentProps } from 'react-router'
 
 import { lazyComponent } from '@sourcegraph/shared/src/util/lazyComponent'
@@ -35,6 +34,11 @@ const UserSettingsSecurityPage = lazyComponent(
     () => import('./auth/UserSettingsSecurityPage'),
     'UserSettingsSecurityPage'
 )
+
+// const UserSettingsPrivacyPage = lazyComponent(
+//     () => import('./privacy/UserSettingsPrivacyPage'),
+//     'UserSettingsPrivacyPage'
+// )
 
 export const userSettingsAreaRoutes: readonly UserSettingsAreaRoute[] = [
     {
@@ -94,6 +98,11 @@ export const userSettingsAreaRoutes: readonly UserSettingsAreaRoute[] = [
         exact: true,
         render: props => <UserSettingsSecurityPage {...props} context={window.context} />,
         condition: showAccountSecurityPage,
+    },
+    {
+        path: '/privacy',
+        exact: true,
+        render: lazyComponent(() => import('./privacy/UserSettingsPrivacyPage'), 'UserSettingsPrivacyPage'),
     },
     {
         path: '/repositories',

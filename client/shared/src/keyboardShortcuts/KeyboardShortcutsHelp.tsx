@@ -1,11 +1,14 @@
-import { Shortcut, ModifierKey, Key } from '@slimsag/react-shortcuts'
-import CloseIcon from 'mdi-react/CloseIcon'
 import React, { useCallback, useState } from 'react'
 
-import { KeyboardShortcut } from '@sourcegraph/shared/src/keyboardShortcuts'
-import { Button, Modal } from '@sourcegraph/wildcard'
+import { Shortcut, ModifierKey, Key } from '@slimsag/react-shortcuts'
+import CloseIcon from 'mdi-react/CloseIcon'
+
+import { Button, Modal, Icon, Typography } from '@sourcegraph/wildcard'
+
+import { KeyboardShortcut } from '../keyboardShortcuts'
 
 import { KeyboardShortcutsProps } from './keyboardShortcuts'
+
 import styles from './KeyboardShortcutsHelp.module.scss'
 
 interface Props extends KeyboardShortcutsProps {
@@ -32,7 +35,7 @@ const KEY_TO_NAMES: { [P in Key | ModifierKey]?: string } = {
 
 const MODAL_LABEL_ID = 'keyboard-shortcuts-help-modal-title'
 
-export const KeyboardShortcutsHelp: React.FunctionComponent<Props> = ({
+export const KeyboardShortcutsHelp: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
     keyboardShortcutForShow,
     keyboardShortcuts,
 }) => {
@@ -52,9 +55,9 @@ export const KeyboardShortcutsHelp: React.FunctionComponent<Props> = ({
                 containerClassName={styles.modalContainer}
             >
                 <div className={styles.modalHeader}>
-                    <h4 id={MODAL_LABEL_ID}>Keyboard shortcuts</h4>
+                    <Typography.H4 id={MODAL_LABEL_ID}>Keyboard shortcuts</Typography.H4>
                     <Button variant="icon" aria-label="Close" onClick={toggleIsOpen}>
-                        <CloseIcon className="icon-inline" />
+                        <Icon role="img" as={CloseIcon} aria-hidden={true} />
                     </Button>
                 </div>
                 <div>

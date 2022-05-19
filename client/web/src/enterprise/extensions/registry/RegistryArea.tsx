@@ -1,5 +1,6 @@
-import MapSearchIcon from 'mdi-react/MapSearchIcon'
 import React from 'react'
+
+import MapSearchIcon from 'mdi-react/MapSearchIcon'
 import { Route, RouteComponentProps, Switch } from 'react-router'
 
 import { PlatformContextProps } from '@sourcegraph/shared/src/platform/context'
@@ -9,10 +10,13 @@ import { BreadcrumbSetters } from '../../../components/Breadcrumbs'
 import { HeroPage } from '../../../components/HeroPage'
 import { ExtensionsAreaRouteContext } from '../../../extensions/ExtensionsArea'
 
-import styles from './RegistryArea.module.scss'
 import { RegistryNewExtensionPage } from './RegistryNewExtensionPage'
 
-const NotFoundPage: React.FunctionComponent = () => <HeroPage icon={MapSearchIcon} title="404: Not Found" />
+import styles from './RegistryArea.module.scss'
+
+const NotFoundPage: React.FunctionComponent<React.PropsWithChildren<unknown>> = () => (
+    <HeroPage icon={MapSearchIcon} title="404: Not Found" />
+)
 
 interface Props extends RouteComponentProps<{}>, ExtensionsAreaRouteContext {}
 
@@ -27,7 +31,7 @@ export interface RegistryAreaPageProps extends PlatformContextProps, BreadcrumbS
 /**
  * The extension registry area.
  */
-export const RegistryArea: React.FunctionComponent<Props> = ({
+export const RegistryArea: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
     authenticatedUser,
     platformContext,
     useBreadcrumb,

@@ -1,17 +1,17 @@
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+
 import * as H from 'history'
 import AccountIcon from 'mdi-react/AccountIcon'
 import AddIcon from 'mdi-react/AddIcon'
 import DeleteIcon from 'mdi-react/DeleteIcon'
 import SettingsIcon from 'mdi-react/SettingsIcon'
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { RouteComponentProps } from 'react-router'
 import { Subject } from 'rxjs'
 
 import { ErrorAlert } from '@sourcegraph/branded/src/components/alerts'
-import { asError, isErrorLike } from '@sourcegraph/common'
+import { asError, isErrorLike, pluralize } from '@sourcegraph/common'
 import { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryService'
-import { pluralize } from '@sourcegraph/shared/src/util/strings'
-import { Button, Link, Alert } from '@sourcegraph/wildcard'
+import { Button, Link, Alert, Icon, Typography } from '@sourcegraph/wildcard'
 
 import { FilteredConnection } from '../components/FilteredConnection'
 import { PageTitle } from '../components/PageTitle'
@@ -33,7 +33,7 @@ interface OrgNodeProps {
     history: H.History
 }
 
-const OrgNode: React.FunctionComponent<OrgNodeProps> = ({ node, onDidUpdate }) => {
+const OrgNode: React.FunctionComponent<React.PropsWithChildren<OrgNodeProps>> = ({ node, onDidUpdate }) => {
     const [loading, setLoading] = useState<boolean | Error>(false)
 
     const deleteOrg = useCallback(() => {
@@ -72,7 +72,7 @@ const OrgNode: React.FunctionComponent<OrgNodeProps> = ({ node, onDidUpdate }) =
                         size="sm"
                         as={Link}
                     >
-                        <SettingsIcon className="icon-inline" /> Settings
+                        <Icon as={SettingsIcon} /> Settings
                     </Button>{' '}
                     <Button
                         to={`${orgURL(node.name)}/settings/members`}
@@ -81,7 +81,7 @@ const OrgNode: React.FunctionComponent<OrgNodeProps> = ({ node, onDidUpdate }) =
                         size="sm"
                         as={Link}
                     >
-                        <AccountIcon className="icon-inline" />{' '}
+                        <Icon as={AccountIcon} />{' '}
                         {node.members && (
                             <>
                                 {node.members.totalCount} {pluralize('member', node.members.totalCount)}
@@ -95,7 +95,7 @@ const OrgNode: React.FunctionComponent<OrgNodeProps> = ({ node, onDidUpdate }) =
                         variant="danger"
                         size="sm"
                     >
-                        <DeleteIcon className="icon-inline" />
+                        <Icon as={DeleteIcon} />
                     </Button>
                 </div>
             </div>
@@ -109,7 +109,11 @@ interface Props extends RouteComponentProps<{}>, TelemetryProps {}
 /**
  * A page displaying the orgs on this site.
  */
-export const SiteAdminOrgsPage: React.FunctionComponent<Props> = ({ telemetryService, history, location }) => {
+export const SiteAdminOrgsPage: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
+    telemetryService,
+    history,
+    location,
+}) => {
     const orgUpdates = useMemo(() => new Subject<void>(), [])
     const onDidUpdateOrg = useCallback((): void => orgUpdates.next(), [orgUpdates])
 
@@ -121,9 +125,9 @@ export const SiteAdminOrgsPage: React.FunctionComponent<Props> = ({ telemetrySer
         <div className="site-admin-orgs-page">
             <PageTitle title="Organizations - Admin" />
             <div className="d-flex justify-content-between align-items-center mb-3">
-                <h2 className="mb-0">Organizations</h2>
+                <Typography.H2 className="mb-0">Organizations</Typography.H2>
                 <Button to="/organizations/new" className="test-create-org-button" variant="primary" as={Link}>
-                    <AddIcon className="icon-inline" /> Create organization
+                    <Icon as={AddIcon} /> Create organization
                 </Button>
             </div>
             <p>
@@ -134,7 +138,7 @@ export const SiteAdminOrgsPage: React.FunctionComponent<Props> = ({ telemetrySer
             {window.context.sourcegraphDotComMode ? (
                 <>
                     <Alert variant="info">Only organization members can view & modify organization settings.</Alert>
-                    <h3>Enable early access</h3>
+                    <Typography.H3>Enable early access</Typography.H3>
                     <div className="d-flex justify-content-between align-items-center mb-3">
                         <p>Enable early access for organization code host connections and repositories on Cloud.</p>
                         <Button to="./organizations/early-access-orgs-code" variant="primary" outline={true} as={Link}>

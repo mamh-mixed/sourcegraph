@@ -1,6 +1,11 @@
 # How-to guides
 
+- [How to manually execute database migrations with `migrator`](manual_database_migrations.md)
+  - Commands: [up](manual_database_migrations.md#up), [upto](manual_database_migrations.md#upto), [downto](manual_database_migrations.md#downto), [validate](manual_database_migrations.md#validate), [add-log](manual_database_migrations.md#add-log)
+  - Environments: [Kubernetes](manual_database_migrations.md#kubernetes), [Docker compose](manual_database_migrations.md#docker-compose), [Local development](manual_database_migrations.md#local-development)
 - [How to troubleshoot a dirty database](dirty_database.md)
+- [How to rollback the Postgres database](rollback_database.md)
+- [How to apply privileged migrations](privileged_migrations.md)
 - [How to troubleshoot an unfinished migration](unfinished_migration.md)
 - [How to enable or disable an experimental feature](enable-experimental-feature.md)
 - [How to diagnose an `Unknown Error` during login to your Sourcegraph instance](unknown-error-login.md)
@@ -9,7 +14,6 @@
 - [How to monitor your Sourcegraph instance](monitoring-guide.md)
 - [How to troubleshoot a repository that is not being updated](repo-not-updated.md)
 - [How to troubleshoot a Sourcegraph extension](troubleshoot-sg-extension.md)
-- [How to troubleshoot a repository that is not being updated](repo-not-updated.md)
 - [How to configure submodules](submodule-configuration.md)
 - [How to remove users or edit users with the GraphQL API](mutate-user-api.md)
 - [How to setup HTTPS connection with Ingress controller on your Kubernetes instance](setup-https.md)
@@ -19,4 +23,5 @@
 - [How to run postgres queries in your Sourcegraph instance](run-psql.md)
 - [How to remove a repository from Sourcegraph](remove-repo.md)
 - [How to address common monorepo problems](monorepo-issues.md)
-
+- [How to Set a password for Redis using a ConfigMap](redis_configmap.md)
+- [How to import a set of internal repositories to Sourcegraph](internal_github_repos.md)

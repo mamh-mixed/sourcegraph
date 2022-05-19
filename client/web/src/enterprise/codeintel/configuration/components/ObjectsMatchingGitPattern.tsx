@@ -1,5 +1,6 @@
+import { FunctionComponent, useEffect, useMemo, useState } from 'react'
+
 import { debounce } from 'lodash'
-import React, { FunctionComponent, useEffect, useMemo, useState } from 'react'
 
 import { GitObjectType } from '../../../../graphql-operations'
 
@@ -15,7 +16,7 @@ export interface ObjectsMatchingGitPatternProps {
     disabled: boolean
 }
 
-export const ObjectsMatchingGitPattern: FunctionComponent<ObjectsMatchingGitPatternProps> = ({
+export const ObjectsMatchingGitPattern: FunctionComponent<React.PropsWithChildren<ObjectsMatchingGitPatternProps>> = ({
     repoId,
     type,
     pattern,

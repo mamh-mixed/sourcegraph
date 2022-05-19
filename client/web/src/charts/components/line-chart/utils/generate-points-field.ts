@@ -1,32 +1,36 @@
 import { ScaleLinear, ScaleTime } from 'd3-scale'
 
-import { LineChartSeries, Point } from '../types'
+import { Point } from '../types'
 
-import { isValidNumber } from './data-guards'
+import { getDatumValue, isDatumWithValidNumber, SeriesWithData, SeriesDatum } from './data-series-processing'
 
-interface PointsFieldInput<Datum extends object> {
-    data: Datum[]
-    series: LineChartSeries<Datum>[]
+const NULL_LINK = (): undefined => undefined
+
+interface PointsFieldInput<Datum> {
+    dataSeries: SeriesWithData<Datum>[]
     xScale: ScaleTime<number, number>
     yScale: ScaleLinear<number, number>
-    xAxisKey: keyof Datum
 }
 
-export function generatePointsField<Datum extends object>(input: PointsFieldInput<Datum>): Point[] {
-    const { data, series, xScale, yScale, xAxisKey } = input
+export function generatePointsField<Datum>(input: PointsFieldInput<Datum>): Point<Datum>[] {
+    const { dataSeries, xScale, yScale } = input
 
-    return data.flatMap((datum, index) =>
-        series
-            .filter(line => isValidNumber(datum[line.dataKey]))
-            .map<Point>(line => ({
-                id: `${line.dataKey as string}-${index}`,
-                seriesKey: line.dataKey as string,
-                value: +datum[line.dataKey],
-                x: xScale(+datum[xAxisKey]),
-                y: yScale(+datum[line.dataKey]),
-                color: line.color ?? 'green',
-                linkUrl: line.linkURLs?.[index],
-                index,
-            }))
-    )
+    return dataSeries.flatMap(series => {
+        const { id, data, getLinkURL = NULL_LINK } = series
+
+        return (data as SeriesDatum<Datum>[]).filter(isDatumWithValidNumber).map((datum, index) => {
+            const datumValue = getDatumValue(datum)
+
+            return {
+                id: `${id}-${index}`,
+                seriesId: id.toString(),
+                value: datumValue,
+                time: datum.x,
+                y: yScale(datumValue),
+                x: xScale(datum.x),
+                color: series.color ?? 'green',
+                linkUrl: getLinkURL(datum.datum, index),
+            }
+        })
+    })
 }

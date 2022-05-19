@@ -1,5 +1,4 @@
 import { storiesOf } from '@storybook/react'
-import React from 'react'
 import { NEVER, of } from 'rxjs'
 import sinon from 'sinon'
 
@@ -7,7 +6,6 @@ import { EMPTY_SETTINGS_CASCADE } from '@sourcegraph/shared/src/settings/setting
 
 import { AuthenticatedUser } from '../../auth'
 import { WebStory } from '../../components/WebStory'
-import { EMPTY_FEATURE_FLAGS } from '../../featureFlags/featureFlags'
 import { ListCodeMonitors, ListUserCodeMonitorsVariables } from '../../graphql-operations'
 
 import { CodeMonitoringPage } from './CodeMonitoringPage'
@@ -17,7 +15,7 @@ const { add } = storiesOf('web/enterprise/code-monitoring/CodeMonitoringPage', m
     chromatic: {
         // Delay screenshot taking, so <CodeMonitoringPage /> is ready to show content.
         delay: 600,
-        chromatic: { disableSnapshot: false },
+        disableSnapshot: false,
     },
 })
 
@@ -37,7 +35,6 @@ const additionalProps = {
     authenticatedUser: { id: 'foobar', username: 'alice', email: 'alice@alice.com' } as AuthenticatedUser,
     toggleCodeMonitorEnabled: sinon.fake(),
     settingsCascade: EMPTY_SETTINGS_CASCADE,
-    featureFlags: EMPTY_FEATURE_FLAGS,
 }
 
 const additionalPropsShortList = { ...additionalProps, fetchUserCodeMonitors: generateMockFetchMonitors(3) }

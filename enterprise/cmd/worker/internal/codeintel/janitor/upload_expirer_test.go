@@ -8,8 +8,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/policies"
-	"github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/stores/dbstore"
+	policies "github.com/sourcegraph/sourcegraph/internal/codeintel/policies/enterprise"
+	"github.com/sourcegraph/sourcegraph/internal/codeintel/stores/dbstore"
 	"github.com/sourcegraph/sourcegraph/internal/observation"
 	"github.com/sourcegraph/sourcegraph/internal/timeutil"
 )
@@ -17,7 +17,7 @@ import (
 func TestUploadExpirer(t *testing.T) {
 	now := timeutil.Now()
 	dbStore := testUploadExpirerMockDBStore(now)
-	policyMatcher := testUploadExpirerMockPolicyMatcher(now)
+	policyMatcher := testUploadExpirerMockPolicyMatcher()
 
 	uploadExpirer := &uploadExpirer{
 		dbStore:                dbStore,
@@ -202,7 +202,7 @@ func testUploadExpirerMockDBStore(now time.Time) *MockDBStore {
 	return dbStore
 }
 
-func testUploadExpirerMockPolicyMatcher(now time.Time) *MockPolicyMatcher {
+func testUploadExpirerMockPolicyMatcher() *MockPolicyMatcher {
 	policyMatches := map[int]map[string][]policies.PolicyMatch{
 		50: {
 			"deadbeef01": {{PolicyDuration: days(1)}}, // 1 = 1
@@ -235,7 +235,7 @@ func testUploadExpirerMockPolicyMatcher(now time.Time) *MockPolicyMatcher {
 		},
 	}
 
-	commitsDescribedByPolicy := func(ctx context.Context, repositoryID int, policies []dbstore.ConfigurationPolicy, now time.Time) (map[string][]policies.PolicyMatch, error) {
+	commitsDescribedByPolicy := func(ctx context.Context, repositoryID int, policies []dbstore.ConfigurationPolicy, now time.Time, _ ...string) (map[string][]policies.PolicyMatch, error) {
 		return policyMatches[repositoryID], nil
 	}
 

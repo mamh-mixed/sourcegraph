@@ -1,7 +1,6 @@
 import { action } from '@storybook/addon-actions'
 import { number, select, text } from '@storybook/addon-knobs'
 import { DecoratorFn, Meta, Story } from '@storybook/react'
-import React from 'react'
 import { of } from 'rxjs'
 import { NotificationType as NotificationTypeType } from 'sourcegraph'
 
@@ -77,3 +76,9 @@ export const WithProgress: Story = () => {
 }
 
 WithProgress.storyName = 'With progress'
+WithProgress.parameters = {
+    chromatic: {
+        enableDarkMode: true,
+        disableSnapshot: false,
+    },
+}

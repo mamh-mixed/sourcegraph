@@ -9,12 +9,12 @@ import (
 	"path"
 	"strings"
 
-	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/opentracing/opentracing-go/ext"
 
 	"github.com/sourcegraph/sourcegraph/internal/httpcli"
 	"github.com/sourcegraph/sourcegraph/internal/trace/ot"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 const (
@@ -103,7 +103,7 @@ func (e *notFoundError) Error() string {
 	return fmt.Sprintf("extension not found with %s %q", e.field, e.value)
 }
 
-func httpGet(ctx context.Context, op, urlStr string, result interface{}) (err error) {
+func httpGet(ctx context.Context, op, urlStr string, result any) (err error) {
 	defer func() { err = errors.Wrap(err, remoteRegistryErrorMessage) }()
 
 	req, err := http.NewRequest("GET", urlStr, nil)

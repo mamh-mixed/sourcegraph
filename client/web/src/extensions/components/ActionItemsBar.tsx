@@ -1,3 +1,5 @@
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+
 import classNames from 'classnames'
 import * as H from 'history'
 import { head, last } from 'lodash'
@@ -6,22 +8,20 @@ import MenuDownIcon from 'mdi-react/MenuDownIcon'
 import MenuUpIcon from 'mdi-react/MenuUpIcon'
 import PlusIcon from 'mdi-react/PlusIcon'
 import PuzzleOutlineIcon from 'mdi-react/PuzzleOutlineIcon'
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { BehaviorSubject } from 'rxjs'
 import { distinctUntilChanged, map } from 'rxjs/operators'
 import { focusable, FocusableElement } from 'tabbable'
 import { Key } from 'ts-key-enum'
 
+import { ContributableMenu } from '@sourcegraph/client-api'
+import { LocalStorageSubject } from '@sourcegraph/common'
 import { ActionItem } from '@sourcegraph/shared/src/actions/ActionItem'
 import { ActionsContainer } from '@sourcegraph/shared/src/actions/ActionsContainer'
 import { haveInitialExtensionsLoaded } from '@sourcegraph/shared/src/api/features'
-import { ContributableMenu } from '@sourcegraph/shared/src/api/protocol'
-import { ButtonLink } from '@sourcegraph/shared/src/components/LinkOrButton'
 import { ExtensionsControllerProps } from '@sourcegraph/shared/src/extensions/controller'
 import { PlatformContextProps } from '@sourcegraph/shared/src/platform/context'
 import { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryService'
-import { LocalStorageSubject } from '@sourcegraph/shared/src/util/LocalStorageSubject'
-import { Button, LoadingSpinner, useObservable, Link } from '@sourcegraph/wildcard'
+import { Button, LoadingSpinner, useObservable, Link, ButtonLink, Icon } from '@sourcegraph/wildcard'
 
 import { ErrorBoundary } from '../../components/ErrorBoundary'
 import { useCarousel } from '../../components/useCarousel'
@@ -173,19 +173,9 @@ export function useWebActionItems(): Pick<ActionItemsBarProps, 'useActionItemsBa
     }
 }
 
-export interface ActionItemsBarProps extends ExtensionsControllerProps, PlatformContextProps, TelemetryProps {
+export interface ActionItemsBarProps extends ExtensionsControllerProps, TelemetryProps, PlatformContextProps {
     useActionItemsBar: () => { isOpen: boolean | undefined; barReference: React.RefCallback<HTMLElement> }
     location: H.Location
-}
-
-export interface ActionItemsToggleProps extends ExtensionsControllerProps<'extHostAPI'> {
-    useActionItemsToggle: () => {
-        isOpen: boolean | undefined
-        toggle: () => void
-        toggleReference: React.RefCallback<HTMLElement>
-        barInPage: boolean
-    }
-    className?: string
 }
 
 const actionItemClassName = classNames(
@@ -194,9 +184,9 @@ const actionItemClassName = classNames(
 )
 
 /**
- *
+ * TODO: description
  */
-export const ActionItemsBar = React.memo<ActionItemsBarProps>(props => {
+export const ActionItemsBar = React.memo<ActionItemsBarProps>(function ActionItemsBar(props) {
     const { isOpen, barReference } = props.useActionItemsBar()
 
     const {
@@ -227,7 +217,7 @@ export const ActionItemsBar = React.memo<ActionItemsBarProps>(props => {
                         tabIndex={-1}
                         variant="link"
                     >
-                        <MenuUpIcon className="icon-inline" />
+                        <Icon as={MenuUpIcon} />
                     </Button>
                 )}
                 <ActionsContainer
@@ -287,7 +277,7 @@ export const ActionItemsBar = React.memo<ActionItemsBarProps>(props => {
                         tabIndex={-1}
                         variant="link"
                     >
-                        <MenuDownIcon className="icon-inline" />
+                        <Icon as={MenuDownIcon} />
                     </Button>
                 )}
                 {haveExtensionsLoaded && <ActionItemsDivider />}
@@ -299,7 +289,7 @@ export const ActionItemsBar = React.memo<ActionItemsBarProps>(props => {
                             data-tooltip="Add extensions"
                             aria-label="Add extensions"
                         >
-                            <PlusIcon className="icon-inline" />
+                            <Icon as={PlusIcon} />
                         </Link>
                     </li>
                 </ul>
@@ -308,7 +298,17 @@ export const ActionItemsBar = React.memo<ActionItemsBarProps>(props => {
     )
 })
 
-export const ActionItemsToggle: React.FunctionComponent<ActionItemsToggleProps> = ({
+export interface ActionItemsToggleProps extends ExtensionsControllerProps<'extHostAPI'> {
+    useActionItemsToggle: () => {
+        isOpen: boolean | undefined
+        toggle: () => void
+        toggleReference: React.RefCallback<HTMLElement>
+        barInPage: boolean
+    }
+    className?: string
+}
+
+export const ActionItemsToggle: React.FunctionComponent<React.PropsWithChildren<ActionItemsToggleProps>> = ({
     useActionItemsToggle,
     extensionsController,
     className,
@@ -321,21 +321,21 @@ export const ActionItemsToggle: React.FunctionComponent<ActionItemsToggleProps> 
 
     return barInPage ? (
         <>
-            <div className={styles.dividerVertical} />
+            <li className={styles.dividerVertical} />
             <li className={classNames('nav-item mr-2', className)}>
                 <div className={classNames(styles.toggleContainer, isOpen && styles.toggleContainerOpen)}>
                     <ButtonLink
                         data-tooltip={`${isOpen ? 'Close' : 'Open'} extensions panel`}
                         className={classNames(actionItemClassName, styles.auxIcon, styles.actionToggle)}
                         onSelect={toggle}
-                        buttonLinkRef={toggleReference}
+                        ref={toggleReference}
                     >
                         {!haveExtensionsLoaded ? (
                             <LoadingSpinner />
                         ) : isOpen ? (
-                            <ChevronDoubleUpIcon data-testid="action-items-toggle-open" className="icon-inline" />
+                            <Icon data-testid="action-items-toggle-open" as={ChevronDoubleUpIcon} />
                         ) : (
-                            <PuzzleOutlineIcon className="icon-inline" />
+                            <Icon as={PuzzleOutlineIcon} />
                         )}
                     </ButtonLink>
                 </div>
@@ -344,6 +344,6 @@ export const ActionItemsToggle: React.FunctionComponent<ActionItemsToggleProps> 
     ) : null
 }
 
-const ActionItemsDivider: React.FunctionComponent<{ className?: string }> = ({ className }) => (
-    <li className={classNames('position-relative rounded-sm d-flex', styles.dividerHorizontal, className)} />
-)
+const ActionItemsDivider: React.FunctionComponent<React.PropsWithChildren<{ className?: string }>> = ({
+    className,
+}) => <div className={classNames('position-relative rounded-sm d-flex', styles.dividerHorizontal, className)} />

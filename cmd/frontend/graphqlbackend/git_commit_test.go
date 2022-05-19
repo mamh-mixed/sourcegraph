@@ -8,10 +8,12 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/backend"
 	"github.com/sourcegraph/sourcegraph/internal/api"
 	"github.com/sourcegraph/sourcegraph/internal/database"
+	"github.com/sourcegraph/sourcegraph/internal/gitserver"
 	"github.com/sourcegraph/sourcegraph/internal/gitserver/gitdomain"
 	"github.com/sourcegraph/sourcegraph/internal/types"
 	"github.com/sourcegraph/sourcegraph/internal/vcs/git"
@@ -37,6 +39,26 @@ func TestGitCommitResolver(t *testing.T) {
 		},
 	}
 
+	t.Run("URL Escaping", func(t *testing.T) {
+		repo := NewRepositoryResolver(db, &types.Repo{Name: "xyz"})
+		commitResolver := NewGitCommitResolver(db, repo, "c1", commit)
+		{
+			inputRev := "master^1"
+			commitResolver.inputRev = &inputRev
+			require.Equal(t, "/xyz/-/commit/master%5E1", commitResolver.URL())
+
+			treeResolver := NewGitTreeEntryResolver(db, commitResolver, CreateFileInfo("a/b", false))
+			url, err := treeResolver.URL(ctx)
+			require.Nil(t, err)
+			require.Equal(t, "/xyz@master%5E1/-/blob/a/b", url)
+		}
+		{
+			inputRev := "refs/heads/main"
+			commitResolver.inputRev = &inputRev
+			require.Equal(t, "/xyz/-/commit/refs/heads/main", commitResolver.URL())
+		}
+	})
+
 	t.Run("Lazy loading", func(t *testing.T) {
 		git.Mocks.GetCommit = func(api.CommitID) (*gitdomain.Commit, error) {
 			return commit, nil
@@ -47,49 +69,49 @@ func TestGitCommitResolver(t *testing.T) {
 
 		for _, tc := range []struct {
 			name string
-			want interface{}
-			have func(*GitCommitResolver) (interface{}, error)
+			want any
+			have func(*GitCommitResolver) (any, error)
 		}{{
 			name: "author",
 			want: toSignatureResolver(db, &commit.Author, true),
-			have: func(r *GitCommitResolver) (interface{}, error) {
+			have: func(r *GitCommitResolver) (any, error) {
 				return r.Author(ctx)
 			},
 		}, {
 			name: "committer",
 			want: toSignatureResolver(db, commit.Committer, true),
-			have: func(r *GitCommitResolver) (interface{}, error) {
+			have: func(r *GitCommitResolver) (any, error) {
 				return r.Committer(ctx)
 			},
 		}, {
 			name: "message",
 			want: string(commit.Message),
-			have: func(r *GitCommitResolver) (interface{}, error) {
+			have: func(r *GitCommitResolver) (any, error) {
 				return r.Message(ctx)
 			},
 		}, {
 			name: "subject",
 			want: "subject: Changes things",
-			have: func(r *GitCommitResolver) (interface{}, error) {
+			have: func(r *GitCommitResolver) (any, error) {
 				return r.Subject(ctx)
 			},
 		}, {
 			name: "body",
 			want: "Body of changes",
-			have: func(r *GitCommitResolver) (interface{}, error) {
+			have: func(r *GitCommitResolver) (any, error) {
 				s, err := r.Body(ctx)
 				return *s, err
 			},
 		}, {
 			name: "url",
 			want: "/bob-repo/-/commit/c1",
-			have: func(r *GitCommitResolver) (interface{}, error) {
+			have: func(r *GitCommitResolver) (any, error) {
 				return r.URL(), nil
 			},
 		}, {
 			name: "canonical-url",
 			want: "/bob-repo/-/commit/c1",
-			have: func(r *GitCommitResolver) (interface{}, error) {
+			have: func(r *GitCommitResolver) (any, error) {
 				return r.CanonicalURL(), nil
 			},
 		}} {
@@ -129,12 +151,13 @@ func TestGitCommitFileNames(t *testing.T) {
 		return exampleCommitSHA1, nil
 	}
 	backend.Mocks.Repos.MockGetCommit_Return_NoCheck(t, &gitdomain.Commit{ID: exampleCommitSHA1})
-	git.Mocks.LsFiles = func(repo api.RepoName, commit api.CommitID) ([]string, error) {
+	gitserver.Mocks.LsFiles = func(repo api.RepoName, commit api.CommitID) ([]string, error) {
 		return []string{"a", "b"}, nil
 	}
 	defer func() {
 		backend.Mocks = backend.MockServices{}
 		git.ResetMocks()
+		gitserver.ResetMocks()
 	}()
 
 	RunTests(t, []*Test{

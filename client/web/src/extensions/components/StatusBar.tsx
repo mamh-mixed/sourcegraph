@@ -1,17 +1,17 @@
+import React, { useCallback, useMemo, useState } from 'react'
+
 import classNames from 'classnames'
 import * as H from 'history'
 import ChevronLeftIcon from 'mdi-react/ChevronLeftIcon'
 import ChevronRightIcon from 'mdi-react/ChevronRightIcon'
-import React, { useCallback, useMemo, useState } from 'react'
 import { Observable, timer } from 'rxjs'
 import { filter, first, mapTo, switchMap } from 'rxjs/operators'
 
 import { urlForClientCommandOpen } from '@sourcegraph/shared/src/actions/ActionItem'
 import { StatusBarItemWithKey } from '@sourcegraph/shared/src/api/extension/api/codeEditor'
 import { haveInitialExtensionsLoaded } from '@sourcegraph/shared/src/api/features'
-import { ButtonLink } from '@sourcegraph/shared/src/components/LinkOrButton'
 import { ExtensionsControllerProps } from '@sourcegraph/shared/src/extensions/controller'
-import { Badge, Button, useObservable, Link } from '@sourcegraph/wildcard'
+import { Badge, Button, useObservable, Link, ButtonLink, Icon } from '@sourcegraph/wildcard'
 
 import { ErrorBoundary } from '../../components/ErrorBoundary'
 import { useCarousel } from '../../components/useCarousel'
@@ -40,7 +40,7 @@ interface StatusBarProps extends ExtensionsControllerProps<'extHostAPI' | 'execu
     badgeText?: string
 }
 
-export const StatusBar: React.FunctionComponent<StatusBarProps> = ({
+export const StatusBar: React.FunctionComponent<React.PropsWithChildren<StatusBarProps>> = ({
     getStatusBarItems,
     className,
     statusBarItemClassName,
@@ -109,7 +109,7 @@ export const StatusBar: React.FunctionComponent<StatusBarProps> = ({
                         onClick={onNegativeClicked}
                         variant="link"
                     >
-                        <ChevronLeftIcon className="icon-inline" />
+                        <Icon as={ChevronLeftIcon} />
                     </Button>
                 )}
                 <div className={classNames('d-flex align-items-center px-2', styles.items)} ref={carouselReference}>
@@ -145,7 +145,7 @@ export const StatusBar: React.FunctionComponent<StatusBarProps> = ({
                         onClick={onPositiveClicked}
                         variant="link"
                     >
-                        <ChevronRightIcon className="icon-inline" />
+                        <Icon as={ChevronRightIcon} />
                     </Button>
                 )}
             </ErrorBoundary>
@@ -154,12 +154,14 @@ export const StatusBar: React.FunctionComponent<StatusBarProps> = ({
 }
 
 const StatusBarItem: React.FunctionComponent<
-    {
-        statusBarItem: StatusBarItemWithKey
-        className?: string
-        component?: JSX.Element
-        location: H.Location
-    } & ExtensionsControllerProps<'extHostAPI' | 'executeCommand'>
+    React.PropsWithChildren<
+        {
+            statusBarItem: StatusBarItemWithKey
+            className?: string
+            component?: JSX.Element
+            location: H.Location
+        } & ExtensionsControllerProps<'extHostAPI' | 'executeCommand'>
+    >
 > = ({ statusBarItem, className, component, extensionsController, location }) => {
     const [commandState, setCommandState] = useState<'loading' | null>(null)
 

@@ -12,11 +12,11 @@ import (
 	"strings"
 
 	"github.com/NYTimes/gziphandler"
-	"github.com/cockroachdb/errors"
 	"github.com/gorilla/mux"
 	"github.com/inconshreveable/log15"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
+	muxtrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/gorilla/mux"
 
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/envvar"
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/globals"
@@ -29,6 +29,8 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/env"
 	"github.com/sourcegraph/sourcegraph/internal/randstring"
 	"github.com/sourcegraph/sourcegraph/internal/trace"
+	"github.com/sourcegraph/sourcegraph/internal/tracer"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 const (
@@ -41,7 +43,6 @@ const (
 	routeRepoCommit              = "repo-commit"
 	routeRepoBranches            = "repo-branches"
 	routeRepoBatchChanges        = "repo-batch-changes"
-	routeRepoDocs                = "repo-docs"
 	routeRepoCommits             = "repo-commits"
 	routeRepoTags                = "repo-tags"
 	routeRepoCompare             = "repo-compare"
@@ -77,6 +78,7 @@ const (
 	routeStats                   = "stats"
 	routeViews                   = "views"
 	routeDevToolTime             = "devtooltime"
+	routeEmbed                   = "embed"
 
 	routeSearchStream  = "search.stream"
 	routeSearchConsole = "search.console"
@@ -125,8 +127,8 @@ func InitRouter(db database.DB, codeIntelResolver graphqlbackend.CodeIntelResolv
 
 var mockServeRepo func(w http.ResponseWriter, r *http.Request)
 
-func newRouter() *mux.Router {
-	r := mux.NewRouter()
+func newRouter() *muxtrace.Router {
+	r := muxtrace.NewRouter(muxtrace.WithAnalyticsRate(tracer.MUX_ANALYTICS_TRACE_RATE))
 	r.StrictSlash(true)
 
 	// Top-level routes.
@@ -138,6 +140,7 @@ func newRouter() *mux.Router {
 	r.Path("/search/console").Methods("GET").Name(routeSearchConsole)
 	r.Path("/sign-in").Methods("GET").Name(uirouter.RouteSignIn)
 	r.Path("/sign-up").Methods("GET").Name(uirouter.RouteSignUp)
+	r.Path("/unlock-account/{token}").Methods("GET").Name(uirouter.RouteUnlockAccount)
 	r.Path("/welcome").Methods("GET").Name(routeWelcome)
 	r.PathPrefix("/insights").Methods("GET").Name(routeInsights)
 	r.PathPrefix("/batch-changes").Methods("GET").Name(routeBatchChanges)
@@ -165,9 +168,14 @@ func newRouter() *mux.Router {
 	r.PathPrefix("/devtooltime").Methods("GET").Name(routeDevToolTime)
 	r.Path("/ping-from-self-hosted").Methods("GET", "OPTIONS").Name(uirouter.RoutePingFromSelfHosted)
 
+	// 🚨 SECURITY: The embed route is used to serve embeddable content (via an iframe) to 3rd party sites.
+	// Any changes to the embedding route could have security implications. Please consult the security team
+	// before making changes. See the `serveEmbed` function for further details.
+	r.PathPrefix("/embed").Methods("GET").Name(routeEmbed)
+
 	// Community search contexts pages. Must mirror client/web/src/communitySearchContexts/routes.tsx
 	if envvar.SourcegraphDotComMode() {
-		communitySearchContexts := []string{"kubernetes", "stanford", "stackstorm", "temporal", "o3de", "chakraui"}
+		communitySearchContexts := []string{"kubernetes", "stanford", "stackstorm", "temporal", "o3de", "chakraui", "julia"}
 		r.Path("/{Path:(?:" + strings.Join(communitySearchContexts, "|") + ")}").Methods("GET").Name(routeCommunitySearchContexts)
 		r.Path("/cncf").Methods("GET").Name(routeCncf)
 	}
@@ -184,7 +192,6 @@ func newRouter() *mux.Router {
 	repoRev := r.PathPrefix(repoRevPath + "/" + routevar.RepoPathDelim).Subrouter()
 	repoRev.Path("/tree{Path:.*}").Methods("GET").Name(routeTree)
 
-	repoRev.PathPrefix("/docs{Path:.*}").Methods("GET").Name(routeRepoDocs)
 	repoRev.PathPrefix("/commits").Methods("GET").Name(routeRepoCommits)
 
 	// blob
@@ -218,8 +225,8 @@ func brandNameSubtitle(titles ...string) string {
 	return strings.Join(append(titles, globals.Branding().BrandName), " - ")
 }
 
-func initRouter(db database.DB, router *mux.Router, codeIntelResolver graphqlbackend.CodeIntelResolver) {
-	uirouter.Router = router // make accessible to other packages
+func initRouter(db database.DB, router *muxtrace.Router, codeIntelResolver graphqlbackend.CodeIntelResolver) {
+	uirouter.Router = router.Router // make accessible to other packages
 
 	brandedIndex := func(titles string) http.Handler {
 		return handler(db, serveBrandedPageString(db, titles, nil, index))
@@ -238,6 +245,7 @@ func initRouter(db database.DB, router *mux.Router, codeIntelResolver graphqlbac
 	router.Get(routeContexts).Handler(brandedNoIndex("Search Contexts"))
 	router.Get(uirouter.RouteSignIn).Handler(handler(db, serveSignIn(db)))
 	router.Get(uirouter.RouteSignUp).Handler(brandedIndex("Sign up"))
+	router.Get(uirouter.RouteUnlockAccount).Handler(brandedNoIndex("Unlock Your Account"))
 	router.Get(routeWelcome).Handler(brandedNoIndex("Welcome"))
 	router.Get(routeOrganizations).Handler(brandedNoIndex("Organization"))
 	router.Get(routeSettings).Handler(brandedNoIndex("Settings"))
@@ -249,7 +257,6 @@ func initRouter(db database.DB, router *mux.Router, codeIntelResolver graphqlbac
 	router.Get(routeRepoCommit).Handler(brandedNoIndex("Commit"))
 	router.Get(routeRepoBranches).Handler(brandedNoIndex("Branches"))
 	router.Get(routeRepoBatchChanges).Handler(brandedIndex("Batch Changes"))
-	router.Get(routeRepoDocs).Handler(handler(db, serveRepoDocs(db, codeIntelResolver)))
 	router.Get(routeRepoCommits).Handler(brandedNoIndex("Commits"))
 	router.Get(routeRepoTags).Handler(brandedNoIndex("Tags"))
 	router.Get(routeRepoCompare).Handler(brandedNoIndex("Compare"))
@@ -264,6 +271,11 @@ func initRouter(db database.DB, router *mux.Router, codeIntelResolver graphqlbac
 	router.Get(routeStats).Handler(brandedNoIndex("Stats"))
 	router.Get(routeViews).Handler(brandedNoIndex("View"))
 	router.Get(uirouter.RoutePingFromSelfHosted).Handler(handler(db, servePingFromSelfHosted))
+
+	// 🚨 SECURITY: The embed route is used to serve embeddable content (via an iframe) to 3rd party sites.
+	// Any changes to the embedding route could have security implications. Please consult the security team
+	// before making changes. See the `serveEmbed` function for further details.
+	router.Get(routeEmbed).Handler(handler(db, serveEmbed(db)))
 
 	router.Get(routeUserSettings).Handler(brandedNoIndex("User settings"))
 	router.Get(routeUserRedirect).Handler(brandedNoIndex("User"))
@@ -422,7 +434,7 @@ func handler(db database.DB, f handlerFunc) http.Handler {
 }
 
 type recoverError struct {
-	recover interface{}
+	recover any
 	stack   []byte
 }
 
@@ -464,7 +476,7 @@ func serveErrorNoDebug(w http.ResponseWriter, r *http.Request, db database.DB, e
 		ext.Error.Set(span, true)
 		span.SetTag("err", err)
 		span.SetTag("error-id", errorID)
-		traceURL = trace.URL(trace.IDFromSpan(span), conf.ExternalURL())
+		traceURL = trace.URL(trace.IDFromSpan(span), conf.ExternalURL(), conf.Tracer())
 	}
 	log15.Error("ui HTTP handler error response", "method", r.Method, "request_uri", r.URL.RequestURI(), "status_code", statusCode, "error", err, "error_id", errorID, "trace", traceURL)
 

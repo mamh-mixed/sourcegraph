@@ -1,25 +1,28 @@
+import React, { useCallback, useMemo, useState } from 'react'
+
 import classNames from 'classnames'
 import * as H from 'history'
 import { isEqual } from 'lodash'
-import React, { useCallback, useMemo, useState } from 'react'
 import { Observable } from 'rxjs'
 import { mergeMap, startWith, catchError, tap, filter } from 'rxjs/operators'
 
 import { Form } from '@sourcegraph/branded/src/components/Form'
 import { Toggle } from '@sourcegraph/branded/src/components/Toggle'
 import { asError, isErrorLike } from '@sourcegraph/common'
-import { Container, Button, useEventObservable, Alert, Link } from '@sourcegraph/wildcard'
+import { ThemeProps } from '@sourcegraph/shared/src/theme'
+import { Container, Button, useEventObservable, Alert, Link, Select } from '@sourcegraph/wildcard'
 
 import { AuthenticatedUser } from '../../../auth'
 import { CodeMonitorFields } from '../../../graphql-operations'
 import { deleteCodeMonitor as _deleteCodeMonitor } from '../backend'
 
-import styles from './CodeMonitorForm.module.scss'
 import { DeleteMonitorModal } from './DeleteMonitorModal'
 import { FormActionArea } from './FormActionArea'
 import { FormTriggerArea } from './FormTriggerArea'
 
-export interface CodeMonitorFormProps {
+import styles from './CodeMonitorForm.module.scss'
+
+export interface CodeMonitorFormProps extends ThemeProps {
     history: H.History
     location: H.Location
     authenticatedUser: AuthenticatedUser
@@ -40,6 +43,8 @@ export interface CodeMonitorFormProps {
     description?: string
 
     deleteCodeMonitor?: typeof _deleteCodeMonitor
+
+    isSourcegraphDotCom: boolean
 }
 
 interface FormCompletionSteps {
@@ -47,7 +52,7 @@ interface FormCompletionSteps {
     actionCompleted: boolean
 }
 
-export const CodeMonitorForm: React.FunctionComponent<CodeMonitorFormProps> = ({
+export const CodeMonitorForm: React.FunctionComponent<React.PropsWithChildren<CodeMonitorFormProps>> = ({
     authenticatedUser,
     onSubmit,
     history,
@@ -57,6 +62,8 @@ export const CodeMonitorForm: React.FunctionComponent<CodeMonitorFormProps> = ({
     deleteCodeMonitor = _deleteCodeMonitor,
     triggerQuery,
     description,
+    isLightTheme,
+    isSourcegraphDotCom,
 }) => {
     const LOADING = 'loading' as const
 
@@ -178,22 +185,20 @@ export const CodeMonitorForm: React.FunctionComponent<CodeMonitorFormProps> = ({
                             .
                         </small>
                     </div>
-                    <div className="form-group">
-                        <label htmlFor="code-monitor-form-owner">Owner</label>
-                        <select
-                            id="code-monitor-form-owner"
-                            className={classNames('form-control mb-2 w-auto', styles.ownerDropdown)}
-                            disabled={true}
-                        >
-                            <option value={authenticatedUser.displayName || authenticatedUser.username}>
-                                {authenticatedUser.username}
-                            </option>
-                        </select>
-                        <small className="text-muted">
-                            Event history and configuration will not be shared. Code monitoring currently only supports
-                            individual owners.
-                        </small>
-                    </div>
+
+                    <Select
+                        label="Owner"
+                        className="w-100"
+                        aria-label="Owner"
+                        selectClassName={classNames('mb-2 w-auto', styles.ownerDropdown)}
+                        disabled={true}
+                        message="Event history and configuration will not be shared. Code monitoring currently only supports individual owners."
+                    >
+                        <option value={authenticatedUser.displayName || authenticatedUser.username}>
+                            {authenticatedUser.username}
+                        </option>
+                    </Select>
+
                     <hr className={classNames('my-3', styles.horizontalRule)} />
                     <div className="mb-4">
                         <FormTriggerArea
@@ -205,9 +210,21 @@ export const CodeMonitorForm: React.FunctionComponent<CodeMonitorFormProps> = ({
                             cardBtnClassName={styles.cardButton}
                             cardLinkClassName={styles.cardLink}
                             cardClassName={styles.card}
+                            isLightTheme={isLightTheme}
+                            isSourcegraphDotCom={isSourcegraphDotCom}
                         />
                     </div>
-                    <div className={classNames(!formCompletion.triggerCompleted && styles.actionsDisabled)}>
+                    {/*
+                        a11y-ignore
+                        Rule: "color-contrast" (Elements must have sufficient color contrast)
+                        GitHub issue: https://github.com/sourcegraph/sourcegraph/issues/33343
+                    */}
+                    <div
+                        className={classNames(
+                            !formCompletion.triggerCompleted && styles.actionsDisabled,
+                            'a11y-ignore'
+                        )}
+                    >
                         <FormActionArea
                             actions={currentCodeMonitorState.actions}
                             setActionsCompleted={setActionsCompleted}

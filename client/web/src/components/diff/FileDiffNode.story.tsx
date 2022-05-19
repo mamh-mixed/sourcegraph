@@ -1,6 +1,5 @@
 import { boolean } from '@storybook/addon-knobs'
 import { storiesOf } from '@storybook/react'
-import React from 'react'
 
 import { FileDiffFields } from '../../graphql-operations'
 import { WebStory } from '../WebStory'
@@ -191,7 +190,7 @@ const { add } = storiesOf('web/diffs/FileDiffNode', module).addDecorator(story =
 add('All unified file node states overview', () => (
     <WebStory>
         {webProps => (
-            <>
+            <ul className="list-unstyled">
                 {FILE_DIFF_NODES.map((node, index) => (
                     <FileDiffNode
                         {...webProps}
@@ -203,7 +202,7 @@ add('All unified file node states overview', () => (
                         className="abcdef"
                     />
                 ))}
-            </>
+            </ul>
         )}
     </WebStory>
 ))
@@ -211,7 +210,7 @@ add('All unified file node states overview', () => (
 add('All split file node states overview', () => (
     <WebStory>
         {webProps => (
-            <>
+            <ul className="list-unstyled">
                 {FILE_DIFF_NODES.map((node, index) => (
                     <FileDiffNode
                         {...webProps}
@@ -223,7 +222,7 @@ add('All split file node states overview', () => (
                         className="abcdef"
                     />
                 ))}
-            </>
+            </ul>
         )}
     </WebStory>
 ))

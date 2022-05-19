@@ -6,25 +6,6 @@ import { getHoverResult } from './hover'
 import { scanSearchQuery, ScanSuccess, ScanResult } from './scanner'
 import { Token } from './token'
 
-/* eslint-disable ban/ban */
-
-/**
- * Needed for mocking methods not implemented in JSDom, for tests dependent on Monaco editor model.
- */
-Object.defineProperty(window, 'matchMedia', {
-    writable: true,
-    value: jest.fn().mockImplementation(query => ({
-        matches: false,
-        media: query,
-        onchange: null,
-        addListener: jest.fn(), // Deprecated
-        removeListener: jest.fn(), // Deprecated
-        addEventListener: jest.fn(),
-        removeEventListener: jest.fn(),
-        dispatchEvent: jest.fn(),
-    })),
-})
-
 expect.addSnapshotSerializer({
     serialize: value => JSON.stringify(value, null, 2),
     test: () => true,
@@ -55,7 +36,7 @@ describe('getHoverResult()', () => {
             {
               "contents": [
                 {
-                  "value": "Include only results from files matching the given search pattern."
+                  "value": "Include only results from file paths matching the given search pattern."
                 }
               ],
               "range": {

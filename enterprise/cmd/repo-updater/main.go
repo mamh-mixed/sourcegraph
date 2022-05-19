@@ -14,7 +14,6 @@ import (
 	"github.com/sourcegraph/sourcegraph/enterprise/cmd/repo-updater/internal/authz"
 	frontendAuthz "github.com/sourcegraph/sourcegraph/enterprise/internal/authz"
 	"github.com/sourcegraph/sourcegraph/enterprise/internal/batches"
-	codemonitorsBackground "github.com/sourcegraph/sourcegraph/enterprise/internal/codemonitors/background"
 	edb "github.com/sourcegraph/sourcegraph/enterprise/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/actor"
 	ossAuthz "github.com/sourcegraph/sourcegraph/internal/authz"
@@ -38,7 +37,7 @@ func main() {
 
 func enterpriseInit(
 	db ossDB.DB,
-	repoStore *repos.Store,
+	repoStore repos.Store,
 	keyring keyring.Ring,
 	cf *httpcli.Factory,
 	server *repoupdater.Server,
@@ -46,8 +45,6 @@ func enterpriseInit(
 	// NOTE: Internal actor is required to have full visibility of the repo table
 	// 	(i.e. bypass repository authorization).
 	ctx := actor.WithInternalActor(context.Background())
-
-	codemonitorsBackground.StartBackgroundJobs(ctx, edb.NewEnterpriseDB(db))
 
 	// No Batch Changes on dotcom, so we don't need to spawn the
 	// background jobs for this feature.
@@ -73,13 +70,14 @@ func enterpriseInit(
 func startBackgroundPermsSync(ctx context.Context, syncer *authz.PermsSyncer, db ossDB.DB) {
 	globals.WatchPermissionsUserMapping()
 	go func() {
-		t := time.NewTicker(5 * time.Second)
+		t := time.NewTicker(frontendAuthz.RefreshInterval())
 		for range t.C {
 			allowAccessByDefault, authzProviders, _, _ :=
 				frontendAuthz.ProvidersFromConfig(
 					ctx,
 					conf.Get(),
-					ossDB.ExternalServices(db),
+					db.ExternalServices(),
+					db,
 				)
 			ossAuthz.SetProviders(allowAccessByDefault, authzProviders)
 		}

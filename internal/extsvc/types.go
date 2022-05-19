@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/errors"
 	otlog "github.com/opentracing/opentracing-go/log"
 	"golang.org/x/time/rate"
 
 	"github.com/sourcegraph/sourcegraph/internal/api"
 	"github.com/sourcegraph/sourcegraph/internal/jsonc"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 	"github.com/sourcegraph/sourcegraph/schema"
 )
 
@@ -77,14 +77,17 @@ const (
 	KindAWSCodeCommit   = "AWSCODECOMMIT"
 	KindBitbucketServer = "BITBUCKETSERVER"
 	KindBitbucketCloud  = "BITBUCKETCLOUD"
+	KindGerrit          = "GERRIT"
 	KindGitHub          = "GITHUB"
 	KindGitLab          = "GITLAB"
 	KindGitolite        = "GITOLITE"
 	KindPerforce        = "PERFORCE"
 	KindPhabricator     = "PHABRICATOR"
+	KindGoModules       = "GOMODULES"
 	KindJVMPackages     = "JVMPACKAGES"
+	KindPythonPackages  = "PYTHONPACKAGES"
 	KindPagure          = "PAGURE"
-	KindNPMPackages     = "NPMPACKAGES"
+	KindNpmPackages     = "NPMPACKAGES"
 	KindOther           = "OTHER"
 )
 
@@ -103,6 +106,9 @@ const (
 	// TypeBitbucketCloud is the (api.ExternalRepoSpec).ServiceType value for Bitbucket Cloud projects. The
 	// ServiceID value is the base URL to the Bitbucket Cloud.
 	TypeBitbucketCloud = "bitbucketCloud"
+
+	// TypeGerrit is the (api.ExternalRepoSpec).ServiceType value for Gerrit projects.
+	TypeGerrit = "gerrit"
 
 	// TypeGitHub is the (api.ExternalRepoSpec).ServiceType value for GitHub repositories. The ServiceID value
 	// is the base URL to the GitHub instance (https://github.com or the GitHub Enterprise URL).
@@ -127,13 +133,17 @@ const (
 	// TypePagure is the (api.ExternalRepoSpec).ServiceType value for Pagure projects.
 	TypePagure = "pagure"
 
-	// TypeNPMPackages is the (api.ExternalRepoSpec).ServiceType value for NPM packages (JavaScript/TypeScript ecosystem libraries).
-	TypeNPMPackages = "npmPackages"
+	// TypeNpmPackages is the (api.ExternalRepoSpec).ServiceType value for Npm packages (JavaScript/TypeScript ecosystem libraries).
+	TypeNpmPackages = "npmPackages"
+
+	// TypeGoModules is the (api.ExternalRepoSpec).ServiceType value for Go modules.
+	TypeGoModules = "goModules"
+
+	// TypePythonPackages is the (api.ExternalRepoSpec).ServiceType value for Python packages.
+	TypePythonPackages = "pythonPackages"
 
 	// TypeOther is the (api.ExternalRepoSpec).ServiceType value for other projects.
 	TypeOther = "other"
-
-	defaultRateLimit = rate.Limit(2)
 )
 
 // KindToType returns a Type constants given a Kind
@@ -146,6 +156,8 @@ func KindToType(kind string) string {
 		return TypeBitbucketServer
 	case KindBitbucketCloud:
 		return TypeBitbucketCloud
+	case KindGerrit:
+		return TypeGerrit
 	case KindGitHub:
 		return TypeGitHub
 	case KindGitLab:
@@ -158,6 +170,12 @@ func KindToType(kind string) string {
 		return TypePerforce
 	case KindJVMPackages:
 		return TypeJVMPackages
+	case KindPythonPackages:
+		return TypePythonPackages
+	case KindNpmPackages:
+		return TypeNpmPackages
+	case KindGoModules:
+		return TypeGoModules
 	case KindPagure:
 		return TypePagure
 	case KindOther:
@@ -177,6 +195,8 @@ func TypeToKind(t string) string {
 		return KindBitbucketServer
 	case TypeBitbucketCloud:
 		return KindBitbucketCloud
+	case TypeGerrit:
+		return KindGerrit
 	case TypeGitHub:
 		return KindGitHub
 	case TypeGitLab:
@@ -187,8 +207,14 @@ func TypeToKind(t string) string {
 		return KindPerforce
 	case TypePhabricator:
 		return KindPhabricator
+	case TypeNpmPackages:
+		return KindNpmPackages
 	case TypeJVMPackages:
 		return KindJVMPackages
+	case TypePythonPackages:
+		return KindPythonPackages
+	case TypeGoModules:
+		return KindGoModules
 	case TypePagure:
 		return KindPagure
 	case TypeOther:
@@ -200,10 +226,12 @@ func TypeToKind(t string) string {
 
 var (
 	// Precompute these for use in ParseServiceType below since the constants are mixed case
-	bbsLower = strings.ToLower(TypeBitbucketServer)
-	bbcLower = strings.ToLower(TypeBitbucketCloud)
-	jvmLower = strings.ToLower(TypeJVMPackages)
-	npmLower = strings.ToLower(TypeNPMPackages)
+	bbsLower    = strings.ToLower(TypeBitbucketServer)
+	bbcLower    = strings.ToLower(TypeBitbucketCloud)
+	jvmLower    = strings.ToLower(TypeJVMPackages)
+	npmLower    = strings.ToLower(TypeNpmPackages)
+	goLower     = strings.ToLower(TypeGoModules)
+	pythonLower = strings.ToLower(TypePythonPackages)
 )
 
 // ParseServiceType will return a ServiceType constant after doing a case insensitive match on s.
@@ -216,6 +244,8 @@ func ParseServiceType(s string) (string, bool) {
 		return TypeBitbucketServer, true
 	case bbcLower:
 		return TypeBitbucketCloud, true
+	case TypeGerrit:
+		return TypeGerrit, true
 	case TypeGitHub:
 		return TypeGitHub, true
 	case TypeGitLab:
@@ -226,10 +256,14 @@ func ParseServiceType(s string) (string, bool) {
 		return TypePerforce, true
 	case TypePhabricator:
 		return TypePhabricator, true
+	case goLower:
+		return TypeGoModules, true
 	case jvmLower:
 		return TypeJVMPackages, true
 	case npmLower:
-		return TypeNPMPackages, true
+		return TypeNpmPackages, true
+	case pythonLower:
+		return TypePythonPackages, true
 	case TypePagure:
 		return TypePagure, true
 	case TypeOther:
@@ -249,6 +283,8 @@ func ParseServiceKind(s string) (string, bool) {
 		return KindBitbucketServer, true
 	case KindBitbucketCloud:
 		return KindBitbucketCloud, true
+	case KindGerrit:
+		return KindGerrit, true
 	case KindGitHub:
 		return KindGitHub, true
 	case KindGitLab:
@@ -259,8 +295,12 @@ func ParseServiceKind(s string) (string, bool) {
 		return KindPerforce, true
 	case KindPhabricator:
 		return KindPhabricator, true
+	case KindGoModules:
+		return KindGoModules, true
 	case KindJVMPackages:
 		return KindJVMPackages, true
+	case KindPythonPackages:
+		return KindPythonPackages, true
 	case KindPagure:
 		return KindPagure, true
 	case KindOther:
@@ -284,7 +324,7 @@ type RepoID string
 type RepoIDType string
 
 // ParseConfig attempts to unmarshal the given JSON config into a configuration struct defined in the schema package.
-func ParseConfig(kind, config string) (cfg interface{}, _ error) {
+func ParseConfig(kind, config string) (cfg any, _ error) {
 	switch strings.ToUpper(kind) {
 	case KindAWSCodeCommit:
 		cfg = &schema.AWSCodeCommitConnection{}
@@ -292,6 +332,8 @@ func ParseConfig(kind, config string) (cfg interface{}, _ error) {
 		cfg = &schema.BitbucketServerConnection{}
 	case KindBitbucketCloud:
 		cfg = &schema.BitbucketCloudConnection{}
+	case KindGerrit:
+		cfg = &schema.GerritConnection{}
 	case KindGitHub:
 		cfg = &schema.GitHubConnection{}
 	case KindGitLab:
@@ -302,12 +344,16 @@ func ParseConfig(kind, config string) (cfg interface{}, _ error) {
 		cfg = &schema.PerforceConnection{}
 	case KindPhabricator:
 		cfg = &schema.PhabricatorConnection{}
+	case KindGoModules:
+		cfg = &schema.GoModulesConnection{}
 	case KindJVMPackages:
 		cfg = &schema.JVMPackagesConnection{}
 	case KindPagure:
 		cfg = &schema.PagureConnection{}
-	case KindNPMPackages:
-		cfg = &schema.NPMPackagesConnection{}
+	case KindNpmPackages:
+		cfg = &schema.NpmPackagesConnection{}
+	case KindPythonPackages:
+		cfg = &schema.PythonPackagesConnection{}
 	case KindOther:
 		cfg = &schema.OtherExternalServiceConnection{}
 	default:
@@ -318,8 +364,8 @@ func ParseConfig(kind, config string) (cfg interface{}, _ error) {
 
 const IDParam = "externalServiceID"
 
-func WebhookURL(kind string, externalServiceID int64, externalURL string) string {
-	var path string
+func WebhookURL(kind string, externalServiceID int64, cfg any, externalURL string) (string, error) {
+	var path, extra string
 	switch strings.ToUpper(kind) {
 	case KindGitHub:
 		path = "github-webhooks"
@@ -327,11 +373,23 @@ func WebhookURL(kind string, externalServiceID int64, externalURL string) string
 		path = "bitbucket-server-webhooks"
 	case KindGitLab:
 		path = "gitlab-webhooks"
+	case KindBitbucketCloud:
+		path = "bitbucket-cloud-webhooks"
+
+		// Unlike other external service kinds, Bitbucket Cloud doesn't support
+		// a shared secret defined as part of the webhook. As a result, we need
+		// to include it as an explicit part of the URL that we construct.
+		switch c := cfg.(type) {
+		case *schema.BitbucketCloudConnection:
+			extra = "&secret=" + url.QueryEscape(c.WebhookSecret)
+		default:
+			return "", errors.Newf("external service with id=%d claims to be a Bitbucket Cloud service, but the configuration is of type %T", cfg)
+		}
 	default:
-		return ""
+		return "", errors.Newf("webhooks cannot be handled for external service kind: %q", kind)
 	}
 	// eg. https://example.com/.api/github-webhooks?externalServiceID=1
-	return fmt.Sprintf("%s/.api/%s?%s=%d", externalURL, path, IDParam, externalServiceID)
+	return fmt.Sprintf("%s/.api/%s?%s=%d%s", externalURL, path, IDParam, externalServiceID, extra), nil
 }
 
 // ExtractToken attempts to extract the token from the supplied args
@@ -356,105 +414,95 @@ func ExtractToken(config string, kind string) (string, error) {
 	}
 }
 
-// ExtractRateLimitConfig extracts the rate limit config from the given args. If rate limiting is not
+// ExtractRateLimit extracts the rate limit from the given args. If rate limiting is not
 // supported the error returned will be an ErrRateLimitUnsupported.
-func ExtractRateLimitConfig(config, kind, displayName string) (RateLimitConfig, error) {
+func ExtractRateLimit(config, kind string) (rate.Limit, error) {
 	parsed, err := ParseConfig(kind, config)
 	if err != nil {
-		return RateLimitConfig{}, errors.Wrap(err, "loading service configuration")
+		return rate.Inf, errors.Wrap(err, "loading service configuration")
 	}
 
 	rlc, err := GetLimitFromConfig(kind, parsed)
 	if err != nil {
-		return RateLimitConfig{}, err
+		return rate.Inf, err
 	}
-	rlc.DisplayName = displayName
 
 	return rlc, nil
 }
 
-// RateLimitConfig represents the internal rate limit configured for an external service
-type RateLimitConfig struct {
-	BaseURL     string
-	DisplayName string
-	Limit       rate.Limit
-	IsDefault   bool
-}
-
 // GetLimitFromConfig gets RateLimitConfig from an already parsed config schema.
-func GetLimitFromConfig(kind string, config interface{}) (rlc RateLimitConfig, err error) {
+func GetLimitFromConfig(kind string, config any) (rate.Limit, error) {
 	// Rate limit config can be in a few states:
 	// 1. Not defined: We fall back to default specified in code.
 	// 2. Defined and enabled: We use their defined limit.
 	// 3. Defined and disabled: We use an infinite limiter.
 
-	rlc.IsDefault = true
+	var limit rate.Limit
 	switch c := config.(type) {
 	case *schema.GitLabConnection:
 		// 10/s is the default enforced by GitLab on their end
-		rlc.Limit = rate.Limit(10)
+		limit = rate.Limit(10)
 		if c != nil && c.RateLimit != nil {
-			rlc.Limit = limitOrInf(c.RateLimit.Enabled, c.RateLimit.RequestsPerHour)
-			rlc.IsDefault = false
+			limit = limitOrInf(c.RateLimit.Enabled, c.RateLimit.RequestsPerHour)
 		}
-		rlc.BaseURL = c.Url
 	case *schema.GitHubConnection:
 		// 5000 per hour is the default enforced by GitHub on their end
-		rlc.Limit = rate.Limit(5000.0 / 3600.0)
+		limit = rate.Limit(5000.0 / 3600.0)
 		if c != nil && c.RateLimit != nil {
-			rlc.Limit = limitOrInf(c.RateLimit.Enabled, c.RateLimit.RequestsPerHour)
-			rlc.IsDefault = false
+			limit = limitOrInf(c.RateLimit.Enabled, c.RateLimit.RequestsPerHour)
 		}
-		rlc.BaseURL = c.Url
 	case *schema.BitbucketServerConnection:
 		// 8/s is the default limit we enforce
-		rlc.Limit = rate.Limit(8)
+		limit = rate.Limit(8)
 		if c != nil && c.RateLimit != nil {
-			rlc.Limit = limitOrInf(c.RateLimit.Enabled, c.RateLimit.RequestsPerHour)
-			rlc.IsDefault = false
+			limit = limitOrInf(c.RateLimit.Enabled, c.RateLimit.RequestsPerHour)
 		}
-		rlc.BaseURL = c.Url
 	case *schema.BitbucketCloudConnection:
-		rlc.Limit = defaultRateLimit
+		limit = rate.Limit(2)
 		if c != nil && c.RateLimit != nil {
-			rlc.Limit = limitOrInf(c.RateLimit.Enabled, c.RateLimit.RequestsPerHour)
-			rlc.IsDefault = false
+			limit = limitOrInf(c.RateLimit.Enabled, c.RateLimit.RequestsPerHour)
 		}
-		rlc.BaseURL = c.Url
 	case *schema.PerforceConnection:
-		rlc.Limit = rate.Limit(5000.0 / 3600.0)
+		limit = rate.Limit(5000.0 / 3600.0)
 		if c != nil && c.RateLimit != nil {
-			rlc.Limit = limitOrInf(c.RateLimit.Enabled, c.RateLimit.RequestsPerHour)
-			rlc.IsDefault = false
+			limit = limitOrInf(c.RateLimit.Enabled, c.RateLimit.RequestsPerHour)
 		}
-		rlc.BaseURL = c.P4Port
 	case *schema.JVMPackagesConnection:
-		rlc.Limit = defaultRateLimit
+		limit = rate.Limit(2)
 		if c != nil && c.Maven.RateLimit != nil {
-			rlc.Limit = limitOrInf(c.Maven.RateLimit.Enabled, c.Maven.RateLimit.RequestsPerHour)
-			rlc.IsDefault = false
+			limit = limitOrInf(c.Maven.RateLimit.Enabled, c.Maven.RateLimit.RequestsPerHour)
 		}
-		rlc.BaseURL = "maven"
 	case *schema.PagureConnection:
 		// 8/s is the default limit we enforce
-		rlc.Limit = rate.Limit(8)
+		limit = rate.Limit(8)
 		if c != nil && c.RateLimit != nil {
-			rlc.Limit = limitOrInf(c.RateLimit.Enabled, c.RateLimit.RequestsPerHour)
-			rlc.IsDefault = false
+			limit = limitOrInf(c.RateLimit.Enabled, c.RateLimit.RequestsPerHour)
 		}
-		rlc.BaseURL = c.Url
+	case *schema.NpmPackagesConnection:
+		limit = rate.Limit(3000 / 3600.0) // Same as the default in npm-packages.schema.json
+		if c != nil && c.RateLimit != nil {
+			limit = limitOrInf(c.RateLimit.Enabled, c.RateLimit.RequestsPerHour)
+		}
+	case *schema.GoModulesConnection:
+		// Unlike the GitHub or GitLab APIs, the public npm registry (i.e. https://proxy.golang.org)
+		// doesn't document an enforced req/s rate limit AND we do a lot more individual
+		// requests in comparison since they don't offer enough batch APIs.
+		limit = rate.Limit(57600.0 / 3600.0) // Same as default in go-modules.schema.json
+		if c != nil && c.RateLimit != nil {
+			limit = limitOrInf(c.RateLimit.Enabled, c.RateLimit.RequestsPerHour)
+		}
+	case *schema.PythonPackagesConnection:
+		// Unlike the GitHub or GitLab APIs, the pypi.org doesn't
+		// document an enforced req/s rate limit.
+		limit = rate.Limit(57600.0 / 3600.0) // 16/second same as default in python-packages.schema.json
+		if c != nil && c.RateLimit != nil {
+			limit = limitOrInf(c.RateLimit.Enabled, c.RateLimit.RequestsPerHour)
+		}
 	default:
-		return rlc, ErrRateLimitUnsupported{codehostKind: kind}
+		return limit, ErrRateLimitUnsupported{codehostKind: kind}
 	}
 
-	u, err := url.Parse(rlc.BaseURL)
-	if err != nil {
-		return rlc, errors.Wrap(err, "parsing external service URL")
-	}
-
-	rlc.BaseURL = NormalizeBaseURL(u).String()
-
-	return rlc, nil
+	return limit, nil
 }
 
 func limitOrInf(enabled bool, perHour float64) rate.Limit {
@@ -471,6 +519,13 @@ type ErrRateLimitUnsupported struct {
 func (e ErrRateLimitUnsupported) Error() string {
 	return fmt.Sprintf("internal rate limiting not supported for %s", e.codehostKind)
 }
+
+const (
+	URNGitHubAppCloud = "GitHubAppCloud"
+	URNGitHubOAuth    = "GitHubOAuth"
+	URNGitLabOAuth    = "GitLabOAuth"
+	URNCodeIntel      = "CodeIntel"
+)
 
 // URN returns a unique resource identifier of an external service by given kind and ID.
 func URN(kind string, id int64) string {
@@ -525,6 +580,8 @@ func UniqueCodeHostIdentifier(kind, config string) (string, error) {
 		rawURL = c.Url
 	case *schema.BitbucketCloudConnection:
 		rawURL = c.Url
+	case *schema.GerritConnection:
+		rawURL = c.Url
 	case *schema.PhabricatorConnection:
 		rawURL = c.Url
 	case *schema.OtherExternalServiceConnection:
@@ -538,10 +595,14 @@ func UniqueCodeHostIdentifier(kind, config string) (string, error) {
 	case *schema.PerforceConnection:
 		// Perforce uses the P4PORT to specify the instance, so we use that
 		return c.P4Port, nil
+	case *schema.GoModulesConnection:
+		return KindGoModules, nil
 	case *schema.JVMPackagesConnection:
 		return KindJVMPackages, nil
-	case *schema.NPMPackagesConnection:
-		return KindNPMPackages, nil
+	case *schema.NpmPackagesConnection:
+		return KindNpmPackages, nil
+	case *schema.PythonPackagesConnection:
+		return KindPythonPackages, nil
 	case *schema.PagureConnection:
 		rawURL = c.Url
 	default:

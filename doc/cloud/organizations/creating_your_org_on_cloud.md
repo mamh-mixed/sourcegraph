@@ -1,5 +1,4 @@
 # Creating your organization on Sourcegraph Cloud
-Note: Team access for Sourcegraph Cloud is in Private Beta. If you are interested in getting early-access, [join our waitlist](https://share.hsforms.com/14OQ3RoPpQTOXvZlUpgx6-A1n7ku)!
 
 To create your organization on Sourcegraph Cloud to start searching across your code with your team, follow these steps:
 

@@ -1,7 +1,6 @@
 import classNames from 'classnames'
-import * as React from 'react'
 
-import { pluralize } from '@sourcegraph/shared/src/util/strings'
+import { pluralize } from '@sourcegraph/common'
 
 import { ConnectionNodesState, ConnectionProps, getTotalCount } from '../ConnectionNodes'
 import { Connection } from '../ConnectionType'

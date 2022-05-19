@@ -3,7 +3,8 @@ package github
 import (
 	"flag"
 	"os"
-	"regexp"
+
+	"github.com/grafana/regexp"
 
 	"github.com/sourcegraph/sourcegraph/internal/extsvc/auth"
 )
@@ -17,6 +18,8 @@ var vcrToken = &auth.OAuthBearerToken{
 	Token: os.Getenv("GITHUB_TOKEN"),
 }
 
+// Please use the token of the "GitHub Enterprise Admin Account" user for GHE_TOKEN,
+// which can be found in 1Password.
 var gheToken = &auth.OAuthBearerToken{
 	Token: os.Getenv("GHE_TOKEN"),
 }

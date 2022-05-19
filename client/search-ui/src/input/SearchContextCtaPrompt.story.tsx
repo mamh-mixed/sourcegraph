@@ -1,5 +1,4 @@
 import { storiesOf } from '@storybook/react'
-import React from 'react'
 
 import { BrandedStory } from '@sourcegraph/branded/src/components/BrandedStory'
 import { AuthenticatedUser } from '@sourcegraph/shared/src/auth'
@@ -35,6 +34,7 @@ const authUser: AuthenticatedUser = {
     viewerCanAdminister: true,
     databaseID: 0,
     tosAccepted: true,
+    searchable: true,
 }
 
 add(

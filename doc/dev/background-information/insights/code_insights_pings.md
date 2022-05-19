@@ -109,6 +109,27 @@ https://sourcegraph.com/search?q=context:global+repo:%5Egithub%5C.com/sourcegrap
 - **Version Added:** 3.25
 - **Version(s) broken:** 3.25-3.26 (not weekly)([fix PR](https://github.com/sourcegraph/sourcegraph/pull/20070/files)), 3.30 (broken when switching to dashboard pages, didn't track dashboard views)([fix PR](https://github.com/sourcegraph/sourcegraph/pull/24129/files))
 
+### In-product landing page events (hover, data points click, template section clicks)
+
+**Type:** FE events
+
+**Intended purpose:** To track unique users' activity on the in-product (get started insights) and the cloud landing pages.
+
+**Other considerations:** N/A.
+
+- Aggregation: By week
+- Event Codes: 
+   - [InsightsGetStartedPage](https://sourcegraph.com/search?q=context:global+repo:%5Egithub%5C.com/sourcegraph/sourcegraph%24+InsightsGetStartedPage&patternType=regexp) to track how many unique users are viewing get started page
+   - [InsightsGetStartedPageQueryModification](https://sourcegraph.com/search?q=context:global+repo:%5Egithub%5C.com/sourcegraph/sourcegraph%24+InsightsGetStartedPageQueryModification&patternType=regexp) to track how many users change their live insight example query field value
+   - [InsightsGetStartedPageRepositoriesModification](https://sourcegraph.com/search?q=context:global+repo:%5Egithub%5C.com/sourcegraph/sourcegraph%24+InsightsGetStartedPageRepositoriesModification&patternType=regexp) to track how many users change their live insight example repositories field value
+   - [InsightsGetStartedPrimaryCTAClick](https://sourcegraph.com/search?q=context:global+repo:%5Egithub%5C.com/sourcegraph/sourcegraph%24+InsightsGetStartedPrimaryCTAClick&patternType=regexp) to track how many users click "Create your first insight" (call to action) button
+   - [InsightsGetStartedTabClick](https://sourcegraph.com/search?q=context:global+repo:%5Egithub%5C.com/sourcegraph/sourcegraph%24+InsightsGetStartedTabClick&patternType=regexp) to track how many users browse different template tabs on the in-product landing page, it sends selected tab `title` in event's payload data.
+   - [InsightGetStartedTemplateClick](https://sourcegraph.com/search?q=context:global+repo:%5Egithub%5C.com/sourcegraph/sourcegraph%24+InsightGetStartedTemplateClick&patternType=regexp) to track how many users click on the explore/use template button.
+   - [InsightsGetStartedTabMoreClick](https://sourcegraph.com/search?q=context:global+repo:%5Egithub%5C.com/sourcegraph/sourcegraph%24+InsightsGetStartedTabMoreClick&patternType=regexp) to track how many users expand to full template section, it sends selected tab `title` in event's payload data.
+   - [InsightsGetStartedDocsClicks](https://sourcegraph.com/search?q=context:global+repo:%5Egithub%5C.com/sourcegraph/sourcegraph%24+InsightsGetStartedDocsClicks&patternType=regexp) to track clicks over the in-product page's documentation links.
+- PRs: [#31048](https://github.com/sourcegraph/sourcegraph/pull/31048)
+- **Version Added:** 3.37
+
 ### Org-visible insights count (Total) 
 
 **Type:** BE capture
@@ -171,4 +192,94 @@ https://sourcegraph.com/search?q=context:global+repo:%5Egithub%5C.com/sourcegrap
    - For the "language stats insight" funnel: (1) [ViewCodeInsightsCreationPage](https://sourcegraph.com/search?q=context:global+repo:%5Egithub%5C.com/sourcegraph/sourcegraph%24+ViewCodeInsightsCreationPage&patternType=regexp), (2) [CodeInsightsCreateCodeStatsInsightClick](https://sourcegraph.com/search?q=context:global+repo:%5Egithub%5C.com/sourcegraph/sourcegraph%24+CodeInsightsCreateCodeStatsInsightClick&patternType=regexp), (3) [ViewCodeInsightsCodeStatsCreationPage](https://sourcegraph.com/search?q=context:global+repo:%5Egithub%5C.com/sourcegraph/sourcegraph%24+CodeInsightsCodeStatsCreationPage&patternType=regexp), (4.1) [CodeInsightsCodeStatsCreationPageSubmitClick](https://sourcegraph.com/search?q=context:global+repo:%5Egithub%5C.com/sourcegraph/sourcegraph%24+CodeInsightsCodeStatsCreationPageSubmitClick&patternType=regexp) OR (4.2) [CodeInsightsCodeStatsCreationPageCancelClick](https://sourcegraph.com/search?q=context:global+repo:%5Egithub%5C.com/sourcegraph/sourcegraph%24+CodeInsightsCodeStatsCreationPageCancelClick&patternType=regexp)
    - For the "extensions insight" funnel: (1) [ViewCodeInsightsCreationPage](https://sourcegraph.com/search?q=context:global+repo:%5Egithub%5C.com/sourcegraph/sourcegraph%24+ViewCodeInsightsCreationPage&patternType=regexp), (2) [CodeInsightsExploreInsightExtensionsClick](https://sourcegraph.com/search?q=context:global+repo:%5Egithub%5C.com/sourcegraph/sourcegraph%24+CodeInsightsExploreInsightExtensionsClick&patternType=regexp). 
 - **Version added:** 3.29
+<!-- - **Version(s) broken:**  -->
+
+### View series counts
+
+**Type:** BE capture
+
+**Intended purpose:** To track the number of view series, grouped by presentation type and generation method. Note: a "view series" differs from a "series" by being attached to a particular insight. A series can be attached to more than one insight.
+
+**Functional implementation:** This is calculated by joining the `insight_series`, `insight_view_series`, and `insight_view` tables.
+
+**Other considerations:** N/A
+
+- Aggregation: total 
+- Event Code: [ViewSeriesCounts](https://sourcegraph.com/search?q=context:global+repo:%5Egithub%5C.com/sourcegraph/sourcegraph%24+ViewSeriesCounts&patternType=literal)
+- **Version added:** 3.34
+<!-- - **Version(s) broken:**  -->
+
+### Series counts
+
+**Type:** BE capture
+
+**Intended purpose:** To track the number of series, grouped by generation method.
+
+**Functional implementation:** This is calculated using the `insight_series` table. 
+
+**Other considerations:** N/A
+
+- Aggregation: total 
+- Event Code: [SeriesCounts](https://sourcegraph.com/search?q=context:global+repo:%5Egithub%5C.com/sourcegraph/sourcegraph%24+SeriesCounts&patternType=literal)
+- **Version added:** 3.34
+<!-- - **Version(s) broken:**  -->
+
+### View counts
+
+**Type:** BE capture
+
+**Intended purpose:** To track the number of insight views, grouped by presentation type.
+
+**Functional implementation:** This is calculated using the `insight_view` table. 
+
+**Other considerations:** N/A
+
+- Aggregation: total 
+- Event Code: [ViewCounts](https://sourcegraph.com/search?q=context:global+repo:%5Egithub%5C.com/sourcegraph/sourcegraph%24+ViewCounts&patternType=literal)
+- **Version added:** 3.34
+<!-- - **Version(s) broken:**  -->
+
+### Total orgs with dashboards
+
+**Type:** BE capture
+
+**Intended purpose:** To track the number of orgs with at least one dashboard.
+
+**Functional implementation:** This is calculated using the `dashboard_grants` table.
+
+**Other considerations:** N/A
+
+- Aggregation: total 
+- Event Code: [TotalOrgsWithDashboard](https://sourcegraph.com/search?q=context:global+repo:%5Egithub%5C.com/sourcegraph/sourcegraph%24+TotalOrgsWithDashboard&patternType=literal)
+- **Version added:** 3.38
+<!-- - **Version(s) broken:**  -->
+
+### Total dashboard count
+
+**Type:** BE capture
+
+**Intended purpose:** To track the total number of dashboards.
+
+**Functional implementation:** This is calculated using the `dashboard` table.
+
+**Other considerations:** N/A
+
+- Aggregation: total 
+- Event Code: [TotalDashboardCount](https://sourcegraph.com/search?q=context:global+repo:%5Egithub%5C.com/sourcegraph/sourcegraph%24+TotalDashboardCount&patternType=literal)
+- **Version added:** 3.38
+<!-- - **Version(s) broken:**  -->
+
+### Insights per dashboard
+
+**Type:** BE capture
+
+**Intended purpose:** To track statistics (average, min, max, median, std dev,) about how many insights are on each dashboard. 
+
+**Functional implementation:** These are calculated using the `dashboard_insight_view` table.
+
+**Other considerations:** N/A
+
+- Aggregation: total 
+- Event Code: [InsightsPerDashboard](https://sourcegraph.com/search?q=context:global+repo:%5Egithub%5C.com/sourcegraph/sourcegraph%24+InsightsPerDashboard&patternType=literal)
+- **Version added:** 3.38
 <!-- - **Version(s) broken:**  -->

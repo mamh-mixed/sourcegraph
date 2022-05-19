@@ -7,6 +7,10 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/opentracing/opentracing-go/log"
+
+	"github.com/sourcegraph/sourcegraph/internal/lazyregexp"
 )
 
 // RepoID is the unique identifier for a repository.
@@ -17,11 +21,20 @@ type RepoID int32
 // Previously, this was called RepoURI.
 type RepoName string
 
-// Repository hashed name
+// RepoHashedName is the hashed name of a repo
 type RepoHashedName string
 
 func (r RepoName) Equal(o RepoName) bool {
 	return strings.EqualFold(string(r), string(o))
+}
+
+var deletedRegex = lazyregexp.New("DELETED-[0-9]+\\.[0-9]+-")
+
+// UndeletedRepoName will "undelete" a repo name. When we soft-delete a repo we
+// change its name in the database, this function extracts the original repo
+// name.
+func UndeletedRepoName(name RepoName) RepoName {
+	return RepoName(deletedRegex.ReplaceAllString(string(name), ""))
 }
 
 // CommitID is the 40-character SHA-1 hash for a Git commit.
@@ -33,6 +46,23 @@ func (c CommitID) Short() string {
 		return string(c)[:7]
 	}
 	return string(c)
+}
+
+// RevSpec is a revision range specifier suitable for passing to git. See
+// the manpage gitrevisions(7).
+type RevSpec string
+
+// RepoCommit scopes a commit to a repository.
+type RepoCommit struct {
+	Repo     RepoName
+	CommitID CommitID
+}
+
+func (rc RepoCommit) LogFields() []log.Field {
+	return []log.Field{
+		log.String("repo", string(rc.Repo)),
+		log.String("commitID", string(rc.CommitID)),
+	}
 }
 
 // Repo represents a source code repository.
@@ -127,7 +157,7 @@ type Settings struct {
 	CreatedAt    time.Time       // the date when this settings value was created
 }
 
-// ExternalService represents an complete external service record.
+// ExternalService represents a complete external service record.
 type ExternalService struct {
 	ID              int64
 	Kind            string

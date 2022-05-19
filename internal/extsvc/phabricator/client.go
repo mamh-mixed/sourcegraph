@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/uber/gonduit"
@@ -16,6 +15,7 @@ import (
 	"github.com/uber/gonduit/requests"
 
 	"github.com/sourcegraph/sourcegraph/internal/httpcli"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 var requestDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
@@ -31,8 +31,8 @@ type meteredConn struct {
 func (mc *meteredConn) CallContext(
 	ctx context.Context,
 	method string,
-	params interface{},
-	result interface{},
+	params any,
+	result any,
 ) error {
 	start := time.Now()
 	err := mc.Conn.CallContext(ctx, method, params, result)

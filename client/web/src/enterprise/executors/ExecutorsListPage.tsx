@@ -1,20 +1,21 @@
+import React, { FunctionComponent, useCallback, useEffect, useMemo } from 'react'
+
 import { useApolloClient } from '@apollo/client'
 import CheckboxBlankCircleIcon from 'mdi-react/CheckboxBlankCircleIcon'
 import MapSearchIcon from 'mdi-react/MapSearchIcon'
-import React, { FunctionComponent, useCallback, useEffect, useMemo } from 'react'
 import { RouteComponentProps, useHistory } from 'react-router'
 import { Subject } from 'rxjs'
 
-import { Collapsible } from '@sourcegraph/web/src/components/Collapsible'
+import { Badge, Container, Link, PageHeader, Icon, Typography } from '@sourcegraph/wildcard'
+
+import { Collapsible } from '../../components/Collapsible'
 import {
     FilteredConnection,
     FilteredConnectionFilter,
     FilteredConnectionQueryArguments,
-} from '@sourcegraph/web/src/components/FilteredConnection'
-import { PageTitle } from '@sourcegraph/web/src/components/PageTitle'
-import { Timestamp } from '@sourcegraph/web/src/components/time/Timestamp'
-import { Badge, Container, Link, PageHeader } from '@sourcegraph/wildcard'
-
+} from '../../components/FilteredConnection'
+import { PageTitle } from '../../components/PageTitle'
+import { Timestamp } from '../../components/time/Timestamp'
 import { ExecutorFields } from '../../graphql-operations'
 import { eventLogger } from '../../tracking/eventLogger'
 
@@ -46,7 +47,7 @@ export interface ExecutorsListPageProps extends RouteComponentProps<{}> {
     queryExecutors?: typeof defaultQueryExecutors
 }
 
-export const ExecutorsListPage: FunctionComponent<ExecutorsListPageProps> = ({
+export const ExecutorsListPage: FunctionComponent<React.PropsWithChildren<ExecutorsListPageProps>> = ({
     queryExecutors = defaultQueryExecutors,
     ...props
 }) => {
@@ -77,7 +78,7 @@ export const ExecutorsListPage: FunctionComponent<ExecutorsListPageProps> = ({
             />
 
             <Container className="mb-3">
-                <h3>Setting up executors</h3>
+                <Typography.H3>Setting up executors</Typography.H3>
                 <p className="mb-0">
                     Executors enable{' '}
                     <Link to="/help/code_intelligence/explanations/auto_indexing" rel="noopener">
@@ -85,7 +86,7 @@ export const ExecutorsListPage: FunctionComponent<ExecutorsListPageProps> = ({
                     </Link>{' '}
                     and{' '}
                     <Link to="/help/batch_changes/explanations/server_side" rel="noopener">
-                        server-side Batch Changes
+                        running batch changes server-side
                     </Link>
                     . In order to use those features,{' '}
                     <Link to="/help/admin/deploy_executors" rel="noopener">
@@ -120,7 +121,7 @@ export interface ExecutorNodeProps {
     node: ExecutorFields
 }
 
-export const ExecutorNode: FunctionComponent<ExecutorNodeProps> = ({ node }) => (
+export const ExecutorNode: FunctionComponent<React.PropsWithChildren<ExecutorNodeProps>> = ({ node }) => (
     <li className="list-group-item">
         <Collapsible
             wholeTitleClickable={false}
@@ -128,13 +129,14 @@ export const ExecutorNode: FunctionComponent<ExecutorNodeProps> = ({ node }) => 
             title={
                 <div className="d-flex justify-content-between">
                     <div>
-                        <h4 className="mb-0">
+                        <Typography.H4 className="mb-0">
                             {node.active ? (
-                                <CheckboxBlankCircleIcon className="icon-inline text-success mr-2" />
+                                <Icon className="text-success mr-2" as={CheckboxBlankCircleIcon} />
                             ) : (
-                                <CheckboxBlankCircleIcon
-                                    className="icon-inline text-warning mr-2"
+                                <Icon
+                                    className="text-warning mr-2"
                                     data-tooltip="This executor missed at least three heartbeats."
+                                    as={CheckboxBlankCircleIcon}
                                 />
                             )}
                             {node.hostname}{' '}
@@ -144,7 +146,7 @@ export const ExecutorNode: FunctionComponent<ExecutorNodeProps> = ({ node }) => 
                             >
                                 {node.queueName}
                             </Badge>
-                        </h4>
+                        </Typography.H4>
                     </div>
                     <span>
                         last seen <Timestamp date={node.lastSeenAt} />
@@ -202,7 +204,7 @@ export const ExecutorNode: FunctionComponent<ExecutorNodeProps> = ({ node }) => 
     </li>
 )
 
-export const NoExecutors: React.FunctionComponent = () => (
+export const NoExecutors: React.FunctionComponent<React.PropsWithChildren<unknown>> = () => (
     <p className="text-muted text-center w-100 mb-0 mt-1">
         <MapSearchIcon className="mb-2" />
         <br />
@@ -210,7 +212,7 @@ export const NoExecutors: React.FunctionComponent = () => (
     </p>
 )
 
-const TelemetryData: React.FunctionComponent<{ data: string }> = ({ data }) => {
+const TelemetryData: React.FunctionComponent<React.PropsWithChildren<{ data: string }>> = ({ data }) => {
     if (data) {
         return <>{data}</>
     }

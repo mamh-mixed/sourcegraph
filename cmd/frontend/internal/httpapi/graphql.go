@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/cockroachdb/errors"
 	"github.com/graph-gophers/graphql-go"
 	gqlerrors "github.com/graph-gophers/graphql-go/errors"
 	"github.com/inconshreveable/log15"
@@ -20,6 +19,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/cookie"
 	"github.com/sourcegraph/sourcegraph/internal/honey"
 	"github.com/sourcegraph/sourcegraph/internal/trace"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 func serveGraphQL(schema *graphql.Schema, rlw graphqlbackend.LimitWatcher, isInternal bool) func(w http.ResponseWriter, r *http.Request) (err error) {
@@ -127,9 +127,9 @@ func serveGraphQL(schema *graphql.Schema, rlw graphqlbackend.LimitWatcher, isInt
 }
 
 type graphQLQueryParams struct {
-	Query         string                 `json:"query"`
-	OperationName string                 `json:"operationName"`
-	Variables     map[string]interface{} `json:"variables"`
+	Query         string         `json:"query"`
+	OperationName string         `json:"operationName"`
+	Variables     map[string]any `json:"variables"`
 }
 
 type traceData struct {

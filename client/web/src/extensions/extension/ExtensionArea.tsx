@@ -1,6 +1,7 @@
+import * as React from 'react'
+
 import AlertCircleIcon from 'mdi-react/AlertCircleIcon'
 import MapSearchIcon from 'mdi-react/MapSearchIcon'
-import * as React from 'react'
 import { Route, RouteComponentProps, Switch } from 'react-router'
 import { combineLatest, merge, Observable, of, Subject, Subscription } from 'rxjs'
 import { catchError, distinctUntilChanged, map, mapTo, startWith, switchMap } from 'rxjs/operators'
@@ -28,8 +29,9 @@ import { HeroPage } from '../../components/HeroPage'
 import { RouteDescriptor } from '../../util/contributions'
 import { ExtensionsAreaRouteContext } from '../ExtensionsArea'
 
-import styles from './ExtensionArea.module.scss'
 import { ExtensionAreaHeader, ExtensionAreaHeaderNavItem } from './ExtensionAreaHeader'
+
+import styles from './ExtensionArea.module.scss'
 
 export const registryExtensionFragment = gql`
     fragment RegistryExtensionFields on RegistryExtension {
@@ -68,7 +70,9 @@ export const registryExtensionFragment = gql`
     }
 `
 
-const NotFoundPage: React.FunctionComponent = () => <HeroPage icon={MapSearchIcon} title="404: Not Found" />
+const NotFoundPage: React.FunctionComponent<React.PropsWithChildren<unknown>> = () => (
+    <HeroPage icon={MapSearchIcon} title="404: Not Found" />
+)
 
 export interface ExtensionAreaRoute extends RouteDescriptor<ExtensionAreaRouteContext> {}
 

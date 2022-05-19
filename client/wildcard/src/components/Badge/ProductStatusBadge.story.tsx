@@ -1,8 +1,9 @@
 import { Meta } from '@storybook/react'
-import React from 'react'
 
 import { BrandedStory } from '@sourcegraph/branded/src/components/BrandedStory'
 import webStyles from '@sourcegraph/web/src/SourcegraphWebApp.scss'
+
+import { Typography } from '..'
 
 import { PRODUCT_STATUSES } from './constants'
 import { ProductStatusBadge } from './ProductStatusBadge'
@@ -20,12 +21,21 @@ const config: Meta = {
         component: ProductStatusBadge,
         chromatic: {
             enableDarkMode: true,
+            disableSnapshot: false,
         },
-        design: {
-            type: 'figma',
-            name: 'Figma',
-            url: 'https://www.figma.com/file/NIsN34NH7lPu04olBzddTw/Wildcard-Design-System?node-id=908%3A6394',
-        },
+        design: [
+            {
+                type: 'figma',
+                name: 'Figma Light',
+                url: 'https://www.figma.com/file/NIsN34NH7lPu04olBzddTw/Wildcard-Design-System?node-id=908%3A6149',
+            },
+
+            {
+                type: 'figma',
+                name: 'Figma Dark',
+                url: 'https://www.figma.com/file/NIsN34NH7lPu04olBzddTw/Wildcard-Design-System?node-id=908%3A6447',
+            },
+        ],
     },
 }
 
@@ -33,7 +43,7 @@ export default config
 
 export const Badges = () => (
     <>
-        <h1>Product status badges</h1>
+        <Typography.H1>Product status badges</Typography.H1>
         <p>
             We often want to label different parts of our products with badges to ensure they are accurately presented
             to users.
@@ -41,7 +51,7 @@ export const Badges = () => (
         {PRODUCT_STATUSES.map(status => (
             <ProductStatusBadge key={status} status={status} className="mr-2" />
         ))}
-        <h2 className="mt-4">Linked product status badges</h2>
+        <Typography.H2 className="mt-4">Linked product status badges</Typography.H2>
         <p>
             In some cases, we will want to automatically link to a relevant docs page for a particular status. This is
             also possible!

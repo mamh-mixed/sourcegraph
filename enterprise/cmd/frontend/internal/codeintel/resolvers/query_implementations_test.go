@@ -6,13 +6,14 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/stores/dbstore"
-	"github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/stores/lsifstore"
-	"github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/stores/shared"
 	"github.com/sourcegraph/sourcegraph/internal/actor"
 	"github.com/sourcegraph/sourcegraph/internal/authz"
+	"github.com/sourcegraph/sourcegraph/internal/codeintel/stores/dbstore"
+	"github.com/sourcegraph/sourcegraph/internal/codeintel/stores/gitserver"
+	"github.com/sourcegraph/sourcegraph/internal/codeintel/stores/lsifstore"
+	"github.com/sourcegraph/sourcegraph/internal/codeintel/stores/shared"
+	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/observation"
-	"github.com/sourcegraph/sourcegraph/lib/codeintel/bloomfilter"
 	"github.com/sourcegraph/sourcegraph/lib/codeintel/precise"
 )
 
@@ -23,7 +24,7 @@ func TestImplementations(t *testing.T) {
 	mockPositionAdjuster := noopPositionAdjuster()
 
 	// Empty result set (prevents nil pointer as scanner is always non-nil)
-	mockDBStore.ReferenceIDsAndFiltersFunc.PushReturn(dbstore.PackageReferenceScannerFromSlice(), 0, nil)
+	mockDBStore.ReferenceIDsFunc.PushReturn(dbstore.PackageReferenceScannerFromSlice(), 0, nil)
 
 	locations := []lsifstore.Location{
 		{DumpID: 51, Path: "a.go", Range: testRange1},
@@ -43,6 +44,7 @@ func TestImplementations(t *testing.T) {
 		{ID: 53, Commit: "deadbeef", Root: "sub4/"},
 	}
 	resolver := newQueryResolver(
+		database.NewMockDB(),
 		mockDBStore,
 		mockLSIFStore,
 		newCachedCommitChecker(mockGitserverClient),
@@ -53,6 +55,7 @@ func TestImplementations(t *testing.T) {
 		uploads,
 		newOperations(&observation.TestContext),
 		authz.NewMockSubRepoPermissionChecker(),
+		50,
 	)
 	adjustedLocations, _, err := resolver.Implementations(context.Background(), 10, 20, 50, "")
 	if err != nil {
@@ -78,7 +81,7 @@ func TestImplementationsWithSubRepoPermissions(t *testing.T) {
 	mockPositionAdjuster := noopPositionAdjuster()
 
 	// Empty result set (prevents nil pointer as scanner is always non-nil)
-	mockDBStore.ReferenceIDsAndFiltersFunc.PushReturn(dbstore.PackageReferenceScannerFromSlice(), 0, nil)
+	mockDBStore.ReferenceIDsFunc.PushReturn(dbstore.PackageReferenceScannerFromSlice(), 0, nil)
 
 	locations := []lsifstore.Location{
 		{DumpID: 51, Path: "a.go", Range: testRange1},
@@ -113,6 +116,7 @@ func TestImplementationsWithSubRepoPermissions(t *testing.T) {
 	})
 
 	resolver := newQueryResolver(
+		database.NewMockDB(),
 		mockDBStore,
 		mockLSIFStore,
 		newCachedCommitChecker(mockGitserverClient),
@@ -123,6 +127,7 @@ func TestImplementationsWithSubRepoPermissions(t *testing.T) {
 		uploads,
 		newOperations(&observation.TestContext),
 		checker,
+		50,
 	)
 
 	ctx := context.Background()
@@ -163,28 +168,24 @@ func TestImplementationsRemote(t *testing.T) {
 	mockDBStore.GetDumpsByIDsFunc.PushReturn(referenceUploads[:2], nil)
 	mockDBStore.GetDumpsByIDsFunc.PushReturn(referenceUploads[2:], nil)
 
-	filter, err := bloomfilter.CreateFilter([]string{"padLeft", "pad_left", "pad-left", "left_pad"})
-	if err != nil {
-		t.Fatalf("unexpected error encoding bloom filter: %s", err)
-	}
 	scanner1 := dbstore.PackageReferenceScannerFromSlice(
-		shared.PackageReference{Package: shared.Package{DumpID: 250}, Filter: filter},
-		shared.PackageReference{Package: shared.Package{DumpID: 251}, Filter: filter},
+		shared.PackageReference{Package: shared.Package{DumpID: 250}},
+		shared.PackageReference{Package: shared.Package{DumpID: 251}},
 	)
 	scanner2 := dbstore.PackageReferenceScannerFromSlice(
-		shared.PackageReference{Package: shared.Package{DumpID: 252}, Filter: filter},
-		shared.PackageReference{Package: shared.Package{DumpID: 253}, Filter: filter},
+		shared.PackageReference{Package: shared.Package{DumpID: 252}},
+		shared.PackageReference{Package: shared.Package{DumpID: 253}},
 	)
-	mockDBStore.ReferenceIDsAndFiltersFunc.PushReturn(scanner1, 4, nil)
-	mockDBStore.ReferenceIDsAndFiltersFunc.PushReturn(scanner2, 2, nil)
+	mockDBStore.ReferenceIDsFunc.PushReturn(scanner1, 4, nil)
+	mockDBStore.ReferenceIDsFunc.PushReturn(scanner2, 2, nil)
 
 	// upload #150/#250's commits no longer exists; all others do
-	mockGitserverClient.CommitExistsFunc.PushReturn(false, nil) // #150
-	mockGitserverClient.CommitExistsFunc.PushReturn(true, nil)  // #151
-	mockGitserverClient.CommitExistsFunc.PushReturn(true, nil)  // #152
-	mockGitserverClient.CommitExistsFunc.PushReturn(true, nil)  // #153
-	mockGitserverClient.CommitExistsFunc.PushReturn(false, nil) // #250
-	mockGitserverClient.CommitExistsFunc.SetDefaultReturn(true, nil)
+	mockGitserverClient.CommitsExistFunc.SetDefaultHook(func(ctx context.Context, rcs []gitserver.RepositoryCommit) (exists []bool, _ error) {
+		for _, rc := range rcs {
+			exists = append(exists, rc.Commit != "deadbeef1")
+		}
+		return
+	})
 
 	monikers := []precise.MonikerData{
 		{Kind: "implementation", Scheme: "tsc", Identifier: "padLeft", PackageInformationID: "51"},
@@ -230,6 +231,7 @@ func TestImplementationsRemote(t *testing.T) {
 		{ID: 53, Commit: "deadbeef", Root: "sub4/"},
 	}
 	resolver := newQueryResolver(
+		database.NewMockDB(),
 		mockDBStore,
 		mockLSIFStore,
 		newCachedCommitChecker(mockGitserverClient),
@@ -240,6 +242,7 @@ func TestImplementationsRemote(t *testing.T) {
 		uploads,
 		newOperations(&observation.TestContext),
 		authz.NewMockSubRepoPermissionChecker(),
+		50,
 	)
 	adjustedLocations, _, err := resolver.Implementations(context.Background(), 10, 20, 50, "")
 	if err != nil {
@@ -323,28 +326,24 @@ func TestImplementationsRemoteWithSubRepoPermissions(t *testing.T) {
 	mockDBStore.GetDumpsByIDsFunc.PushReturn(referenceUploads[:2], nil)
 	mockDBStore.GetDumpsByIDsFunc.PushReturn(referenceUploads[2:], nil)
 
-	filter, err := bloomfilter.CreateFilter([]string{"padLeft", "pad_left", "pad-left", "left_pad"})
-	if err != nil {
-		t.Fatalf("unexpected error encoding bloom filter: %s", err)
-	}
 	scanner1 := dbstore.PackageReferenceScannerFromSlice(
-		shared.PackageReference{Package: shared.Package{DumpID: 250}, Filter: filter},
-		shared.PackageReference{Package: shared.Package{DumpID: 251}, Filter: filter},
+		shared.PackageReference{Package: shared.Package{DumpID: 250}},
+		shared.PackageReference{Package: shared.Package{DumpID: 251}},
 	)
 	scanner2 := dbstore.PackageReferenceScannerFromSlice(
-		shared.PackageReference{Package: shared.Package{DumpID: 252}, Filter: filter},
-		shared.PackageReference{Package: shared.Package{DumpID: 253}, Filter: filter},
+		shared.PackageReference{Package: shared.Package{DumpID: 252}},
+		shared.PackageReference{Package: shared.Package{DumpID: 253}},
 	)
-	mockDBStore.ReferenceIDsAndFiltersFunc.PushReturn(scanner1, 4, nil)
-	mockDBStore.ReferenceIDsAndFiltersFunc.PushReturn(scanner2, 2, nil)
+	mockDBStore.ReferenceIDsFunc.PushReturn(scanner1, 4, nil)
+	mockDBStore.ReferenceIDsFunc.PushReturn(scanner2, 2, nil)
 
 	// upload #150/#250's commits no longer exists; all others do
-	mockGitserverClient.CommitExistsFunc.PushReturn(false, nil) // #150
-	mockGitserverClient.CommitExistsFunc.PushReturn(true, nil)  // #151
-	mockGitserverClient.CommitExistsFunc.PushReturn(true, nil)  // #152
-	mockGitserverClient.CommitExistsFunc.PushReturn(true, nil)  // #153
-	mockGitserverClient.CommitExistsFunc.PushReturn(false, nil) // #250
-	mockGitserverClient.CommitExistsFunc.SetDefaultReturn(true, nil)
+	mockGitserverClient.CommitsExistFunc.SetDefaultHook(func(ctx context.Context, rcs []gitserver.RepositoryCommit) (exists []bool, _ error) {
+		for _, rc := range rcs {
+			exists = append(exists, rc.Commit != "deadbeef1")
+		}
+		return
+	})
 
 	monikers := []precise.MonikerData{
 		{Kind: "implementation", Scheme: "tsc", Identifier: "padLeft", PackageInformationID: "51"},
@@ -405,6 +404,7 @@ func TestImplementationsRemoteWithSubRepoPermissions(t *testing.T) {
 	})
 
 	resolver := newQueryResolver(
+		database.NewMockDB(),
 		mockDBStore,
 		mockLSIFStore,
 		newCachedCommitChecker(mockGitserverClient),
@@ -415,6 +415,7 @@ func TestImplementationsRemoteWithSubRepoPermissions(t *testing.T) {
 		uploads,
 		newOperations(&observation.TestContext),
 		checker,
+		50,
 	)
 
 	ctx := context.Background()

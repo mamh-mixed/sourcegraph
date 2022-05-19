@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react'
+
 import { RouteComponentProps } from 'react-router'
 
 import { PageTitle } from '../../../components/PageTitle'
@@ -9,7 +10,9 @@ import { ProductSubscriptionStatus } from './ProductSubscriptionStatus'
 /**
  * Displays the product subscription information from the license key in site configuration.
  */
-export const SiteAdminProductSubscriptionPage: React.FunctionComponent<RouteComponentProps> = props => {
+export const SiteAdminProductSubscriptionPage: React.FunctionComponent<
+    React.PropsWithChildren<RouteComponentProps>
+> = props => {
     useEffect(() => eventLogger.logViewEvent('SiteAdminProductSubscription'), [])
 
     return (

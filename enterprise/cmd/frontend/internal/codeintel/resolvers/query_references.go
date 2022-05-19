@@ -6,22 +6,20 @@ import (
 	"sort"
 	"time"
 
-	"github.com/cockroachdb/errors"
-	"github.com/hashicorp/go-multierror"
 	"github.com/opentracing/opentracing-go/log"
 
-	store "github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/stores/dbstore"
-	"github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/stores/lsifstore"
+	store "github.com/sourcegraph/sourcegraph/internal/codeintel/stores/dbstore"
+	"github.com/sourcegraph/sourcegraph/internal/codeintel/stores/lsifstore"
 	"github.com/sourcegraph/sourcegraph/internal/observation"
-	"github.com/sourcegraph/sourcegraph/lib/codeintel/bloomfilter"
 	"github.com/sourcegraph/sourcegraph/lib/codeintel/precise"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 const slowReferencesRequestThreshold = time.Second
 
 // References returns the list of source locations that reference the symbol at the given position.
 func (r *queryResolver) References(ctx context.Context, line, character, limit int, rawCursor string) (_ []AdjustedLocation, _ string, err error) {
-	ctx, trace, endObservation := observeResolver(ctx, &err, "References", r.operations.references, slowReferencesRequestThreshold, observation.Args{
+	ctx, trace, endObservation := observeResolver(ctx, &err, r.operations.references, slowReferencesRequestThreshold, observation.Args{
 		LogFields: []log.Field{
 			log.Int("repositoryID", r.repositoryID),
 			log.String("commit", r.commit),
@@ -255,10 +253,6 @@ func (r *queryResolver) pageLocalLocations(
 	return allLocations, cursor.UploadOffset < len(adjustedUploads), nil
 }
 
-// maximumIndexesPerMonikerSearch configures the maximum number of reference upload identifiers
-// that can be passed to a single moniker search query.
-const maximumIndexesPerMonikerSearch = 50
-
 // pageRemoteLocations returns a slice of the (remote) result set denoted by the given cursor fulfilled by
 // performing a moniker search over a group of indexes. The given cursor will be adjusted to reflect the
 // offsets required to resolve the next page of results. If there are no more pages left in the result set,
@@ -288,7 +282,7 @@ func (r *queryResolver) pageRemoteLocations(
 			ctx,
 			orderedMonikers,
 			ignoreIDs,
-			maximumIndexesPerMonikerSearch,
+			r.maximumIndexesPerMonikerSearch,
 			cursor.UploadOffset,
 			trace,
 		)
@@ -393,14 +387,14 @@ func (r *queryResolver) uploadIDsWithReferences(
 	offset int,
 	trace observation.TraceLogger,
 ) (ids []int, recordsScanned int, totalCount int, err error) {
-	scanner, totalCount, err := r.dbStore.ReferenceIDsAndFilters(ctx, r.repositoryID, r.commit, orderedMonikers, limit, offset)
+	scanner, totalCount, err := r.dbStore.ReferenceIDs(ctx, r.repositoryID, r.commit, orderedMonikers, limit, offset)
 	if err != nil {
-		return nil, 0, 0, errors.Wrap(err, "dbstore.ReferenceIDsAndFilters")
+		return nil, 0, 0, errors.Wrap(err, "dbstore.ReferenceIDs")
 	}
 
 	defer func() {
 		if closeErr := scanner.Close(); closeErr != nil {
-			err = multierror.Append(err, errors.Wrap(closeErr, "dbstore.ReferenceIDsAndFilters.Close"))
+			err = errors.Append(err, errors.Wrap(closeErr, "dbstore.ReferenceIDs.Close"))
 		}
 	}()
 
@@ -414,7 +408,7 @@ func (r *queryResolver) uploadIDsWithReferences(
 	for len(filtered) < limit {
 		packageReference, exists, err := scanner.Next()
 		if err != nil {
-			return nil, 0, 0, errors.Wrap(err, "dbstore.ReferenceIDsAndFilters.Next")
+			return nil, 0, 0, errors.Wrap(err, "dbstore.ReferenceIDs.Next")
 		}
 		if !exists {
 			break
@@ -432,18 +426,7 @@ func (r *queryResolver) uploadIDsWithReferences(
 			continue
 		}
 
-		// Each upload has an associated bloom filter encoding the set of identifiers it imports or
-		// implements. We test this bloom filter to greatly reduce the number of remote indexes over
-		// which we need to search.
-
-		ok, err := testFilter(packageReference.Filter, orderedMonikers)
-		if err != nil {
-			return nil, 0, 0, err
-		}
-		if ok {
-			// Probably imports or implements at least one of the monikers' identifiers
-			filtered[packageReference.DumpID] = struct{}{}
-		}
+		filtered[packageReference.DumpID] = struct{}{}
 	}
 
 	trace.Log(
@@ -458,23 +441,6 @@ func (r *queryResolver) uploadIDsWithReferences(
 	sort.Ints(flattened)
 
 	return flattened, recordsScanned, totalCount, nil
-}
-
-// testFilter returns true if the set underlying the given encoded bloom filter probably includes any of
-// the given monikers.
-func testFilter(filter []byte, orderedMonikers []precise.QualifiedMonikerData) (bool, error) {
-	includesIdentifier, err := bloomfilter.Decode(filter)
-	if err != nil {
-		return false, errors.Wrap(err, "bloomfilter.Decode")
-	}
-
-	for _, moniker := range orderedMonikers {
-		if includesIdentifier(moniker.Identifier) {
-			return true, nil
-		}
-	}
-
-	return false, nil
 }
 
 // uploadsByIDs returns a slice of uploads with the given identifiers. This method will not return a

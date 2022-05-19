@@ -1,15 +1,15 @@
+import React, { useState } from 'react'
+
 import * as H from 'history'
 import SearchIcon from 'mdi-react/SearchIcon'
-import React, { useState } from 'react'
 import { useLocation } from 'react-router'
 
-import { createAggregateError } from '@sourcegraph/common'
+import { createAggregateError, escapeRevspecForURL } from '@sourcegraph/common'
 import { GitRefType, Scalars } from '@sourcegraph/shared/src/graphql-operations'
-import { escapeRevspecForURL } from '@sourcegraph/shared/src/util/url'
-import { useConnection } from '@sourcegraph/web/src/components/FilteredConnection/hooks/useConnection'
-import { ConnectionSummary } from '@sourcegraph/web/src/components/FilteredConnection/ui'
 import { useDebounce } from '@sourcegraph/wildcard'
 
+import { useConnection } from '../../components/FilteredConnection/hooks/useConnection'
+import { ConnectionSummary } from '../../components/FilteredConnection/ui'
 import { GitRefFields, RepositoryGitRefsResult, RepositoryGitRefsVariables } from '../../graphql-operations'
 import { GitReferenceNodeProps, REPOSITORY_GIT_REFS } from '../GitReference'
 
@@ -27,7 +27,7 @@ interface GitReferencePopoverNodeProps extends Pick<GitReferenceNodeProps, 'node
     isSpeculative?: boolean
 }
 
-const GitReferencePopoverNode: React.FunctionComponent<GitReferencePopoverNodeProps> = ({
+const GitReferencePopoverNode: React.FunctionComponent<React.PropsWithChildren<GitReferencePopoverNodeProps>> = ({
     node,
     defaultBranch,
     currentRevision,
@@ -62,16 +62,9 @@ interface SpectulativeGitReferencePopoverNodeProps
     existingNodes: GitRefFields[]
 }
 
-export const SpectulativeGitReferencePopoverNode: React.FunctionComponent<SpectulativeGitReferencePopoverNodeProps> = ({
-    name,
-    repoName,
-    currentRevision,
-    defaultBranch,
-    getPathFromRevision,
-    location,
-    existingNodes,
-    onSelect,
-}) => {
+export const SpectulativeGitReferencePopoverNode: React.FunctionComponent<
+    React.PropsWithChildren<SpectulativeGitReferencePopoverNodeProps>
+> = ({ name, repoName, currentRevision, defaultBranch, getPathFromRevision, location, existingNodes, onSelect }) => {
     const alreadyExists = existingNodes.some(existingNode => existingNode.abbrevName === name)
 
     if (alreadyExists) {
@@ -125,7 +118,9 @@ interface RevisionsPopoverReferencesProps {
 
 const BATCH_COUNT = 50
 
-export const RevisionsPopoverReferences: React.FunctionComponent<RevisionsPopoverReferencesProps> = ({
+export const RevisionsPopoverReferences: React.FunctionComponent<
+    React.PropsWithChildren<RevisionsPopoverReferencesProps>
+> = ({
     type,
     repo,
     repoName,

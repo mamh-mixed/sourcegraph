@@ -3,13 +3,14 @@ package monitoring
 import (
 	"fmt"
 	"math/rand"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/errors"
 	"github.com/grafana-tools/sdk"
 
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 	"github.com/sourcegraph/sourcegraph/monitoring/monitoring/internal/grafana"
 )
 
@@ -30,12 +31,6 @@ type Container struct {
 	// Variables define the variables that can be to applied to the dashboard for this
 	// container, such as instances or shards.
 	Variables []ContainerVariable
-
-	// RawVariables is an alternative to Variables that exposes the underlying Grafana API
-	// to define variables that can be applied to the dashboard for this container.
-	//
-	// It is recommended to use or expand the standardized Variables field instead.
-	RawVariables []sdk.TemplateVar
 
 	// Groups of observable information about the container.
 	Groups []Group
@@ -71,6 +66,20 @@ func (c *Container) validate() error {
 	return nil
 }
 
+// noAlertsDefined indicates if a dashboard no alerts defined.
+func (c *Container) noAlertsDefined() bool {
+	for _, g := range c.Groups {
+		for _, r := range g.Rows {
+			for _, o := range r {
+				if !o.NoAlert {
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
+
 // renderDashboard generates the Grafana renderDashboard for this container.
 func (c *Container) renderDashboard() *sdk.Board {
 	board := sdk.NewBoard(c.Title)
@@ -84,28 +93,33 @@ func (c *Container) renderDashboard() *sdk.Board {
 	board.SharedCrosshair = true
 	board.Editable = false
 	board.AddTags("builtin")
-	alertLevelVariable := ContainerVariable{
-		Label:   "Alert level",
-		Name:    "alert_level",
-		Options: []string{"critical", "warning"},
+	if !c.noAlertsDefined() {
+		alertLevelVariable := ContainerVariable{
+			Label: "Alert level",
+			Name:  "alert_level",
+			Options: ContainerVariableOptions{
+				Options: []string{"critical", "warning"},
+			},
+		}
+		board.Templating.List = []sdk.TemplateVar{alertLevelVariable.toGrafanaTemplateVar()}
 	}
-	board.Templating.List = []sdk.TemplateVar{alertLevelVariable.toGrafanaTemplateVar()}
 	for _, variable := range c.Variables {
 		board.Templating.List = append(board.Templating.List, variable.toGrafanaTemplateVar())
 	}
-	board.Templating.List = append(board.Templating.List, c.RawVariables...)
-	board.Annotations.List = []sdk.Annotation{{
-		Name:       "Alert events",
-		Datasource: StringPtr("Prometheus"),
-		// Show alerts matching the selected alert_level (see template variable above)
-		Expr:        fmt.Sprintf(`ALERTS{service_name=%q,level=~"$alert_level",alertstate="firing"}`, c.Name),
-		Step:        "60s",
-		TitleFormat: "{{ description }} ({{ name }})",
-		TagKeys:     "level,owner",
-		IconColor:   "rgba(255, 96, 96, 1)",
-		Enable:      false, // disable by default for now
-		Type:        "tags",
-	}}
+	if !c.noAlertsDefined() {
+		board.Annotations.List = []sdk.Annotation{{
+			Name:       "Alert events",
+			Datasource: StringPtr("Prometheus"),
+			// Show alerts matching the selected alert_level (see template variable above)
+			Expr:        fmt.Sprintf(`ALERTS{service_name=%q,level=~"$alert_level",alertstate="firing"}`, c.Name),
+			Step:        "60s",
+			TitleFormat: "{{ description }} ({{ name }})",
+			TagKeys:     "level,owner",
+			IconColor:   "rgba(255, 96, 96, 1)",
+			Enable:      false, // disable by default for now
+			Type:        "tags",
+		}}
+	}
 	// Annotation layers that require a service to export information required by the
 	// Sourcegraph debug server - see the `NoSourcegraphDebugServer` docstring.
 	if !c.NoSourcegraphDebugServer {
@@ -137,55 +151,57 @@ func (c *Container) renderDashboard() *sdk.Board {
 	`, c.Name, c.Description)
 	board.Panels = append(board.Panels, description)
 
-	alertsDefined := grafana.NewContainerAlertsDefinedTable(sdk.Target{
-		Expr: fmt.Sprintf(`label_replace(
-			sum(max by (level,service_name,name,description,grafana_panel_id)(alert_count{service_name="%s",name!="",level=~"$alert_level"})) by (level,description,service_name,grafana_panel_id),
-			"description", "$1", "description", ".*: (.*)"
-		)`, c.Name),
-		Format:  "table",
-		Instant: true,
-	})
-	setPanelSize(alertsDefined, 9, 5)
-	setPanelPos(alertsDefined, 0, 3)
-	board.Panels = append(board.Panels, alertsDefined)
+	if !c.noAlertsDefined() {
+		alertsDefined := grafana.NewContainerAlertsDefinedTable(sdk.Target{
+			Expr: fmt.Sprintf(`label_replace(
+				sum(max by (level,service_name,name,description,grafana_panel_id)(alert_count{service_name="%s",name!="",level=~"$alert_level"})) by (level,description,service_name,grafana_panel_id),
+				"description", "$1", "description", ".*: (.*)"
+			)`, c.Name),
+			Format:  "table",
+			Instant: true,
+		})
+		setPanelSize(alertsDefined, 9, 5)
+		setPanelPos(alertsDefined, 0, 3)
+		board.Panels = append(board.Panels, alertsDefined)
 
-	alertsFiring := sdk.NewGraph("Alerts firing")
-	setPanelSize(alertsFiring, 15, 5)
-	setPanelPos(alertsFiring, 9, 3)
-	alertsFiring.GraphPanel.Legend.Show = true
-	alertsFiring.GraphPanel.Fill = 1
-	alertsFiring.GraphPanel.Bars = true
-	alertsFiring.GraphPanel.NullPointMode = "null"
-	alertsFiring.GraphPanel.Pointradius = 2
-	alertsFiring.GraphPanel.AliasColors = map[string]string{}
-	alertsFiring.GraphPanel.Xaxis = sdk.Axis{
-		Show: true,
+		alertsFiring := sdk.NewGraph("Alerts firing")
+		setPanelSize(alertsFiring, 15, 5)
+		setPanelPos(alertsFiring, 9, 3)
+		alertsFiring.GraphPanel.Legend.Show = true
+		alertsFiring.GraphPanel.Fill = 1
+		alertsFiring.GraphPanel.Bars = true
+		alertsFiring.GraphPanel.NullPointMode = "null"
+		alertsFiring.GraphPanel.Pointradius = 2
+		alertsFiring.GraphPanel.AliasColors = map[string]string{}
+		alertsFiring.GraphPanel.Xaxis = sdk.Axis{
+			Show: true,
+		}
+		alertsFiring.GraphPanel.Yaxes = []sdk.Axis{
+			{
+				Decimals: 0,
+				Format:   "short",
+				LogBase:  1,
+				Max:      sdk.NewFloatString(1),
+				Min:      sdk.NewFloatString(0),
+				Show:     false,
+			},
+			{
+				Format:  "short",
+				LogBase: 1,
+				Show:    true,
+			},
+		}
+		alertsFiring.AddTarget(&sdk.Target{
+			Expr:         fmt.Sprintf(`sum by (service_name,level,name,grafana_panel_id)(max by (level,service_name,name,description,grafana_panel_id)(alert_count{service_name="%s",name!="",level=~"$alert_level"}) >= 1)`, c.Name),
+			LegendFormat: "{{level}}: {{name}}",
+		})
+		alertsFiring.GraphPanel.FieldConfig = &sdk.FieldConfig{}
+		alertsFiring.GraphPanel.FieldConfig.Defaults.Links = []sdk.Link{{
+			Title: "Graph panel",
+			URL:   StringPtr("/-/debug/grafana/d/${__field.labels.service_name}/${__field.labels.service_name}?viewPanel=${__field.labels.grafana_panel_id}"),
+		}}
+		board.Panels = append(board.Panels, alertsFiring)
 	}
-	alertsFiring.GraphPanel.Yaxes = []sdk.Axis{
-		{
-			Decimals: 0,
-			Format:   "short",
-			LogBase:  1,
-			Max:      sdk.NewFloatString(1),
-			Min:      sdk.NewFloatString(0),
-			Show:     false,
-		},
-		{
-			Format:  "short",
-			LogBase: 1,
-			Show:    true,
-		},
-	}
-	alertsFiring.AddTarget(&sdk.Target{
-		Expr:         fmt.Sprintf(`sum by (service_name,level,name,grafana_panel_id)(max by (level,service_name,name,description,grafana_panel_id)(alert_count{service_name="%s",name!="",level=~"$alert_level"}) >= 1)`, c.Name),
-		LegendFormat: "{{level}}: {{name}}",
-	})
-	alertsFiring.GraphPanel.FieldConfig = &sdk.FieldConfig{}
-	alertsFiring.GraphPanel.FieldConfig.Defaults.Links = []sdk.Link{{
-		Title: "Graph panel",
-		URL:   StringPtr("/-/debug/grafana/d/${__field.labels.service_name}/${__field.labels.service_name}?viewPanel=${__field.labels.grafana_panel_id}"),
-	}}
-	board.Panels = append(board.Panels, alertsFiring)
 
 	baseY := 8
 	offsetY := baseY
@@ -320,7 +336,7 @@ func (c *Container) renderRules() (*promRulesFile, error) {
 						"level":        level,
 						"service_name": c.Name,
 						"description":  description,
-						"owner":        string(o.Owner),
+						"owner":        o.Owner.identifier,
 
 						// in the corresponding dashboard, this label should indicate
 						// the panel associated with this rule
@@ -338,6 +354,20 @@ func (c *Container) renderRules() (*promRulesFile, error) {
 	}, nil
 }
 
+type ContainerVariableOptionType string
+
+const (
+	OptionTypeInterval = "interval"
+)
+
+type ContainerVariableOptions struct {
+	Options []string
+	// DefaultOption is the option that should be selected by default.
+	DefaultOption string
+	// Type of the options. You can usually leave this unset.
+	Type ContainerVariableOptionType
+}
+
 // ContainerVariable describes a template variable that can be applied container dashboard
 // for filtering purposes.
 type ContainerVariable struct {
@@ -347,15 +377,34 @@ type ContainerVariable struct {
 	// Label is a human-readable name for the variable, e.g. "Alert level"
 	Label string
 
-	// Query is the query to generate the possible values. Cannot be used in conjunction
-	// with Options
-	Query string
+	// OptionsQuery is the query to generate the possible values for this variable. Cannot
+	// be used in conjunction with Options
+	OptionsQuery string
 	// Options are the pre-defined possible values for this variable. Cannot be used in
 	// conjunction with Query
-	Options []string
+	Options ContainerVariableOptions
+
+	// WildcardAllValue indicates to Grafana that is should NOT use Query or Options to
+	// generate a concatonated 'All' value for the variable, and use a '.*' wildcard
+	// instead. Setting this to true primarily useful if you use Query and expect it to be
+	// a large enough result set to cause issues when viewing the dashboard.
+	//
+	// We allow Grafana to generate a value by default because simply using '.*' wildcard
+	// can pull in unintended metrics if adequate filtering is not performed on the query,
+	// for example if multiple services export the same metric. If set to true, make sure
+	// the queries that use this variable perform adequate filtering to avoid pulling in
+	// unintended metrics.
+	WildcardAllValue bool
 
 	// Multi indicates whether or not to allow multi-selection for this variable filter
 	Multi bool
+
+	// RawTransform is can be used to extend ContainerVariable to modify underlying
+	// Grafana variables specification.
+	//
+	// It is recommended to use or extend the standardized ContainerVariable options
+	// instead.
+	RawTransform func(*sdk.TemplateVar)
 }
 
 func (c *ContainerVariable) validate() error {
@@ -365,7 +414,10 @@ func (c *ContainerVariable) validate() error {
 	if c.Label == "" {
 		return errors.New("ContainerVariable.Label is required")
 	}
-	if c.Query == "" && len(c.Options) == 0 {
+	if c.OptionsQuery == "" && len(c.Options.Options) == 0 {
+		return errors.New("one of ContainerVariable.Query and ContainerVariable.Options must be set")
+	}
+	if c.OptionsQuery != "" && len(c.Options.Options) > 0 {
 		return errors.New("ContainerVariable.Query and ContainerVariable.Options cannot both be set")
 	}
 	return nil
@@ -382,37 +434,77 @@ func (c *ContainerVariable) toGrafanaTemplateVar() sdk.TemplateVar {
 		Datasource: StringPtr("Prometheus"),
 		IncludeAll: true,
 
-		AllValue: ".*",
 		// Apply the AllValue to a template variable by default
 		Current: sdk.Current{Text: &sdk.StringSliceString{Value: []string{"all"}, Valid: true}, Value: "$__all"},
 	}
 
+	if c.WildcardAllValue {
+		variable.AllValue = ".*"
+	} else {
+		// Rely on Grafana to create a union of only the values
+		// generated by the specified query.
+		//
+		// See https://grafana.com/docs/grafana/latest/variables/formatting-multi-value-variables/#multi-value-variables-with-a-prometheus-or-influxdb-data-source
+		// for more information.
+		variable.AllValue = ""
+	}
+
 	switch {
-	case c.Query != "":
+	case c.OptionsQuery != "":
 		variable.Type = "query"
-		variable.Query = c.Query
+		variable.Query = c.OptionsQuery
 		variable.Refresh = sdk.BoolInt{
 			Flag:  true,
 			Value: Int64Ptr(2), // Refresh on time range change
 		}
 		variable.Sort = 3
 
-		// Rely on Grafana to create a union of only the values
-		// generated by the specified query. Otherwise, the '.*'
-		// wildcard can pull in unintended metrics.
-		//
-		// See https://grafana.com/docs/grafana/latest/variables/formatting-multi-value-variables/#multi-value-variables-with-a-prometheus-or-influxdb-data-source
-		// for more information.
-		variable.AllValue = ""
-
-	case len(c.Options) > 0:
+	case len(c.Options.Options) > 0:
+		// Set the type
 		variable.Type = "custom"
-		variable.Query = strings.Join(c.Options, ",")
-		// Add the AllValue as a default
-		variable.Options = []sdk.Option{{Text: "all", Value: "$__all", Selected: true}}
-		for _, option := range c.Options {
-			variable.Options = append(variable.Options, sdk.Option{Text: option, Value: option})
+		if c.Options.Type != "" {
+			variable.Type = string(c.Options.Type)
 		}
+		// Generate our options
+		variable.Query = strings.Join(c.Options.Options, ",")
+
+		// On interval options, don't allow the selection of 'all' intervals, since
+		// this is a one-of-many selection
+		var hasAllOption bool
+		if c.Options.Type != OptionTypeInterval {
+			// Add the AllValue as a default, only selected if a default is not configured
+			hasAllOption = true
+			selected := c.Options.DefaultOption == ""
+			variable.Options = append(variable.Options, sdk.Option{Text: "all", Value: "$__all", Selected: selected})
+		}
+		// Generate options
+		for i, option := range c.Options.Options {
+			// Whether this option should be selected
+			var selected bool
+			if c.Options.DefaultOption != "" {
+				// If an default option is provided, select that
+				selected = option == c.Options.DefaultOption
+			} else if !hasAllOption {
+				// Otherwise if there is no 'all' option generated, select the first
+				selected = i == 0
+			}
+
+			variable.Options = append(variable.Options, sdk.Option{Text: option, Value: option, Selected: selected})
+			if selected {
+				// Also configure current
+				variable.Current = sdk.Current{
+					Text: &sdk.StringSliceString{
+						Value: []string{option},
+						Valid: true,
+					},
+					Value: option,
+				}
+			}
+		}
+	}
+
+	if c.RawTransform != nil {
+		c.RawTransform(&variable)
 	}
 
 	return variable
@@ -469,41 +561,81 @@ func (r Row) validate() error {
 
 // ObservableOwner denotes a team that owns an Observable. The current teams are described in
 // the handbook: https://handbook.sourcegraph.com/engineering/eng_org#current-organization
-type ObservableOwner string
+type ObservableOwner struct {
+	// identifier is the team's name on OpsGenie and is used for routing alerts.
+	identifier       string
+	handbookSlug     string
+	handbookTeamName string
+}
 
-const (
-	ObservableOwnerSearch          ObservableOwner = "search"
-	ObservableOwnerSearchCore      ObservableOwner = "search-core"
-	ObservableOwnerBatches         ObservableOwner = "batches"
-	ObservableOwnerCodeIntel       ObservableOwner = "code-intel"
-	ObservableOwnerSecurity        ObservableOwner = "security"
-	ObservableOwnerWeb             ObservableOwner = "web"
-	ObservableOwnerCoreApplication ObservableOwner = "core application"
-	ObservableOwnerCodeInsights    ObservableOwner = "code-insights"
-	ObservableOwnerDevOps          ObservableOwner = "devops"
+// identifer must be all lowercase, and optionally  hyphenated.
+//
+// Some examples of valid identifiers:
+// foo
+// foo-bar
+// foo-bar-baz
+//
+// Some examples of invalid identifiers:
+// Foo
+// FOO
+// Foo-Bar
+// foo_bar
+var identifierPattern = regexp.MustCompile("^([a-z]+)(-[a-z]+)*?$")
+
+var (
+	ObservableOwnerSearch = ObservableOwner{
+		identifier:       "search",
+		handbookSlug:     "code-graph/search/product",
+		handbookTeamName: "Search",
+	}
+	ObservableOwnerSearchCore = ObservableOwner{
+		identifier:       "search-core",
+		handbookSlug:     "code-graph/search/core",
+		handbookTeamName: "Search Core",
+	}
+	ObservableOwnerBatches = ObservableOwner{
+		identifier:       "batch-changes",
+		handbookSlug:     "code-graph/batch-changes",
+		handbookTeamName: "Batch Changes",
+	}
+	ObservableOwnerCodeIntel = ObservableOwner{
+		identifier:       "code-intel",
+		handbookSlug:     "code-graph/code-intelligence",
+		handbookTeamName: "Code intelligence",
+	}
+	ObservableOwnerSecurity = ObservableOwner{
+		identifier:       "security",
+		handbookSlug:     "cloud/security",
+		handbookTeamName: "Security",
+	}
+	ObservableOwnerRepoManagement = ObservableOwner{
+		identifier:       "repo-management",
+		handbookSlug:     "enablement/repo-management",
+		handbookTeamName: "Repo Management",
+	}
+	ObservableOwnerCodeInsights = ObservableOwner{
+		identifier:       "code-insights",
+		handbookSlug:     "code-graph/code-insights",
+		handbookTeamName: "Code Insights",
+	}
+	ObservableOwnerDevOps = ObservableOwner{
+		identifier:       "devops",
+		handbookSlug:     "cloud/devops",
+		handbookTeamName: "Cloud DevOps",
+	}
+	ObservableOwnerCloudSaaS = ObservableOwner{
+		identifier:       "cloud-saas",
+		handbookSlug:     "cloud/saas",
+		handbookTeamName: "Cloud Software-as-a-Service",
+	}
 )
 
-// toMarkdown returns a Markdown string that also links to the owner's team page
+// toMarkdown returns a Markdown string that also links to the owner's team page in the handbook.
 func (o ObservableOwner) toMarkdown() string {
-	var slug string
-	// special cases for differences in how a team is named in ObservableOwner and how
-	// they are named in the handbook.
-	// see https://handbook.sourcegraph.com/engineering/eng_org#current-organization
-	switch o {
-	case ObservableOwnerCodeIntel:
-		slug = "code-intelligence"
-	case ObservableOwnerCodeInsights:
-		slug = "developer-insights/code-insights"
-	case ObservableOwnerDevOps:
-		slug = "cloud/devops"
-	case ObservableOwnerSearchCore:
-		slug = "search/core"
-	default:
-		slug = strings.ReplaceAll(string(o), " ", "-")
-	}
-
-	return fmt.Sprintf("[Sourcegraph %s team](https://handbook.sourcegraph.com/engineering/%s)",
-		upperFirst(string(o)), slug)
+	return fmt.Sprintf(
+		"[Sourcegraph %s team](https://handbook.sourcegraph.com/departments/product-engineering/engineering/%s)",
+		o.handbookTeamName, o.handbookSlug,
+	)
 }
 
 // Observable describes a metric about a container that can be observed. For example, memory usage.
@@ -636,9 +768,15 @@ func (o Observable) validate() error {
 	if first, second := string([]rune(o.Description)[0]), string([]rune(o.Description)[1]); first != strings.ToLower(first) && second == strings.ToLower(second) {
 		return errors.Errorf("Description must be lowercase except for acronyms; found \"%s\"", o.Description)
 	}
-	if o.Owner == "" && !o.NoAlert {
-		return errors.New("Owner must be defined for observables with alerts")
+	if o.Owner.identifier == "" && !o.NoAlert {
+		return errors.New("Owner.identifier must be defined for observables with alerts")
 	}
+
+	// In some cases, the identifier is an empty string. We don't want to run it through the regex.
+	if o.Owner.identifier != "" && !identifierPattern.Match([]byte(o.Owner.identifier)) {
+		return errors.Errorf(`Owner.identifier has invalid format: "%v"`, []byte(o.Owner.identifier))
+	}
+
 	if !o.Panel.panelType.validate() {
 		return errors.New(`Panel.panelType must be "graph" or "heatmap"`)
 	}
@@ -714,7 +852,7 @@ type ObservableAlertDefinition struct {
 	// We only support per-service alerts, not per-container/replica, and not doing so can cause issues.
 	// See https://github.com/sourcegraph/sourcegraph/issues/11571#issuecomment-654571953,
 	// https://github.com/sourcegraph/sourcegraph/issues/17599, and related pull requests.
-	aggregator string
+	aggregator Aggregator
 	// Comparator sets how a metric should be compared against a threshold
 	comparator string
 	// Threshold sets the value to be compared against
@@ -722,52 +860,36 @@ type ObservableAlertDefinition struct {
 }
 
 // GreaterOrEqual indicates the alert should fire when greater or equal the given value.
-func (a *ObservableAlertDefinition) GreaterOrEqual(f float64, aggregator *string) *ObservableAlertDefinition {
+func (a *ObservableAlertDefinition) GreaterOrEqual(f float64) *ObservableAlertDefinition {
 	a.greaterThan = true
-	if aggregator != nil {
-		a.aggregator = *aggregator
-	} else {
-		a.aggregator = "max"
-	}
+	a.aggregator = AggregatorMax
 	a.comparator = ">="
 	a.threshold = f
 	return a
 }
 
 // LessOrEqual indicates the alert should fire when less than or equal to the given value.
-func (a *ObservableAlertDefinition) LessOrEqual(f float64, aggregator *string) *ObservableAlertDefinition {
+func (a *ObservableAlertDefinition) LessOrEqual(f float64) *ObservableAlertDefinition {
 	a.lessThan = true
-	if aggregator != nil {
-		a.aggregator = *aggregator
-	} else {
-		a.aggregator = "min"
-	}
+	a.aggregator = AggregatorMin
 	a.comparator = "<="
 	a.threshold = f
 	return a
 }
 
 // Greater indicates the alert should fire when strictly greater to this value.
-func (a *ObservableAlertDefinition) Greater(f float64, aggregator *string) *ObservableAlertDefinition {
+func (a *ObservableAlertDefinition) Greater(f float64) *ObservableAlertDefinition {
 	a.greaterThan = true
-	if aggregator != nil {
-		a.aggregator = *aggregator
-	} else {
-		a.aggregator = "max"
-	}
+	a.aggregator = AggregatorMax
 	a.comparator = ">"
 	a.threshold = f
 	return a
 }
 
 // Less indicates the alert should fire when strictly less than this value.
-func (a *ObservableAlertDefinition) Less(f float64, aggregator *string) *ObservableAlertDefinition {
+func (a *ObservableAlertDefinition) Less(f float64) *ObservableAlertDefinition {
 	a.lessThan = true
-	if aggregator != nil {
-		a.aggregator = *aggregator
-	} else {
-		a.aggregator = "min"
-	}
+	a.aggregator = AggregatorMin
 	a.comparator = "<"
 	a.threshold = f
 	return a
@@ -777,6 +899,24 @@ func (a *ObservableAlertDefinition) Less(f float64, aggregator *string) *Observa
 // considered firing. Defaults to 0s (immediately alerts when threshold is exceeded).
 func (a *ObservableAlertDefinition) For(d time.Duration) *ObservableAlertDefinition {
 	a.duration = d
+	return a
+}
+
+type Aggregator string
+
+const (
+	AggregatorSum = "sum"
+	AggregatorMax = "max"
+	AggregatorMin = "min"
+)
+
+// AggregateBy configures the aggregator to use for this alert. Make sure to only call
+// this after setting one of GreaterOrEqual, LessOrEqual, etc.
+//
+// By default, Less* thresholds are configured with AggregatorMin, and
+// Greater* thresholds are configured with AggregatorMax.
+func (a *ObservableAlertDefinition) AggregateBy(aggregator Aggregator) *ObservableAlertDefinition {
+	a.aggregator = aggregator
 	return a
 }
 

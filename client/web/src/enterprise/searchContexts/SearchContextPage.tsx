@@ -1,11 +1,12 @@
+import React, { useCallback, useMemo, useState } from 'react'
+
 import classNames from 'classnames'
 import { debounce } from 'lodash'
 import MagnifyIcon from 'mdi-react/MagnifyIcon'
-import React, { useCallback, useMemo, useState } from 'react'
 import { RouteComponentProps } from 'react-router'
 import { catchError, startWith } from 'rxjs/operators'
 
-import { asError, isErrorLike } from '@sourcegraph/common'
+import { asError, isErrorLike, renderMarkdown, pluralize } from '@sourcegraph/common'
 import { SearchContextProps } from '@sourcegraph/search'
 import { SyntaxHighlightedSearchQuery } from '@sourcegraph/search-ui'
 import { Markdown } from '@sourcegraph/shared/src/components/Markdown'
@@ -13,13 +14,22 @@ import { VirtualList } from '@sourcegraph/shared/src/components/VirtualList'
 import { Scalars, SearchPatternType } from '@sourcegraph/shared/src/graphql-operations'
 import { PlatformContextProps } from '@sourcegraph/shared/src/platform/context'
 import { ISearchContextRepositoryRevisions } from '@sourcegraph/shared/src/schema'
-import { renderMarkdown } from '@sourcegraph/shared/src/util/markdown'
-import { pluralize } from '@sourcegraph/shared/src/util/strings'
 import { buildSearchURLQuery } from '@sourcegraph/shared/src/util/url'
-import { Page } from '@sourcegraph/web/src/components/Page'
-import { PageTitle } from '@sourcegraph/web/src/components/PageTitle'
-import { Timestamp } from '@sourcegraph/web/src/components/time/Timestamp'
-import { Badge, Container, PageHeader, LoadingSpinner, useObservable, Button, Link, Alert } from '@sourcegraph/wildcard'
+import {
+    Badge,
+    Container,
+    PageHeader,
+    LoadingSpinner,
+    useObservable,
+    Button,
+    Link,
+    Alert,
+    Typography,
+} from '@sourcegraph/wildcard'
+
+import { Page } from '../../components/Page'
+import { PageTitle } from '../../components/PageTitle'
+import { Timestamp } from '../../components/time/Timestamp'
 
 import styles from './SearchContextPage.module.scss'
 
@@ -31,9 +41,9 @@ export interface SearchContextPageProps
 const initialRepositoriesToShow = 15
 const incrementalRepositoriesToShow = 10
 
-const SearchContextRepositories: React.FunctionComponent<{ repositories: ISearchContextRepositoryRevisions[] }> = ({
-    repositories,
-}) => {
+const SearchContextRepositories: React.FunctionComponent<
+    React.PropsWithChildren<{ repositories: ISearchContextRepositoryRevisions[] }>
+> = ({ repositories }) => {
     const [filterQuery, setFilterQuery] = useState('')
     const debouncedSetFilterQuery = useMemo(() => debounce(value => setFilterQuery(value), 250), [setFilterQuery])
     const filteredRepositories = useMemo(
@@ -88,12 +98,12 @@ const SearchContextRepositories: React.FunctionComponent<{ repositories: ISearch
         <>
             <div className="d-flex justify-content-between align-items-center mb-3">
                 {filteredRepositories.length > 0 && (
-                    <h3>
+                    <Typography.H3>
                         <span>
                             {filteredRepositories.length}{' '}
                             {pluralize('repository', filteredRepositories.length, 'repositories')}
                         </span>
-                    </h3>
+                    </Typography.H3>
                 )}
                 {repositories.length > 0 && (
                     <input
@@ -126,7 +136,7 @@ const SearchContextRepositories: React.FunctionComponent<{ repositories: ISearch
     )
 }
 
-export const SearchContextPage: React.FunctionComponent<SearchContextPageProps> = props => {
+export const SearchContextPage: React.FunctionComponent<React.PropsWithChildren<SearchContextPageProps>> = props => {
     const LOADING = 'loading' as const
 
     const { match, fetchSearchContextBySpec, platformContext } = props
@@ -160,6 +170,7 @@ export const SearchContextPage: React.FunctionComponent<SearchContextPageProps> 
                                     {
                                         icon: MagnifyIcon,
                                         to: '/search',
+                                        ariaLabel: 'Code Search',
                                     },
                                     {
                                         to: '/contexts',

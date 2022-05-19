@@ -2,8 +2,9 @@ import cookies, { CookieAttributes } from 'js-cookie'
 import * as uuid from 'uuid'
 
 import { TelemetryService } from '@sourcegraph/shared/src/telemetry/telemetryService'
+import { UTMMarker } from '@sourcegraph/shared/src/tracking/utm'
 
-import { browserExtensionMessageReceived } from './analyticsUtils'
+import { browserExtensionMessageReceived } from './BrowserExtensionTracker'
 import { serverAdmin } from './services/serverAdminWrapper'
 import { getPreviousMonday, redactSensitiveInfoFromAppURL, stripURLParameters } from './util'
 
@@ -53,7 +54,21 @@ export class EventLogger implements TelemetryService {
         this.initializeLogParameters()
     }
 
+    private logViewEventInternal(eventName: string, eventProperties?: any, logAsActiveUser = true): void {
+        const props = pageViewQueryParameters(window.location.href)
+        serverAdmin.trackPageView(eventName, logAsActiveUser, eventProperties)
+        this.logToConsole(eventName, props)
+
+        // Use flag to ensure URL query params are only stripped once
+        if (!this.hasStrippedQueryParameters) {
+            handleQueryEvents(window.location.href)
+            this.hasStrippedQueryParameters = true
+        }
+    }
+
     /**
+     * @deprecated Use logPageView instead
+     *
      * Log a pageview.
      * Page titles should be specific and human-readable in pascal case, e.g. "SearchResults" or "Blob" or "NewOrg"
      */
@@ -62,16 +77,20 @@ export class EventLogger implements TelemetryService {
             return
         }
         pageTitle = `View${pageTitle}`
+        this.logViewEventInternal(pageTitle, eventProperties, logAsActiveUser)
+    }
 
-        const props = pageViewQueryParameters(window.location.href)
-        serverAdmin.trackPageView(pageTitle, logAsActiveUser, eventProperties)
-        this.logToConsole(pageTitle, props)
-
-        // Use flag to ensure URL query params are only stripped once
-        if (!this.hasStrippedQueryParameters) {
-            handleQueryEvents(window.location.href)
-            this.hasStrippedQueryParameters = true
+    /**
+     * Log a pageview, following the new event naming conventions
+     *
+     * @param eventName should be specific and human-readable in pascal case, e.g. "SearchResults" or "Blob" or "NewOrg"
+     */
+    public logPageView(eventName: string, eventProperties?: any, logAsActiveUser = true): void {
+        if (window.context?.userAgentIsBot || !eventName) {
+            return
         }
+        eventName = `${eventName}Viewed`
+        this.logViewEventInternal(eventName, eventProperties, logAsActiveUser)
     }
 
     /**
@@ -244,25 +263,20 @@ function handleQueryEvents(url: string): void {
     stripURLParameters(url, ['utm_campaign', 'utm_source', 'utm_medium', 'badge'])
 }
 
-interface EventQueryParameters {
-    utm_campaign?: string
-    utm_source?: string
-    utm_medium?: string
-}
-
 /**
  * Get pageview-specific event properties from URL query string parameters
  */
-function pageViewQueryParameters(url: string): EventQueryParameters {
+function pageViewQueryParameters(url: string): UTMMarker {
     const parsedUrl = new URL(url)
 
     const utmSource = parsedUrl.searchParams.get('utm_source')
     const utmCampaign = parsedUrl.searchParams.get('utm_campaign')
+    const utmMedium = parsedUrl.searchParams.get('utm_medium')
 
-    const utmProps = {
+    const utmProps: UTMMarker = {
         utm_campaign: utmCampaign || undefined,
         utm_source: utmSource || undefined,
-        utm_medium: parsedUrl.searchParams.get('utm_medium') || undefined,
+        utm_medium: utmMedium || undefined,
         utm_term: parsedUrl.searchParams.get('utm_term') || undefined,
         utm_content: parsedUrl.searchParams.get('utm_content') || undefined,
     }
@@ -275,6 +289,19 @@ function pageViewQueryParameters(url: string): EventQueryParameters {
         eventLogger.log('CodeMonitorEmailLinkClicked')
     } else if (utmSource === 'hubspot' && utmCampaign?.match(/^cloud-onboarding-email(.*)$/)) {
         eventLogger.log('UTMCampaignLinkClicked', utmProps, utmProps)
+    } else if (
+        [
+            'safari-extension',
+            'firefox-extension',
+            'chrome-extension',
+            'phabricator-integration',
+            'bitbucket-integration',
+            'gitlab-integration',
+        ].includes(utmSource ?? '')
+    ) {
+        eventLogger.log('UTMCodeHostIntegration', utmProps, utmProps)
+    } else if (utmMedium === 'VSCODE' && utmCampaign === 'vsce-sign-up') {
+        eventLogger.log('VSCODESignUpLinkClicked', utmProps, utmProps)
     }
 
     return utmProps

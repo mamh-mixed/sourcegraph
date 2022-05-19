@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cockroachdb/errors"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 
@@ -21,6 +20,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/observation"
 	"github.com/sourcegraph/sourcegraph/internal/types"
 	"github.com/sourcegraph/sourcegraph/lib/batches"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 func TestChangesetApplyPreviewConnectionResolver(t *testing.T) {
@@ -93,7 +93,7 @@ func TestChangesetApplyPreviewConnectionResolver(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		input := map[string]interface{}{"batchSpec": apiID, "first": tc.first}
+		input := map[string]any{"batchSpec": apiID, "first": tc.first}
 		var response struct{ Node apitest.BatchSpec }
 		apitest.MustExec(ctx, t, s, input, &response, queryChangesetApplyPreviewConnection)
 
@@ -109,7 +109,7 @@ func TestChangesetApplyPreviewConnectionResolver(t *testing.T) {
 
 	var endCursor *string
 	for i := range changesetSpecs {
-		input := map[string]interface{}{"batchSpec": apiID, "first": 1}
+		input := map[string]any{"batchSpec": apiID, "first": 1}
 		if endCursor != nil {
 			input["after"] = *endCursor
 		}

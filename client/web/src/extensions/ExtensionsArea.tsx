@@ -1,5 +1,6 @@
-import MapSearchIcon from 'mdi-react/MapSearchIcon'
 import * as React from 'react'
+
+import MapSearchIcon from 'mdi-react/MapSearchIcon'
 import { Route, RouteComponentProps, Switch } from 'react-router'
 
 import { PlatformContextProps } from '@sourcegraph/shared/src/platform/context'
@@ -16,10 +17,13 @@ import { RouteDescriptor } from '../util/contributions'
 
 import { ExtensionAreaRoute } from './extension/ExtensionArea'
 import { ExtensionAreaHeaderNavItem } from './extension/ExtensionAreaHeader'
-import styles from './ExtensionsArea.module.scss'
 import { ExtensionsAreaHeader, ExtensionsAreaHeaderActionButton } from './ExtensionsAreaHeader'
 
-const NotFoundPage: React.FunctionComponent = () => <HeroPage icon={MapSearchIcon} title="404: Not Found" />
+import styles from './ExtensionsArea.module.scss'
+
+const NotFoundPage: React.FunctionComponent<React.PropsWithChildren<unknown>> = () => (
+    <HeroPage icon={MapSearchIcon} title="404: Not Found" />
+)
 
 export interface ExtensionsAreaRoute extends RouteDescriptor<ExtensionsAreaRouteContext> {}
 
@@ -65,7 +69,7 @@ interface ExtensionsAreaProps
 /**
  * The extensions area.
  */
-export const ExtensionsArea: React.FunctionComponent<ExtensionsAreaProps> = props => {
+export const ExtensionsArea: React.FunctionComponent<React.PropsWithChildren<ExtensionsAreaProps>> = props => {
     const { breadcrumbs, ...rootBreadcrumbSetters } = useBreadcrumbs()
 
     const childBreadcrumbSetters = rootBreadcrumbSetters.useBreadcrumb(

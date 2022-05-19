@@ -3,23 +3,24 @@ package repos
 import (
 	"fmt"
 	"net/url"
+	"strings"
 
-	"github.com/cockroachdb/errors"
 	"github.com/inconshreveable/log15"
-	"github.com/sourcegraph/sourcegraph/internal/extsvc/pagure"
 
+	"github.com/sourcegraph/sourcegraph/internal/conf/reposource"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc/awscodecommit"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc/bitbucketcloud"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc/bitbucketserver"
+	"github.com/sourcegraph/sourcegraph/internal/extsvc/gerrit"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc/github"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc/gitlab"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc/gitolite"
-	"github.com/sourcegraph/sourcegraph/internal/extsvc/jvmpackages"
-	"github.com/sourcegraph/sourcegraph/internal/extsvc/npm/npmpackages"
+	"github.com/sourcegraph/sourcegraph/internal/extsvc/pagure"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc/perforce"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc/phabricator"
 	"github.com/sourcegraph/sourcegraph/internal/types"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 	"github.com/sourcegraph/sourcegraph/schema"
 )
 
@@ -44,6 +45,10 @@ func CloneURL(kind, config string, repo *types.Repo) (string, error) {
 	case *schema.BitbucketCloudConnection:
 		if r, ok := repo.Metadata.(*bitbucketcloud.Repo); ok {
 			return bitbucketCloudCloneURL(r, t), nil
+		}
+	case *schema.GerritConnection:
+		if r, ok := repo.Metadata.(*gerrit.Project); ok {
+			return gerritCloneURL(r, t), nil
 		}
 	case *schema.GitHubConnection:
 		if r, ok := repo.Metadata.(*github.Repository); ok {
@@ -73,12 +78,16 @@ func CloneURL(kind, config string, repo *types.Repo) (string, error) {
 		if r, ok := repo.Metadata.(*extsvc.OtherRepoMetadata); ok {
 			return otherCloneURL(repo, r), nil
 		}
+	case *schema.GoModulesConnection:
+		return string(repo.Name), nil
+	case *schema.PythonPackagesConnection:
+		return string(repo.Name), nil
 	case *schema.JVMPackagesConnection:
-		if r, ok := repo.Metadata.(*jvmpackages.Metadata); ok {
+		if r, ok := repo.Metadata.(*reposource.MavenMetadata); ok {
 			return r.Module.CloneURL(), nil
 		}
-	case *schema.NPMPackagesConnection:
-		if r, ok := repo.Metadata.(*npmpackages.Metadata); ok {
+	case *schema.NpmPackagesConnection:
+		if r, ok := repo.Metadata.(*reposource.NpmMetadata); ok {
 			return r.Package.CloneURL(), nil
 		}
 	default:
@@ -175,7 +184,12 @@ func githubCloneURL(repo *github.Repository, cfg *schema.GitHubConnection) (stri
 		log15.Warn("Error adding authentication to GitHub repository Git remote URL.", "url", repo.URL, "error", err)
 		return repo.URL, nil
 	}
-	u.User = url.User(cfg.Token)
+
+	if cfg.GithubAppInstallationID != "" {
+		u.User = url.UserPassword("x-access-token", cfg.Token)
+	} else {
+		u.User = url.User(cfg.Token)
+	}
 	return u.String(), nil
 }
 
@@ -198,6 +212,20 @@ func gitlabCloneURL(repo *gitlab.Project, cfg *schema.GitLabConnection) string {
 		username = "oauth2"
 	}
 	u.User = url.UserPassword(username, cfg.Token)
+	return u.String()
+}
+
+func gerritCloneURL(project *gerrit.Project, cfg *schema.GerritConnection) string {
+	u, err := url.Parse(cfg.Url)
+	if err != nil {
+		log15.Warn("Error adding authentication to Gerrit project remote URL.", "url", cfg.Url, "error", err)
+		return cfg.Url
+	}
+	u.User = url.UserPassword(cfg.Username, cfg.Password)
+
+	// Gerrit encodes slashes in IDs, so need to decode them.
+	u.Path = strings.ReplaceAll(project.ID, "%2F", "/")
+
 	return u.String()
 }
 

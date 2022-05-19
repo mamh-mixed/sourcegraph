@@ -1,12 +1,12 @@
 import React from 'react'
 
-import { UseConnectionResult } from '@sourcegraph/web/src/components/FilteredConnection/hooks/useConnection'
+import { UseConnectionResult } from '../../components/FilteredConnection/hooks/useConnection'
 import {
     ConnectionError,
     ConnectionLoading,
     ShowMoreButton,
     SummaryContainer,
-} from '@sourcegraph/web/src/components/FilteredConnection/ui'
+} from '../../components/FilteredConnection/ui'
 
 import { ConnectionPopoverContainer, ConnectionPopoverForm, ConnectionPopoverList } from './components'
 
@@ -17,7 +17,7 @@ interface RevisionsPopoverTabProps extends UseConnectionResult<unknown> {
     summary?: JSX.Element
 }
 
-export const RevisionsPopoverTab: React.FunctionComponent<RevisionsPopoverTabProps> = ({
+export const RevisionsPopoverTab: React.FunctionComponent<React.PropsWithChildren<RevisionsPopoverTabProps>> = ({
     children,
     inputValue,
     onInputChange,

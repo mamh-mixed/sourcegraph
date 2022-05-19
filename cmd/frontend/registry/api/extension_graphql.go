@@ -3,16 +3,16 @@ package api
 import (
 	"context"
 
-	"github.com/cockroachdb/errors"
 	"github.com/graph-gophers/graphql-go"
 	"github.com/graph-gophers/graphql-go/relay"
 
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/graphqlbackend"
 	"github.com/sourcegraph/sourcegraph/internal/database"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 func init() {
-	graphqlbackend.NodeToRegistryExtension = func(node interface{}) (graphqlbackend.RegistryExtension, bool) {
+	graphqlbackend.NodeToRegistryExtension = func(node any) (graphqlbackend.RegistryExtension, bool) {
 		switch n := node.(type) {
 		case *registryExtensionRemoteResolver:
 			return n, true

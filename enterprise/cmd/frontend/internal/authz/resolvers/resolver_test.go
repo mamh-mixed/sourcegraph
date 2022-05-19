@@ -7,11 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/RoaringBitmap/roaring"
-	"github.com/cockroachdb/errors"
 	"github.com/google/go-cmp/cmp"
 	"github.com/graph-gophers/graphql-go"
-	"github.com/graph-gophers/graphql-go/gqltesting"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/backend"
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/globals"
@@ -25,6 +23,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/repoupdater/protocol"
 	"github.com/sourcegraph/sourcegraph/internal/timeutil"
 	"github.com/sourcegraph/sourcegraph/internal/types"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 	"github.com/sourcegraph/sourcegraph/schema"
 )
 
@@ -68,8 +67,8 @@ func TestResolver_SetRepositoryPermissionsForUsers(t *testing.T) {
 		config             *schema.PermissionsUserMapping
 		mockVerifiedEmails []*database.UserEmail
 		mockUsers          []*types.User
-		gqlTests           func(database.DB) []*gqltesting.Test
-		expUserIDs         []uint32
+		gqlTests           func(database.DB) []*graphqlbackend.Test
+		expUserIDs         map[int32]struct{}
 		expAccounts        *extsvc.Accounts
 	}{{
 		name: "set permissions via email",
@@ -82,8 +81,8 @@ func TestResolver_SetRepositoryPermissionsForUsers(t *testing.T) {
 				Email:  "alice@example.com",
 			},
 		},
-		gqlTests: func(db database.DB) []*gqltesting.Test {
-			return []*gqltesting.Test{{
+		gqlTests: func(db database.DB) []*graphqlbackend.Test {
+			return []*graphqlbackend.Test{{
 				Schema: mustParseGraphQLSchema(t, db),
 				Query: `
 							mutation {
@@ -107,7 +106,7 @@ func TestResolver_SetRepositoryPermissionsForUsers(t *testing.T) {
 			},
 			}
 		},
-		expUserIDs: []uint32{1},
+		expUserIDs: map[int32]struct{}{1: {}},
 		expAccounts: &extsvc.Accounts{
 			ServiceType: authz.SourcegraphServiceType,
 			ServiceID:   authz.SourcegraphServiceID,
@@ -124,8 +123,8 @@ func TestResolver_SetRepositoryPermissionsForUsers(t *testing.T) {
 				Username: "alice",
 			},
 		},
-		gqlTests: func(db database.DB) []*gqltesting.Test {
-			return []*gqltesting.Test{{
+		gqlTests: func(db database.DB) []*graphqlbackend.Test {
+			return []*graphqlbackend.Test{{
 				Schema: mustParseGraphQLSchema(t, db),
 				Query: `
 						mutation {
@@ -148,7 +147,7 @@ func TestResolver_SetRepositoryPermissionsForUsers(t *testing.T) {
 					`,
 			}}
 		},
-		expUserIDs: []uint32{1},
+		expUserIDs: map[int32]struct{}{1: {}},
 		expAccounts: &extsvc.Accounts{
 			ServiceType: authz.SourcegraphServiceType,
 			ServiceID:   authz.SourcegraphServiceID,
@@ -175,7 +174,7 @@ func TestResolver_SetRepositoryPermissionsForUsers(t *testing.T) {
 			perms.TransactFunc.SetDefaultReturn(perms, nil)
 			perms.DoneFunc.SetDefaultReturn(nil)
 			perms.SetRepoPermissionsFunc.SetDefaultHook(func(_ context.Context, p *authz.RepoPermissions) error {
-				ids := p.UserIDs.ToArray()
+				ids := p.UserIDs
 				if diff := cmp.Diff(test.expUserIDs, ids); diff != "" {
 					return errors.Errorf("p.UserIDs: %v", diff)
 				}
@@ -194,9 +193,71 @@ func TestResolver_SetRepositoryPermissionsForUsers(t *testing.T) {
 			db.ReposFunc.SetDefaultReturn(repos)
 			db.PermsFunc.SetDefaultReturn(perms)
 
-			gqltesting.RunTests(t, test.gqlTests(db))
+			graphqlbackend.RunTests(t, test.gqlTests(db))
 		})
 	}
+}
+
+func TestResolver_SetRepositoryPermissionsUnrestricted(t *testing.T) {
+	// TODO: Factor out this common check
+	t.Run("authenticated as non-admin", func(t *testing.T) {
+		users := database.NewStrictMockUserStore()
+		users.GetByCurrentAuthUserFunc.SetDefaultReturn(&types.User{}, nil)
+
+		db := edb.NewStrictMockEnterpriseDB()
+		db.UsersFunc.SetDefaultReturn(users)
+
+		ctx := actor.WithActor(context.Background(), &actor.Actor{UID: 1})
+		result, err := (&Resolver{db: db}).SetRepositoryPermissionsForUsers(ctx, &graphqlbackend.RepoPermsArgs{})
+		if want := backend.ErrMustBeSiteAdmin; err != want {
+			t.Errorf("err: want %q but got %v", want, err)
+		}
+		if result != nil {
+			t.Errorf("result: want nil but got %v", result)
+		}
+	})
+
+	var haveIDs []int32
+	var haveUnrestricted bool
+
+	perms := edb.NewMockPermsStore()
+	perms.SetRepoPermissionsUnrestrictedFunc.SetDefaultHook(func(ctx context.Context, ids []int32, unrestricted bool) error {
+		haveIDs = ids
+		haveUnrestricted = unrestricted
+		return nil
+	})
+	users := database.NewStrictMockUserStore()
+	users.GetByCurrentAuthUserFunc.SetDefaultReturn(&types.User{SiteAdmin: true}, nil)
+
+	db := edb.NewStrictMockEnterpriseDB()
+	db.PermsFunc.SetDefaultReturn(perms)
+	db.UsersFunc.SetDefaultReturn(users)
+
+	gqlTests := []*graphqlbackend.Test{{
+		Schema: mustParseGraphQLSchema(t, db),
+		Query: `
+						mutation {
+							setRepositoryPermissionsUnrestricted(
+								repositories: ["UmVwb3NpdG9yeTox","UmVwb3NpdG9yeToy","UmVwb3NpdG9yeToz"],
+								unrestricted: true
+								) {
+								alwaysNil
+							}
+						}
+					`,
+		ExpectedResult: `
+						{
+							"setRepositoryPermissionsUnrestricted": {
+								"alwaysNil": null
+							}
+						}
+					`,
+	}}
+
+	graphqlbackend.RunTests(t, gqlTests)
+
+	assert.Equal(t, haveIDs, []int32{1, 2, 3})
+	assert.True(t, haveUnrestricted)
 }
 
 func TestResolver_ScheduleRepositoryPermissionsSync(t *testing.T) {
@@ -364,13 +425,11 @@ func TestResolver_AuthorizedUserRepositories(t *testing.T) {
 
 	perms := edb.NewStrictMockPermsStore()
 	perms.LoadUserPermissionsFunc.SetDefaultHook(func(_ context.Context, p *authz.UserPermissions) error {
-		p.IDs = roaring.NewBitmap()
-		p.IDs.Add(1)
+		p.IDs = map[int32]struct{}{1: {}}
 		return nil
 	})
 	perms.LoadUserPendingPermissionsFunc.SetDefaultHook(func(_ context.Context, p *authz.UserPendingPermissions) error {
-		p.IDs = roaring.NewBitmap()
-		p.IDs.Add(2)
+		p.IDs = map[int32]struct{}{2: {}, 3: {}, 4: {}, 5: {}}
 		return nil
 	})
 
@@ -381,11 +440,11 @@ func TestResolver_AuthorizedUserRepositories(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		gqlTests []*gqltesting.Test
+		gqlTests []*graphqlbackend.Test
 	}{
 		{
 			name: "check authorized repos via email",
-			gqlTests: []*gqltesting.Test{
+			gqlTests: []*graphqlbackend.Test{
 				{
 					Schema: mustParseGraphQLSchema(t, db),
 					Query: `
@@ -399,21 +458,21 @@ func TestResolver_AuthorizedUserRepositories(t *testing.T) {
 					}
 				}
 			`,
-					ExpectedResult: `
+					ExpectedResult: fmt.Sprintf(`
 				{
 					"authorizedUserRepositories": {
 						"nodes": [
-							{"id":"UmVwb3NpdG9yeTox"}
+							{"id":"%s"}
 						]
     				}
 				}
-			`,
+			`, graphqlbackend.MarshalRepositoryID(1)),
 				},
 			},
 		},
 		{
 			name: "check authorized repos via username",
-			gqlTests: []*gqltesting.Test{
+			gqlTests: []*graphqlbackend.Test{
 				{
 					Schema: mustParseGraphQLSchema(t, db),
 					Query: `
@@ -427,21 +486,21 @@ func TestResolver_AuthorizedUserRepositories(t *testing.T) {
 					}
 				}
 			`,
-					ExpectedResult: `
+					ExpectedResult: fmt.Sprintf(`
 				{
 					"authorizedUserRepositories": {
 						"nodes": [
-							{"id":"UmVwb3NpdG9yeTox"}
+							{"id":"%s"}
 						]
     				}
 				}
-			`,
+			`, graphqlbackend.MarshalRepositoryID(1)),
 				},
 			},
 		},
 		{
 			name: "check pending authorized repos via email",
-			gqlTests: []*gqltesting.Test{
+			gqlTests: []*graphqlbackend.Test{
 				{
 					Schema: mustParseGraphQLSchema(t, db),
 					Query: `
@@ -455,21 +514,21 @@ func TestResolver_AuthorizedUserRepositories(t *testing.T) {
 					}
 				}
 			`,
-					ExpectedResult: `
+					ExpectedResult: fmt.Sprintf(`
 				{
 					"authorizedUserRepositories": {
 						"nodes": [
-							{"id":"UmVwb3NpdG9yeToy"}
+							{"id":"%s"},{"id":"%s"},{"id":"%s"},{"id":"%s"}
 						]
     				}
 				}
-			`,
+			`, graphqlbackend.MarshalRepositoryID(2), graphqlbackend.MarshalRepositoryID(3), graphqlbackend.MarshalRepositoryID(4), graphqlbackend.MarshalRepositoryID(5)),
 				},
 			},
 		},
 		{
 			name: "check pending authorized repos via username",
-			gqlTests: []*gqltesting.Test{
+			gqlTests: []*graphqlbackend.Test{
 				{
 					Schema: mustParseGraphQLSchema(t, db),
 					Query: `
@@ -483,12 +542,97 @@ func TestResolver_AuthorizedUserRepositories(t *testing.T) {
 					}
 				}
 			`,
-					ExpectedResult: `
+					ExpectedResult: fmt.Sprintf(`
 				{
 					"authorizedUserRepositories": {
 						"nodes": [
-							{"id":"UmVwb3NpdG9yeToy"}
+							{"id":"%s"},{"id":"%s"},{"id":"%s"},{"id":"%s"}
 						]
+    				}
+				}
+			`, graphqlbackend.MarshalRepositoryID(2), graphqlbackend.MarshalRepositoryID(3), graphqlbackend.MarshalRepositoryID(4), graphqlbackend.MarshalRepositoryID(5)),
+				},
+			},
+		},
+		{
+			name: "check pending authorized repos via username with pagination, page 1",
+			gqlTests: []*graphqlbackend.Test{
+				{
+					Schema: mustParseGraphQLSchema(t, db),
+					Query: fmt.Sprintf(`
+				{
+					authorizedUserRepositories(
+						first: 2,
+						after: "%s",
+						username: "bob") {
+						nodes {
+							id
+						}
+					}
+				}
+			`, graphqlbackend.MarshalRepositoryID(2)),
+					ExpectedResult: fmt.Sprintf(`
+				{
+					"authorizedUserRepositories": {
+						"nodes": [
+							{"id":"%s"},{"id":"%s"}
+						]
+                    }
+				}
+			`, graphqlbackend.MarshalRepositoryID(3), graphqlbackend.MarshalRepositoryID(4)),
+				},
+			},
+		},
+		{
+			name: "check pending authorized repos via username with pagination, page 2",
+			gqlTests: []*graphqlbackend.Test{
+				{
+					Schema: mustParseGraphQLSchema(t, db),
+					Query: fmt.Sprintf(`
+				{
+					authorizedUserRepositories(
+						first: 2,
+						after: "%s",
+						username: "bob") {
+						nodes {
+							id
+						}
+					}
+				}
+			`, graphqlbackend.MarshalRepositoryID(4)),
+					ExpectedResult: fmt.Sprintf(`
+				{
+					"authorizedUserRepositories": {
+						"nodes": [
+							{"id":"%s"}
+						]
+    				}
+				}
+			`, graphqlbackend.MarshalRepositoryID(5)),
+				},
+			},
+		},
+		{
+			name: "check pending authorized repos via username given no IDs after, after ID, return empty",
+			gqlTests: []*graphqlbackend.Test{
+				{
+					Schema: mustParseGraphQLSchema(t, db),
+					Query: fmt.Sprintf(`
+						{
+							authorizedUserRepositories(
+								first: 2,
+								after: "%s",
+								username: "bob") {
+								nodes {
+									id
+								}
+							}
+						}
+					`, graphqlbackend.MarshalRepositoryID(5)),
+					ExpectedResult: `
+				{
+					"authorizedUserRepositories": {
+						"nodes": []
     				}
 				}
 			`,
@@ -498,7 +642,7 @@ func TestResolver_AuthorizedUserRepositories(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			gqltesting.RunTests(t, test.gqlTests)
+			graphqlbackend.RunTests(t, test.gqlTests)
 		})
 	}
 }
@@ -534,11 +678,11 @@ func TestResolver_UsersWithPendingPermissions(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		gqlTests []*gqltesting.Test
+		gqlTests []*graphqlbackend.Test
 	}{
 		{
 			name: "list pending users with their bind IDs",
-			gqlTests: []*gqltesting.Test{
+			gqlTests: []*graphqlbackend.Test{
 				{
 					Schema: mustParseGraphQLSchema(t, db),
 					Query: `
@@ -560,7 +704,7 @@ func TestResolver_UsersWithPendingPermissions(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			gqltesting.RunTests(t, test.gqlTests)
+			graphqlbackend.RunTests(t, test.gqlTests)
 		})
 	}
 }
@@ -603,8 +747,7 @@ func TestResolver_AuthorizedUsers(t *testing.T) {
 
 	perms := edb.NewStrictMockPermsStore()
 	perms.LoadRepoPermissionsFunc.SetDefaultHook(func(_ context.Context, p *authz.RepoPermissions) error {
-		p.UserIDs = roaring.NewBitmap()
-		p.UserIDs.Add(1)
+		p.UserIDs = map[int32]struct{}{1: {}, 2: {}, 3: {}, 4: {}, 5: {}}
 		return nil
 	})
 
@@ -615,11 +758,11 @@ func TestResolver_AuthorizedUsers(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		gqlTests []*gqltesting.Test
+		gqlTests []*graphqlbackend.Test
 	}{
 		{
 			name: "get authorized users",
-			gqlTests: []*gqltesting.Test{
+			gqlTests: []*graphqlbackend.Test{
 				{
 					Schema: mustParseGraphQLSchema(t, db),
 					Query: `
@@ -633,15 +776,109 @@ func TestResolver_AuthorizedUsers(t *testing.T) {
 					}
 				}
 			`,
-					ExpectedResult: `
+					ExpectedResult: fmt.Sprintf(`
 				{
 					"repository": {
 						"authorizedUsers": {
 							"nodes":[
-								{"id":"VXNlcjox"}
+								{"id":"%s"},{"id":"%s"},{"id":"%s"},{"id":"%s"},{"id":"%s"}
 							]
 						}
     				}
+				}
+			`, graphqlbackend.MarshalUserID(1), graphqlbackend.MarshalUserID(2), graphqlbackend.MarshalUserID(3), graphqlbackend.MarshalUserID(4), graphqlbackend.MarshalUserID(5)),
+				},
+			},
+		},
+		{
+			name: "get authorized users with pagination, page 1",
+			gqlTests: []*graphqlbackend.Test{
+				{
+					Schema: mustParseGraphQLSchema(t, db),
+					Query: fmt.Sprintf(`
+{
+					repository(name: "github.com/owner/repo") {
+						authorizedUsers(
+							first: 2,
+							after: "%s") {
+							nodes {
+								id
+							}
+						}
+					}
+				}
+			`, graphqlbackend.MarshalUserID(1)),
+					ExpectedResult: fmt.Sprintf(`
+				{
+					"repository": {
+						"authorizedUsers": {
+							"nodes":[
+								{"id":"%s"},{"id":"%s"}
+							]
+						}
+    				}
+				}
+			`, graphqlbackend.MarshalUserID(2), graphqlbackend.MarshalUserID(3)),
+				},
+			},
+		},
+		{
+			name: "get authorized users with pagination, page 2",
+			gqlTests: []*graphqlbackend.Test{
+				{
+					Schema: mustParseGraphQLSchema(t, db),
+					Query: fmt.Sprintf(`
+{
+					repository(name: "github.com/owner/repo") {
+						authorizedUsers(
+							first: 2,
+							after: "%s") {
+							nodes {
+								id
+							}
+						}
+					}
+				}
+			`, graphqlbackend.MarshalUserID(3)),
+					ExpectedResult: fmt.Sprintf(`
+				{
+					"repository": {
+						"authorizedUsers": {
+							"nodes":[
+								{"id":"%s"},{"id":"%s"}
+							]
+						}
+    				}
+				}
+			`, graphqlbackend.MarshalUserID(4), graphqlbackend.MarshalUserID(5)),
+				},
+			},
+		},
+		{
+			name: "get authorized users given no IDs after, after ID, return empty",
+			gqlTests: []*graphqlbackend.Test{
+				{
+					Schema: mustParseGraphQLSchema(t, db),
+					Query: fmt.Sprintf(`
+{
+					repository(name: "github.com/owner/repo") {
+						authorizedUsers(
+							first: 2,
+							after: "%s") {
+							nodes {
+								id
+							}
+						}
+					}
+				}
+			`, graphqlbackend.MarshalUserID(5)),
+					ExpectedResult: `
+				{
+					"repository": {
+						"authorizedUsers": {
+							"nodes":[]
+						}
+                    }
 				}
 			`,
 				},
@@ -650,7 +887,7 @@ func TestResolver_AuthorizedUsers(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			gqltesting.RunTests(t, test.gqlTests)
+			graphqlbackend.RunTests(t, test.gqlTests)
 		})
 	}
 }
@@ -698,11 +935,11 @@ func TestResolver_RepositoryPermissionsInfo(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		gqlTests []*gqltesting.Test
+		gqlTests []*graphqlbackend.Test
 	}{
 		{
 			name: "get permissions information",
-			gqlTests: []*gqltesting.Test{
+			gqlTests: []*graphqlbackend.Test{
 				{
 					Schema: mustParseGraphQLSchema(t, db),
 					Query: `
@@ -712,6 +949,7 @@ func TestResolver_RepositoryPermissionsInfo(t *testing.T) {
 							permissions
 							syncedAt
 							updatedAt
+							unrestricted
 						}
 					}
 				}
@@ -722,7 +960,8 @@ func TestResolver_RepositoryPermissionsInfo(t *testing.T) {
 						"permissionsInfo": {
 							"permissions": ["READ"],
 							"syncedAt": "%[1]s",
-							"updatedAt": "%[1]s"
+							"updatedAt": "%[1]s",
+							"unrestricted": false
 						}
     				}
 				}
@@ -733,7 +972,7 @@ func TestResolver_RepositoryPermissionsInfo(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			gqltesting.RunTests(t, test.gqlTests)
+			graphqlbackend.RunTests(t, test.gqlTests)
 		})
 	}
 }
@@ -781,11 +1020,11 @@ func TestResolver_UserPermissionsInfo(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		gqlTests []*gqltesting.Test
+		gqlTests []*graphqlbackend.Test
 	}{
 		{
 			name: "get permissions information",
-			gqlTests: []*gqltesting.Test{
+			gqlTests: []*graphqlbackend.Test{
 				{
 					Schema: mustParseGraphQLSchema(t, db),
 					Query: `
@@ -816,7 +1055,7 @@ func TestResolver_UserPermissionsInfo(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			gqltesting.RunTests(t, test.gqlTests)
+			graphqlbackend.RunTests(t, test.gqlTests)
 		})
 	}
 }
@@ -890,7 +1129,7 @@ func TestResolver_SetSubRepositoryPermissionsForUsers(t *testing.T) {
 
 		ctx := actor.WithActor(context.Background(), &actor.Actor{UID: 1})
 
-		test := &gqltesting.Test{
+		test := &graphqlbackend.Test{
 			Context: ctx,
 			Schema:  mustParseGraphQLSchema(t, db),
 			Query: `
@@ -912,7 +1151,7 @@ func TestResolver_SetSubRepositoryPermissionsForUsers(t *testing.T) {
 					`,
 		}
 
-		gqltesting.RunTests(t, []*gqltesting.Test{test})
+		graphqlbackend.RunTests(t, []*graphqlbackend.Test{test})
 
 		// Assert that we actually tried to store perms
 		h := subReposStore.UpsertFunc.History()

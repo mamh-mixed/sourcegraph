@@ -80,3 +80,80 @@ export function changelogURL(version: string): string {
     const versionAnchor = version.replace(/\./g, '-')
     return `https://sourcegraph.com/github.com/sourcegraph/sourcegraph/-/blob/CHANGELOG.md#${versionAnchor}`
 }
+
+function ensureBranchUpToDate(baseBranch: string, targetBranch: string): boolean {
+    const [behind, ahead] = execa
+        .sync('git', ['rev-list', '--left-right', '--count', targetBranch + '...' + baseBranch])
+        .stdout.split('\t')
+
+    if (behind === '0' && ahead === '0') {
+        return true
+    }
+
+    const countCommits = function (numberOfCommits: string, aheadOrBehind: string): string {
+        return numberOfCommits === '1'
+            ? numberOfCommits + ' commit ' + aheadOrBehind
+            : numberOfCommits + ' commits ' + aheadOrBehind
+    }
+
+    if (behind !== '0' && ahead !== '0') {
+        console.log(
+            `Your branch is ${countCommits(ahead, 'ahead')} and ${countCommits(
+                behind,
+                'behind'
+            )} the branch ${targetBranch}.`
+        )
+    } else if (behind !== '0') {
+        console.log(`Your branch is ${countCommits(behind, 'behind')} the branch ${targetBranch}.`)
+    } else if (ahead !== '0') {
+        console.log(`Your branch is ${countCommits(ahead, 'ahead')} the branch ${targetBranch}.`)
+    }
+
+    return false
+}
+
+export function ensureMainBranchUpToDate(): void {
+    const mainBranch = 'main'
+    const remoteMainBranch = 'origin/main'
+    const currentBranch = execa.sync('git', ['rev-parse', '--abbrev-ref', 'HEAD']).stdout.trim()
+    if (currentBranch !== mainBranch) {
+        console.log(
+            `Expected to be on branch ${mainBranch}, but was on ${currentBranch}. Run \`git checkout ${mainBranch}\` to switch to the main branch.`
+        )
+        process.exit(1)
+    }
+    execa.sync('git', ['remote', 'update'], { stdout: 'ignore' })
+    if (!ensureBranchUpToDate(mainBranch, remoteMainBranch)) {
+        process.exit(1)
+    }
+}
+
+export function ensureReleaseBranchUpToDate(branch: string): void {
+    const remoteBranch = 'origin/' + branch
+    if (!ensureBranchUpToDate(branch, remoteBranch)) {
+        process.exit(1)
+    }
+}
+
+interface ContainerRegistryCredential {
+    username: string
+    password: string
+    hostname: string
+}
+
+export async function getContainerRegistryCredential(registryHostname: string): Promise<ContainerRegistryCredential> {
+    const registryUsername = await readLine(
+        `Enter your container registry (${registryHostname} ) username: `,
+        `${cacheFolder}/cr_${registryHostname.replace('.', '_')}_username.txt`
+    )
+    const registryPassowrd = await readLine(
+        `Enter your container registry (${registryHostname} ) password or access token: `,
+        `${cacheFolder}/cr_${registryHostname.replace('.', '_')}_password.txt`
+    )
+    const credential: ContainerRegistryCredential = {
+        username: registryUsername,
+        password: registryPassowrd,
+        hostname: registryHostname,
+    }
+    return credential
+}

@@ -1,11 +1,12 @@
-import classNames from 'classnames'
 import React, { useCallback, useState } from 'react'
 
-import { pluralize } from '@sourcegraph/shared/src/util/strings'
-import { DismissibleAlert } from '@sourcegraph/web/src/components/DismissibleAlert'
-import { Button, useObservable, Link } from '@sourcegraph/wildcard'
+import classNames from 'classnames'
+
+import { pluralize } from '@sourcegraph/common'
+import { Button, useObservable, Link, Typography } from '@sourcegraph/wildcard'
 
 import { authenticatedUser } from '../../../auth'
+import { DismissibleAlert } from '../../../components/DismissibleAlert'
 import { BatchChangeFields } from '../../../graphql-operations'
 import { CodeHost } from '../CodeHost'
 
@@ -18,7 +19,7 @@ export interface Props {
     isSiteAdmin?: boolean
 }
 
-export const WebhookAlert: React.FunctionComponent<Props> = ({
+export const WebhookAlert: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
     batchChange: {
         id,
         currentSpec: {
@@ -52,7 +53,7 @@ export const WebhookAlert: React.FunctionComponent<Props> = ({
     return (
         <DismissibleAlert variant="warning" partialStorageKey={id}>
             <div>
-                <h4>Changeset information may not be up to date</h4>
+                <Typography.H4>Changeset information may not be up to date</Typography.H4>
                 <p className={styles.blurb}>
                     Sourcegraph will poll for updates because{' '}
                     <Button className={classNames(styles.openLink, 'p-0')} onClick={toggleOpen} variant="link">

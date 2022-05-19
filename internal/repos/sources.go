@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cockroachdb/errors"
-	"github.com/hashicorp/go-multierror"
-
-	"github.com/sourcegraph/sourcegraph/internal/database/dbutil"
+	"github.com/sourcegraph/sourcegraph/internal/codeintel/dependencies"
+	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc/auth"
 	"github.com/sourcegraph/sourcegraph/internal/httpcli"
 	"github.com/sourcegraph/sourcegraph/internal/types"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 // A Sourcer converts the given ExternalService to a Source whose yielded Repos
@@ -24,9 +23,9 @@ type Sourcer func(*types.ExternalService) (Source, error)
 // http.Clients needed to contact the respective upstream code host APIs.
 //
 // The provided decorator functions will be applied to the Source.
-func NewSourcer(cf *httpcli.Factory, decs ...func(Source) Source) Sourcer {
+func NewSourcer(db database.DB, cf *httpcli.Factory, decs ...func(Source) Source) Sourcer {
 	return func(svc *types.ExternalService) (Source, error) {
-		src, err := NewSource(svc, cf)
+		src, err := NewSource(db, svc, cf)
 		if err != nil {
 			return nil, err
 		}
@@ -40,30 +39,39 @@ func NewSourcer(cf *httpcli.Factory, decs ...func(Source) Source) Sourcer {
 }
 
 // NewSource returns a repository yielding Source from the given ExternalService configuration.
-func NewSource(svc *types.ExternalService, cf *httpcli.Factory) (Source, error) {
+func NewSource(db database.DB, svc *types.ExternalService, cf *httpcli.Factory) (Source, error) {
+	externalServicesStore := db.ExternalServices()
+
 	switch strings.ToUpper(svc.Kind) {
 	case extsvc.KindGitHub:
-		return NewGithubSource(svc, cf)
+		return NewGithubSource(externalServicesStore, svc, cf)
 	case extsvc.KindGitLab:
 		return NewGitLabSource(svc, cf)
+	case extsvc.KindGerrit:
+		return NewGerritSource(svc, cf)
 	case extsvc.KindBitbucketServer:
 		return NewBitbucketServerSource(svc, cf)
 	case extsvc.KindBitbucketCloud:
 		return NewBitbucketCloudSource(svc, cf)
 	case extsvc.KindGitolite:
-		return NewGitoliteSource(svc, cf)
+		return NewGitoliteSource(db, svc, cf)
 	case extsvc.KindPhabricator:
 		return NewPhabricatorSource(svc, cf)
 	case extsvc.KindAWSCodeCommit:
 		return NewAWSCodeCommitSource(svc, cf)
 	case extsvc.KindPerforce:
 		return NewPerforceSource(svc)
+	case extsvc.KindGoModules:
+		return NewGoModulesSource(svc, cf)
 	case extsvc.KindJVMPackages:
+		// JVM doesn't need a client factory because we use coursier.
 		return NewJVMPackagesSource(svc)
 	case extsvc.KindPagure:
 		return NewPagureSource(svc, cf)
-	case extsvc.KindNPMPackages:
-		return NewNPMPackagesSource(svc)
+	case extsvc.KindNpmPackages:
+		return NewNpmPackagesSource(svc, cf)
+	case extsvc.KindPythonPackages:
+		return NewPythonPackagesSource(svc, cf)
 	case extsvc.KindOther:
 		return NewOtherSource(svc, cf)
 	default:
@@ -81,23 +89,24 @@ type Source interface {
 	ExternalServices() types.ExternalServices
 }
 
-// RepoGetter captures the optional GetRepo method of a Source. It's used only
-// on sourcegraph.com to lazily sync individual repos.
+// RepoGetter captures the optional GetRepo method of a Source. It's used on
+// sourcegraph.com to lazily sync individual repos and to lazily sync dependency
+// repos on any customer instance.
 type RepoGetter interface {
 	GetRepo(context.Context, string) (*types.Repo, error)
 }
 
-type DBSource interface {
+type DependenciesServiceSource interface {
 	Source
-	SetDB(dbutil.DB)
+	SetDependenciesService(depsSvc *dependencies.Service)
 }
 
-// WithDB returns a decorator used in NewSourcer that calls SetDB on Sources that
-// can be upgraded to it.
-func WithDB(db dbutil.DB) func(Source) Source {
+// WithDependenciesService returns a decorator used in NewSourcer that calls SetDB on
+// Sources that can be upgraded to it.
+func WithDependenciesService(depsSvc *dependencies.Service) func(Source) Source {
 	return func(src Source) Source {
-		if s, ok := src.(DBSource); ok {
-			s.SetDB(db)
+		if s, ok := src.(DependenciesServiceSource); ok {
+			s.SetDependenciesService(depsSvc)
 			return s
 		}
 		return src
@@ -161,14 +170,11 @@ type SourceError struct {
 }
 
 func (s *SourceError) Error() string {
-	var e *multierror.Error
+	var e errors.MultiError
 	if errors.As(s.Err, &e) {
 		// Create new Error with custom formatter. Do not mutate otherwise can
 		// race with other callers of Error.
-		return (&multierror.Error{
-			Errors:      e.Errors,
-			ErrorFormat: sourceErrorFormatFunc,
-		}).Error()
+		return sourceErrorFormatFunc(e.Errors())
 	}
 	return s.Err.Error()
 }
@@ -206,18 +212,18 @@ func listAll(ctx context.Context, src Source) ([]*types.Repo, error) {
 
 	var (
 		repos []*types.Repo
-		errs  *multierror.Error
+		errs  error
 	)
 
 	for res := range results {
 		if res.Err != nil {
 			for _, extSvc := range res.Source.ExternalServices() {
-				errs = multierror.Append(errs, &SourceError{Err: res.Err, ExtSvc: extSvc})
+				errs = errors.Append(errs, &SourceError{Err: res.Err, ExtSvc: extSvc})
 			}
 			continue
 		}
 		repos = append(repos, res.Repo)
 	}
 
-	return repos, errs.ErrorOrNil()
+	return repos, errs
 }

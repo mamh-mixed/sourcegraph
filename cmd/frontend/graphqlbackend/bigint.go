@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"strconv"
 
-	"github.com/cockroachdb/errors"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 // BigInt implements the BigInt GraphQL scalar type.
@@ -27,7 +27,7 @@ func (v BigInt) MarshalJSON() ([]byte, error) {
 	return json.Marshal(strconv.FormatInt(v.Int, 10))
 }
 
-func (v *BigInt) UnmarshalGraphQL(input interface{}) error {
+func (v *BigInt) UnmarshalGraphQL(input any) error {
 	s, ok := input.(string)
 	if !ok {
 		return errors.Errorf("invalid GraphQL BigInt scalar value input (got %T, expected string)", input)

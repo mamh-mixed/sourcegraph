@@ -12,9 +12,7 @@ import (
 	"net/http"
 	"strconv"
 	"time"
-	"unicode/utf8"
 
-	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/inconshreveable/log15"
 	"github.com/jackc/pgconn"
@@ -27,11 +25,12 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/cookie"
 	"github.com/sourcegraph/sourcegraph/internal/database/basestore"
 	"github.com/sourcegraph/sourcegraph/internal/database/dbutil"
-	"github.com/sourcegraph/sourcegraph/internal/errcode"
 	"github.com/sourcegraph/sourcegraph/internal/randstring"
+	"github.com/sourcegraph/sourcegraph/internal/security"
 	"github.com/sourcegraph/sourcegraph/internal/timeutil"
 	"github.com/sourcegraph/sourcegraph/internal/trace"
 	"github.com/sourcegraph/sourcegraph/internal/types"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 // User hooks
@@ -114,7 +113,7 @@ func (u *userStore) Transact(ctx context.Context) (UserStore, error) {
 
 // userNotFoundErr is the error that is returned when a user is not found.
 type userNotFoundErr struct {
-	args []interface{}
+	args []any
 }
 
 func (err userNotFoundErr) Error() string {
@@ -128,7 +127,7 @@ func (err userNotFoundErr) NotFound() bool {
 // NewUserNotFoundError returns a new error indicating that the user with the given user ID was not
 // found.
 func NewUserNotFoundError(userID int32) error {
-	return userNotFoundErr{args: []interface{}{"userID", userID}}
+	return userNotFoundErr{args: []any{"userID", userID}}
 }
 
 // errCannotCreateUser is the error that is returned when
@@ -224,22 +223,9 @@ func (u *userStore) Create(ctx context.Context, info NewUser) (newUser *types.Us
 	return newUser, err
 }
 
-// maxPasswordRunes is the maximum number of UTF-8 runes that a password can contain.
-// This safety limit is to protect us from a DDOS attack caused by hashing very large passwords on Sourcegraph.com.
-const maxPasswordRunes = 256
-
-// CheckPasswordLength returns an error if the length of the password is not in the required range.
-func CheckPasswordLength(pw string) error {
-	if pw == "" {
-		return errors.New("password empty")
-	}
-	pwLen := utf8.RuneCountInString(pw)
-	minPasswordRunes := conf.AuthMinPasswordLength()
-	if pwLen < minPasswordRunes ||
-		pwLen > maxPasswordRunes {
-		return errcode.NewPresentationError(fmt.Sprintf("Password may not be less than %d or be more than %d characters.", minPasswordRunes, maxPasswordRunes))
-	}
-	return nil
+// CheckPassword returns an error depending on the method used for validation
+func CheckPassword(pw string) error {
+	return security.ValidatePassword(pw)
 }
 
 // CreateInTransaction is like Create, except it is expected to be run from within a
@@ -251,7 +237,7 @@ func (u *userStore) CreateInTransaction(ctx context.Context, info NewUser) (newU
 	}
 
 	if info.EnforcePasswordLength {
-		if err := CheckPasswordLength(info.Password); err != nil {
+		if err := security.ValidatePassword(info.Password); err != nil {
 			return nil, err
 		}
 	}
@@ -260,6 +246,7 @@ func (u *userStore) CreateInTransaction(ctx context.Context, info NewUser) (newU
 		return nil, errors.New("no email verification code provided for new user with unverified email")
 	}
 
+	searchable := true
 	createdAt := timeutil.Now()
 	updatedAt := createdAt
 	invalidatedSessionsAt := createdAt
@@ -280,9 +267,6 @@ func (u *userStore) CreateInTransaction(ctx context.Context, info NewUser) (newU
 	if info.AvatarURL != "" {
 		avatarURL = &info.AvatarURL
 	}
-
-	dbEmailCode := sql.NullString{String: info.EmailVerificationCode}
-	dbEmailCode.Valid = info.EmailVerificationCode != ""
 
 	// Creating the initial site admin user is equivalent to initializing the
 	// site. ensureInitialized runs in the transaction, so we are guaranteed that the user account
@@ -307,8 +291,8 @@ func (u *userStore) CreateInTransaction(ctx context.Context, info NewUser) (newU
 	var siteAdmin bool
 	err = u.QueryRow(
 		ctx,
-		sqlf.Sprintf("INSERT INTO users(username, display_name, avatar_url, created_at, updated_at, passwd, invalidated_sessions_at, tos_accepted, site_admin) VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s AND NOT EXISTS(SELECT * FROM users)) RETURNING id, site_admin",
-			info.Username, info.DisplayName, avatarURL, createdAt, updatedAt, passwd, invalidatedSessionsAt, info.TosAccepted, !alreadyInitialized)).Scan(&id, &siteAdmin)
+		sqlf.Sprintf("INSERT INTO users(username, display_name, avatar_url, created_at, updated_at, passwd, invalidated_sessions_at, tos_accepted, site_admin) VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s AND NOT EXISTS(SELECT * FROM users)) RETURNING id, site_admin, searchable",
+			info.Username, info.DisplayName, avatarURL, createdAt, updatedAt, passwd, invalidatedSessionsAt, info.TosAccepted, !alreadyInitialized)).Scan(&id, &siteAdmin, &searchable)
 	if err != nil {
 		var e *pgconn.PgError
 		if errors.As(err, &e) {
@@ -367,6 +351,7 @@ func (u *userStore) CreateInTransaction(ctx context.Context, info NewUser) (newU
 		SiteAdmin:             siteAdmin,
 		BuiltinAuth:           info.Password != "",
 		InvalidatedSessionsAt: invalidatedSessionsAt,
+		Searchable:            searchable,
 	}
 	{
 		// Run hooks.
@@ -416,7 +401,7 @@ func logAccountCreatedEvent(ctx context.Context, db dbutil.DB, u *types.User, se
 		Timestamp:       time.Now(),
 	}
 
-	SecurityEventLogs(db).LogEvent(ctx, event)
+	NewDB(db).SecurityEventLogs().LogEvent(ctx, event)
 }
 
 // orgsForAllUsersToJoin returns the list of org names that all users should be joined to. The second return value
@@ -445,6 +430,7 @@ type UserUpdate struct {
 	// - If pointer to a non-empty string, the value in the DB is set to the string.
 	DisplayName, AvatarURL *string
 	TosAccepted            *bool
+	Searchable             *bool
 }
 
 // Update updates a user's profile information.
@@ -485,6 +471,9 @@ func (u *userStore) Update(ctx context.Context, id int32, update UserUpdate) (er
 	if update.TosAccepted != nil {
 		fieldUpdates = append(fieldUpdates, sqlf.Sprintf("tos_accepted=%s", *update.TosAccepted))
 	}
+	if update.Searchable != nil {
+		fieldUpdates = append(fieldUpdates, sqlf.Sprintf("searchable=%s", *update.Searchable))
+	}
 	query := sqlf.Sprintf("UPDATE users SET %s WHERE id=%d", sqlf.Join(fieldUpdates, ", "), id)
 	res, err := tx.ExecResult(ctx, query)
 	if err != nil {
@@ -499,7 +488,7 @@ func (u *userStore) Update(ctx context.Context, id int32, update UserUpdate) (er
 		return err
 	}
 	if nrows == 0 {
-		return userNotFoundErr{args: []interface{}{id}}
+		return userNotFoundErr{args: []any{id}}
 	}
 	return nil
 }
@@ -521,7 +510,7 @@ func (u *userStore) Delete(ctx context.Context, id int32) (err error) {
 		return err
 	}
 	if rows == 0 {
-		return userNotFoundErr{args: []interface{}{id}}
+		return userNotFoundErr{args: []any{id}}
 	}
 
 	// Release the username so it can be used by another user or org.
@@ -611,7 +600,7 @@ func (u *userStore) HardDelete(ctx context.Context, id int32) (err error) {
 		return err
 	}
 	if rows == 0 {
-		return userNotFoundErr{args: []interface{}{id}}
+		return userNotFoundErr{args: []any{id}}
 	}
 
 	logUserDeletionEvent(ctx, u.Handle().DB(), id, SecurityEventNameAccountNuked)
@@ -639,7 +628,7 @@ func logUserDeletionEvent(ctx context.Context, db dbutil.DB, id int32, name Secu
 		Timestamp:       time.Now(),
 	}
 
-	SecurityEventLogs(db).LogEvent(ctx, event)
+	NewDB(db).SecurityEventLogs().LogEvent(ctx, event)
 }
 
 // SetIsSiteAdmin sets the user with the given ID to be or not to be the site admin.
@@ -740,7 +729,7 @@ func (u *userStore) InvalidateSessionsByID(ctx context.Context, id int32) (err e
 		return err
 	}
 	if nrows == 0 {
-		return userNotFoundErr{args: []interface{}{id}}
+		return userNotFoundErr{args: []any{id}}
 	}
 	return nil
 }
@@ -858,7 +847,7 @@ func (u *userStore) getOneBySQL(ctx context.Context, q *sqlf.Query) (*types.User
 
 // getBySQL returns users matching the SQL query, if any exist.
 func (u *userStore) getBySQL(ctx context.Context, query *sqlf.Query) ([]*types.User, error) {
-	q := sqlf.Sprintf("SELECT u.id, u.username, u.display_name, u.avatar_url, u.created_at, u.updated_at, u.site_admin, u.passwd IS NOT NULL, u.tags, u.invalidated_sessions_at, u.tos_accepted FROM users u %s", query)
+	q := sqlf.Sprintf("SELECT u.id, u.username, u.display_name, u.avatar_url, u.created_at, u.updated_at, u.site_admin, u.passwd IS NOT NULL, u.tags, u.invalidated_sessions_at, u.tos_accepted, u.searchable FROM users u %s", query)
 	rows, err := u.Query(ctx, q)
 	if err != nil {
 		return nil, err
@@ -869,7 +858,7 @@ func (u *userStore) getBySQL(ctx context.Context, query *sqlf.Query) ([]*types.U
 	for rows.Next() {
 		var u types.User
 		var displayName, avatarURL sql.NullString
-		err := rows.Scan(&u.ID, &u.Username, &displayName, &avatarURL, &u.CreatedAt, &u.UpdatedAt, &u.SiteAdmin, &u.BuiltinAuth, pq.Array(&u.Tags), &u.InvalidatedSessionsAt, &u.TosAccepted)
+		err := rows.Scan(&u.ID, &u.Username, &displayName, &avatarURL, &u.CreatedAt, &u.UpdatedAt, &u.SiteAdmin, &u.BuiltinAuth, pq.Array(&u.Tags), &u.InvalidatedSessionsAt, &u.TosAccepted, &u.Searchable)
 		if err != nil {
 			return nil, err
 		}
@@ -927,7 +916,7 @@ func (u *userStore) RenewPasswordResetCode(ctx context.Context, id int32) (strin
 // SetPassword sets the user's password given a new password and a password reset code
 func (u *userStore) SetPassword(ctx context.Context, id int32, resetCode, newPassword string) (bool, error) {
 	// 🚨 SECURITY: Check min and max password length
-	if err := CheckPasswordLength(newPassword); err != nil {
+	if err := CheckPassword(newPassword); err != nil {
 		return false, err
 	}
 
@@ -976,7 +965,7 @@ func (u *userStore) UpdatePassword(ctx context.Context, id int32, oldPassword, n
 		return errors.New("wrong old password")
 	}
 
-	if err := CheckPasswordLength(newPassword); err != nil {
+	if err := CheckPassword(newPassword); err != nil {
 		return err
 	}
 
@@ -996,7 +985,7 @@ func (u *userStore) UpdatePassword(ctx context.Context, id int32, oldPassword, n
 // don't have any valid login connections.
 func (u *userStore) CreatePassword(ctx context.Context, id int32, password string) error {
 	// 🚨 SECURITY: Check min and max password length
-	if err := CheckPasswordLength(password); err != nil {
+	if err := CheckPassword(password); err != nil {
 		return err
 	}
 
@@ -1083,7 +1072,7 @@ func LogPasswordEvent(ctx context.Context, db dbutil.DB, r *http.Request, name S
 	}
 	event.AnonymousUserID, _ = cookie.AnonymousUID(r)
 
-	SecurityEventLogs(db).LogEvent(ctx, event)
+	NewDB(db).SecurityEventLogs().LogEvent(ctx, event)
 }
 
 func hashPassword(password string) (sql.NullString, error) {
@@ -1135,7 +1124,7 @@ func (u *userStore) SetTag(ctx context.Context, userID int32, tag string, presen
 		return err
 	}
 	if nrows == 0 {
-		return userNotFoundErr{args: []interface{}{userID}}
+		return userNotFoundErr{args: []any{userID}}
 	}
 	return nil
 }
@@ -1147,7 +1136,7 @@ func (u *userStore) HasTag(ctx context.Context, userID int32, tag string) (bool,
 	err := u.QueryRow(ctx, sqlf.Sprintf("SELECT tags FROM users WHERE id = %s", userID)).Scan(pq.Array(&tags))
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return false, userNotFoundErr{[]interface{}{userID}}
+			return false, userNotFoundErr{[]any{userID}}
 		}
 		return false, err
 	}
@@ -1166,7 +1155,7 @@ func (u *userStore) Tags(ctx context.Context, userID int32) (map[string]bool, er
 	err := u.QueryRow(ctx, sqlf.Sprintf("SELECT tags FROM users WHERE id = %s", userID)).Scan(pq.Array(&tags))
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, userNotFoundErr{[]interface{}{userID}}
+			return nil, userNotFoundErr{[]any{userID}}
 		}
 		return nil, err
 	}

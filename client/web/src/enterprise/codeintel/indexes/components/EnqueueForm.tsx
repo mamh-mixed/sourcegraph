@@ -1,4 +1,5 @@
-import React, { FunctionComponent, useCallback, useState } from 'react'
+import { FunctionComponent, useCallback, useState } from 'react'
+
 import { Subject } from 'rxjs'
 
 import { ErrorAlert } from '@sourcegraph/branded/src/components/alerts'
@@ -17,7 +18,7 @@ enum State {
     Queued,
 }
 
-export const EnqueueForm: FunctionComponent<EnqueueFormProps> = ({ repoId, querySubject }) => {
+export const EnqueueForm: FunctionComponent<React.PropsWithChildren<EnqueueFormProps>> = ({ repoId, querySubject }) => {
     const [revlike, setRevlike] = useState('HEAD')
     const [state, setState] = useState(() => State.Idle)
     const [queueResult, setQueueResult] = useState<number>()

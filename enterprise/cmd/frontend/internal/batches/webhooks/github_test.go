@@ -16,7 +16,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	gh "github.com/google/go-github/v28/github"
+	gh "github.com/google/go-github/v43/github"
 
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/webhooks"
 	"github.com/sourcegraph/sourcegraph/enterprise/internal/batches/sources"
@@ -57,7 +57,7 @@ func testGitHubWebhook(db *sql.DB, userID int32) func(*testing.T) {
 			token = "no-GITHUB_TOKEN-set"
 		}
 		repoStore := database.Repos(db)
-		esStore := database.ExternalServices(db)
+		esStore := database.NewDB(db).ExternalServices()
 		extSvc := &types.ExternalService{
 			Kind:        extsvc.KindGitHub,
 			DisplayName: "GitHub",
@@ -74,7 +74,7 @@ func testGitHubWebhook(db *sql.DB, userID int32) func(*testing.T) {
 			t.Fatal(t)
 		}
 
-		githubSrc, err := repos.NewGithubSource(extSvc, cf)
+		githubSrc, err := repos.NewGithubSource(database.NewDB(db).ExternalServices(), extSvc, cf)
 		if err != nil {
 			t.Fatal(t)
 		}
@@ -169,7 +169,10 @@ func testGitHubWebhook(db *sql.DB, userID int32) func(*testing.T) {
 						}
 						hook.Register(&handler)
 
-						u := extsvc.WebhookURL(extsvc.TypeGitHub, extSvc.ID, "https://example.com/")
+						u, err := extsvc.WebhookURL(extsvc.TypeGitHub, extSvc.ID, nil, "https://example.com/")
+						if err != nil {
+							t.Fatal(err)
+						}
 
 						req, err := http.NewRequest("POST", u, bytes.NewReader(event.Data))
 						if err != nil {
@@ -230,8 +233,8 @@ func testGitHubWebhook(db *sql.DB, userID int32) func(*testing.T) {
 					NodeID: &githubRepo.ExternalRepo.ID,
 				},
 				Action: &action,
-			}); err == nil {
-				t.Error("unexpected nil error")
+			}); err != nil {
+				t.Errorf("unexpected non-nil error: %v", err)
 			}
 		})
 	}

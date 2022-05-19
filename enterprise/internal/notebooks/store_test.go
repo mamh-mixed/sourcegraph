@@ -5,11 +5,10 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/cockroachdb/errors"
-
 	"github.com/sourcegraph/sourcegraph/internal/actor"
 	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/database/dbtest"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 func createNotebooks(ctx context.Context, store NotebooksStore, notebooks []*Notebook) ([]*Notebook, error) {
@@ -40,7 +39,7 @@ func notebookByOrg(notebook *Notebook, creatorID int32, orgID int32) *Notebook {
 
 func TestCreateAndGetNotebook(t *testing.T) {
 	t.Parallel()
-	db := dbtest.NewDB(t)
+	db := database.NewDB(dbtest.NewDB(t))
 	ctx := actor.WithInternalActor(context.Background())
 	u := database.Users(db)
 	n := Notebooks(db)
@@ -56,6 +55,17 @@ func TestCreateAndGetNotebook(t *testing.T) {
 		{ID: "3", Type: NotebookFileBlockType, FileInput: &NotebookFileBlockInput{
 			RepositoryName: "github.com/sourcegraph/sourcegraph", FilePath: "client/web/file.tsx"},
 		},
+		{ID: "4", Type: NotebookSymbolBlockType, SymbolInput: &NotebookSymbolBlockInput{
+			RepositoryName:      "github.com/sourcegraph/sourcegraph",
+			FilePath:            "client/web/file.tsx",
+			LineContext:         1,
+			SymbolName:          "function",
+			SymbolContainerName: "container",
+			SymbolKind:          "FUNCTION",
+		}},
+		{ID: "5", Type: NotebookComputeBlockType, ComputeInput: &NotebookComputeBlockInput{
+			Value: "github.com/sourcegraph/sourcegraph"},
+		},
 	}
 	notebook := notebookByUser(&Notebook{Title: "Notebook Title", Blocks: blocks, Public: true}, user.ID)
 	createdNotebook, err := n.CreateNotebook(ctx, notebook)
@@ -69,7 +79,7 @@ func TestCreateAndGetNotebook(t *testing.T) {
 
 func TestUpdateNotebook(t *testing.T) {
 	t.Parallel()
-	db := dbtest.NewDB(t)
+	db := database.NewDB(dbtest.NewDB(t))
 	ctx := actor.WithInternalActor(context.Background())
 	u := database.Users(db)
 	n := Notebooks(db)
@@ -106,7 +116,7 @@ func TestUpdateNotebook(t *testing.T) {
 
 func TestDeleteNotebook(t *testing.T) {
 	t.Parallel()
-	db := dbtest.NewDB(t)
+	db := database.NewDB(dbtest.NewDB(t))
 	ctx := actor.WithInternalActor(context.Background())
 	u := database.Users(db)
 	n := Notebooks(db)
@@ -179,11 +189,11 @@ func createNotebookStars(ctx context.Context, store NotebooksStore, userID int32
 
 func TestListingAndCountingNotebooks(t *testing.T) {
 	t.Parallel()
-	db := dbtest.NewDB(t)
+	db := database.NewDB(dbtest.NewDB(t))
 	internalCtx := actor.WithInternalActor(context.Background())
 	u := database.Users(db)
 	o := database.Orgs(db)
-	om := database.OrgMembers(db)
+	om := db.OrgMembers()
 	n := Notebooks(db)
 
 	user1, err := u.Create(internalCtx, database.NewUser{Username: "u1", Password: "p"})
@@ -437,7 +447,7 @@ func TestListingAndCountingNotebooks(t *testing.T) {
 
 func TestCreatingNotebookWithInvalidBlock(t *testing.T) {
 	t.Parallel()
-	db := dbtest.NewDB(t)
+	db := database.NewDB(dbtest.NewDB(t))
 	ctx := actor.WithInternalActor(context.Background())
 	u := database.Users(db)
 	n := Notebooks(db)
@@ -461,11 +471,11 @@ func TestCreatingNotebookWithInvalidBlock(t *testing.T) {
 
 func TestNotebookPermissions(t *testing.T) {
 	t.Parallel()
-	db := dbtest.NewDB(t)
+	db := database.NewDB(dbtest.NewDB(t))
 	internalCtx := actor.WithInternalActor(context.Background())
 	u := database.Users(db)
 	o := database.Orgs(db)
-	om := database.OrgMembers(db)
+	om := db.OrgMembers()
 	n := Notebooks(db)
 
 	user1, err := u.Create(internalCtx, database.NewUser{Username: "u1", Password: "p"})
@@ -531,7 +541,7 @@ func TestNotebookPermissions(t *testing.T) {
 
 func TestListingNotebookStars(t *testing.T) {
 	t.Parallel()
-	db := dbtest.NewDB(t)
+	db := database.NewDB(dbtest.NewDB(t))
 	internalCtx := actor.WithInternalActor(context.Background())
 	u := database.Users(db)
 	n := Notebooks(db)
@@ -617,7 +627,7 @@ func TestListingNotebookStars(t *testing.T) {
 
 func TestCreatingAndDeletingNotebookStars(t *testing.T) {
 	t.Parallel()
-	db := dbtest.NewDB(t)
+	db := database.NewDB(dbtest.NewDB(t))
 	internalCtx := actor.WithInternalActor(context.Background())
 	u := database.Users(db)
 	n := Notebooks(db)

@@ -8,7 +8,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/cockroachdb/errors"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 /*
@@ -769,26 +769,35 @@ func (p *parser) TryParseDelimitedPattern() (Pattern, bool) {
 	if value, delimiter, ok := p.TryParseDelimiter(); ok {
 		var labels labels
 		if delimiter == '/' {
-			// This is a regex-delimited pattern
-			labels = Regexp
+			if value != "" {
+				// This is a non-empty regex-delimited pattern
+				labels = Regexp
+			} else {
+				// This is an empty `//` delimited pattern:
+				// treat this heuristically as a literal //
+				// pattern instead, since the an empty regex
+				// pattern offers lower utitility.
+				value = "//"
+				labels = Literal
+			}
 		} else {
 			labels = Literal | Quoted
 		}
-		return newPattern(value, false, labels, newRange(start, p.pos)), true
+		return newPattern(value, labels, newRange(start, p.pos)), true
 	}
 	return Pattern{}, false
 }
 
 func (p *parser) TryScanBalancedPattern(label labels) (Pattern, bool) {
 	if value, advance, ok := ScanBalancedPattern(p.buf[p.pos:]); ok {
-		pattern := newPattern(value, false, label, newRange(p.pos, p.pos+advance))
+		pattern := newPattern(value, label, newRange(p.pos, p.pos+advance))
 		p.pos += advance
 		return pattern, true
 	}
 	return Pattern{}, false
 }
 
-func newPattern(value string, negated bool, labels labels, range_ Range) Pattern {
+func newPattern(value string, labels labels, range_ Range) Pattern {
 	return Pattern{
 		Value:   value,
 		Negated: false,
@@ -828,7 +837,7 @@ func (p *parser) ParsePattern(label labels) Pattern {
 		label.set(HeuristicDanglingParens)
 	}
 	p.pos += advance
-	return newPattern(value, false, label, newRange(start, p.pos))
+	return newPattern(value, label, newRange(start, p.pos))
 
 }
 
@@ -908,7 +917,7 @@ loop:
 					if label.IsSet(Literal) {
 						label.set(HeuristicParensAsPatterns)
 					}
-					pattern := newPattern(value, false, label, newRange(p.pos, p.pos+advance))
+					pattern := newPattern(value, label, newRange(p.pos, p.pos+advance))
 					p.pos += advance
 					nodes = append(nodes, pattern)
 					continue
@@ -934,7 +943,7 @@ loop:
 				// We parsed "()".
 				if isSet(p.heuristics, parensAsPatterns) {
 					// Interpret literally.
-					nodes = []Node{newPattern("()", false, Literal|HeuristicParensAsPatterns, newRange(start, p.pos))}
+					nodes = []Node{newPattern("()", Literal|HeuristicParensAsPatterns, newRange(start, p.pos))}
 				} else {
 					// Interpret as a group: return an empty non-nil node.
 					nodes = []Node{Parameter{}}
@@ -1031,9 +1040,9 @@ func reduce(left, right []Node, kind operatorKind) ([]Node, bool) {
 	}
 	if len(right) > 1 {
 		// Reduce right list.
-		reduced, changed := reduce(append(left, right[0]), right[1:], kind)
+		reduced, changed := reduce([]Node{right[0]}, right[1:], kind)
 		if changed {
-			return reduced, true
+			return append(left, reduced...), true
 		}
 	}
 	return append(left, right...), false
@@ -1155,7 +1164,7 @@ func Parse(in string, searchType SearchType) ([]Node, error) {
 			nodes = hoistedNodes
 		}
 	}
-	if searchType == SearchTypeLiteral {
+	if searchType == SearchTypeLiteralDefault {
 		err = validatePureLiteralPattern(nodes, parser.balanced == 0)
 		if err != nil {
 			return nil, err
@@ -1169,7 +1178,7 @@ func ParseSearchType(in string, searchType SearchType) (Q, error) {
 }
 
 func ParseLiteral(in string) (Q, error) {
-	return Run(Init(in, SearchTypeLiteral))
+	return Run(Init(in, SearchTypeLiteralDefault))
 }
 
 func ParseRegexp(in string) (Q, error) {

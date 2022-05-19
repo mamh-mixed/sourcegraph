@@ -161,38 +161,6 @@ func TestIsCaseSensitive(t *testing.T) {
 	}
 }
 
-func TestRegexpPatterns(t *testing.T) {
-	type want struct {
-		values        []string
-		negatedValues []string
-	}
-	c := struct {
-		query string
-		field string
-		want
-	}{
-		query: "r:a r:b -r:c",
-		field: "repo",
-		want: want{
-			values:        []string{"a", "b"},
-			negatedValues: []string{"c"},
-		},
-	}
-	t.Run("for regexp field", func(t *testing.T) {
-		query, err := ParseRegexp(c.query)
-		if err != nil {
-			t.Fatal(err)
-		}
-		gotValues, gotNegatedValues := query.RegexpPatterns(c.field)
-		if diff := cmp.Diff(c.want.values, gotValues); diff != "" {
-			t.Error(diff)
-		}
-		if diff := cmp.Diff(c.want.negatedValues, gotNegatedValues); diff != "" {
-			t.Error(diff)
-		}
-	})
-}
-
 func TestPartitionSearchPattern(t *testing.T) {
 	cases := []struct {
 		input string
@@ -273,7 +241,7 @@ func TestPartitionSearchPattern(t *testing.T) {
 				}
 				return
 			}
-			result := ToNodes(scopeParameters)
+			result := toNodes(scopeParameters)
 			if pattern != nil {
 				result = append(result, pattern)
 			}
@@ -347,7 +315,7 @@ func TestContainsRefGlobs(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.input, func(t *testing.T) {
 			query, err := Run(sequence(
-				Init(c.input, SearchTypeLiteral),
+				Init(c.input, SearchTypeLiteralDefault),
 				Globbing,
 			))
 			if err != nil {
@@ -356,58 +324,6 @@ func TestContainsRefGlobs(t *testing.T) {
 			got := ContainsRefGlobs(query)
 			if got != c.want {
 				t.Errorf("got %t, expected %t", got, c.want)
-			}
-		})
-	}
-}
-
-func TestHasTypeRepo(t *testing.T) {
-	tests := []struct {
-		query           string
-		wantHasTypeRepo bool
-	}{
-		{
-			query:           "sourcegraph type:repo",
-			wantHasTypeRepo: true,
-		},
-		{
-			query:           "sourcegraph type:symbol type:repo",
-			wantHasTypeRepo: true,
-		},
-		{
-			query:           "(sourcegraph type:repo) or (goreman type:repo)",
-			wantHasTypeRepo: true,
-		},
-		{
-			query:           "sourcegraph repohasfile:Dockerfile type:repo",
-			wantHasTypeRepo: true,
-		},
-		{
-			query:           "repo:sourcegraph type:repo",
-			wantHasTypeRepo: true,
-		},
-		{
-			query:           "repo:sourcegraph",
-			wantHasTypeRepo: false,
-		},
-		{
-			query:           "repository",
-			wantHasTypeRepo: false,
-		},
-		{
-			query:           "",
-			wantHasTypeRepo: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.query, func(t *testing.T) {
-			q, err := ParseLiteral(tt.query)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if got := HasTypeRepo(q); got != tt.wantHasTypeRepo {
-				t.Fatalf("got %t, expected %t", got, tt.wantHasTypeRepo)
 			}
 		})
 	}

@@ -6,16 +6,18 @@ import (
 	"encoding/json"
 	"sort"
 
-	"github.com/cockroachdb/errors"
 	"github.com/keegancsmith/sqlf"
 	"github.com/lib/pq"
 	"github.com/opentracing/opentracing-go/log"
 
+	"github.com/sourcegraph/sourcegraph/enterprise/internal/batches/search"
 	btypes "github.com/sourcegraph/sourcegraph/enterprise/internal/batches/types"
+	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/database/basestore"
 	"github.com/sourcegraph/sourcegraph/internal/database/batch"
 	"github.com/sourcegraph/sourcegraph/internal/database/dbutil"
 	"github.com/sourcegraph/sourcegraph/internal/observation"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 // batchSpecWorkspaceInsertColumns is the list of batch_spec_workspaces columns
@@ -66,7 +68,7 @@ var BatchSpecWorkspaceColums = SQLColumns{
 
 // CreateBatchSpecWorkspace creates the given batch spec workspace jobs.
 func (s *Store) CreateBatchSpecWorkspace(ctx context.Context, ws ...*btypes.BatchSpecWorkspace) (err error) {
-	ctx, endObservation := s.operations.createBatchSpecWorkspace.With(ctx, &err, observation.Args{LogFields: []log.Field{
+	ctx, _, endObservation := s.operations.createBatchSpecWorkspace.With(ctx, &err, observation.Args{LogFields: []log.Field{
 		log.Int("count", len(ws)),
 	}})
 	defer endObservation(1, observation.Args{})
@@ -133,7 +135,7 @@ func (s *Store) CreateBatchSpecWorkspace(ctx context.Context, ws ...*btypes.Batc
 		batchSpecWorkspaceInsertColumns,
 		"",
 		BatchSpecWorkspaceColums,
-		func(rows *sql.Rows) error {
+		func(rows dbutil.Scanner) error {
 			i++
 			return scanBatchSpecWorkspace(ws[i], rows)
 		},
@@ -148,7 +150,7 @@ type GetBatchSpecWorkspaceOpts struct {
 
 // GetBatchSpecWorkspace gets a BatchSpecWorkspace matching the given options.
 func (s *Store) GetBatchSpecWorkspace(ctx context.Context, opts GetBatchSpecWorkspaceOpts) (job *btypes.BatchSpecWorkspace, err error) {
-	ctx, endObservation := s.operations.getBatchSpecWorkspace.With(ctx, &err, observation.Args{LogFields: []log.Field{
+	ctx, _, endObservation := s.operations.getBatchSpecWorkspace.With(ctx, &err, observation.Args{LogFields: []log.Field{
 		log.Int("ID", int(opts.ID)),
 	}})
 	defer endObservation(1, observation.Args{})
@@ -197,12 +199,18 @@ type ListBatchSpecWorkspacesOpts struct {
 	Cursor      int64
 	BatchSpecID int64
 	IDs         []int64
+
+	State                 btypes.BatchSpecWorkspaceExecutionJobState
+	OnlyWithoutExecution  bool
+	OnlyCachedOrCompleted bool
+	TextSearch            []search.TextSearchTerm
 }
 
-func (opts ListBatchSpecWorkspacesOpts) SQLConds(forCount bool) *sqlf.Query {
+func (opts ListBatchSpecWorkspacesOpts) SQLConds(ctx context.Context, db database.DB, forCount bool) (where *sqlf.Query, joinStatements *sqlf.Query, err error) {
 	preds := []*sqlf.Query{
 		sqlf.Sprintf("repo.deleted_at IS NULL"),
 	}
+	joins := []*sqlf.Query{}
 
 	if len(opts.IDs) != 0 {
 		preds = append(preds, sqlf.Sprintf("batch_spec_workspaces.id = ANY(%s)", pq.Array(opts.IDs)))
@@ -216,15 +224,62 @@ func (opts ListBatchSpecWorkspacesOpts) SQLConds(forCount bool) *sqlf.Query {
 		preds = append(preds, sqlf.Sprintf("batch_spec_workspaces.id >= %s", opts.Cursor))
 	}
 
-	return sqlf.Join(preds, "\n AND ")
+	joinedExecution := false
+	ensureJoinExecution := func() {
+		if joinedExecution {
+			return
+		}
+		joins = append(joins, sqlf.Sprintf("LEFT JOIN batch_spec_workspace_execution_jobs ON batch_spec_workspace_execution_jobs.batch_spec_workspace_id = batch_spec_workspaces.id"))
+		joinedExecution = true
+	}
+
+	if opts.State != "" {
+		ensureJoinExecution()
+		preds = append(preds, sqlf.Sprintf("batch_spec_workspace_execution_jobs.state = %s", opts.State))
+	}
+
+	if opts.OnlyWithoutExecution {
+		ensureJoinExecution()
+		preds = append(preds, sqlf.Sprintf("batch_spec_workspace_execution_jobs.id IS NULL"))
+	}
+
+	if opts.OnlyCachedOrCompleted {
+		ensureJoinExecution()
+		preds = append(preds, sqlf.Sprintf("(batch_spec_workspaces.cached_result_found OR batch_spec_workspace_execution_jobs.state = %s)", btypes.BatchSpecWorkspaceExecutionJobStateCompleted))
+	}
+
+	if len(opts.TextSearch) != 0 {
+		for _, term := range opts.TextSearch {
+			preds = append(preds, textSearchTermToClause(
+				term,
+				// TODO: Add more terms here later.
+				sqlf.Sprintf("repo.name"),
+			))
+
+			// If we do text-search, we need to only consider workspaces in repos that are visible to the user.
+			// Otherwise we would leak the existance of repos.
+
+			repoAuthzConds, err := database.AuthzQueryConds(ctx, db)
+			if err != nil {
+				return nil, nil, errors.Wrap(err, "ListBatchSpecWorkspacesOpts.SQLConds generating authz query conds")
+			}
+
+			preds = append(preds, repoAuthzConds)
+		}
+	}
+
+	return sqlf.Join(preds, "\n AND "), sqlf.Join(joins, "\n"), nil
 }
 
 // ListBatchSpecWorkspaces lists batch spec workspaces with the given filters.
 func (s *Store) ListBatchSpecWorkspaces(ctx context.Context, opts ListBatchSpecWorkspacesOpts) (cs []*btypes.BatchSpecWorkspace, next int64, err error) {
-	ctx, endObservation := s.operations.listBatchSpecWorkspaces.With(ctx, &err, observation.Args{})
+	ctx, _, endObservation := s.operations.listBatchSpecWorkspaces.With(ctx, &err, observation.Args{})
 	defer endObservation(1, observation.Args{})
 
-	q := listBatchSpecWorkspacesQuery(opts)
+	q, err := listBatchSpecWorkspacesQuery(ctx, s.DatabaseDB(), opts)
+	if err != nil {
+		return nil, 0, err
+	}
 
 	cs = make([]*btypes.BatchSpecWorkspace, 0)
 	err = s.query(ctx, q, func(sc dbutil.Scanner) error {
@@ -248,24 +303,33 @@ var listBatchSpecWorkspacesQueryFmtstr = `
 -- source: enterprise/internal/batches/store/batch_spec_workspace_job.go:ListBatchSpecWorkspaces
 SELECT %s FROM batch_spec_workspaces
 INNER JOIN repo ON repo.id = batch_spec_workspaces.repo_id
+%s
 WHERE %s
 ORDER BY id ASC
 `
 
-func listBatchSpecWorkspacesQuery(opts ListBatchSpecWorkspacesOpts) *sqlf.Query {
+func listBatchSpecWorkspacesQuery(ctx context.Context, db database.DB, opts ListBatchSpecWorkspacesOpts) (*sqlf.Query, error) {
+	where, joins, err := opts.SQLConds(ctx, db, false)
+	if err != nil {
+		return nil, err
+	}
 	return sqlf.Sprintf(
 		listBatchSpecWorkspacesQueryFmtstr+opts.LimitOpts.ToDB(),
 		sqlf.Join(BatchSpecWorkspaceColums.ToSqlf(), ", "),
-		opts.SQLConds(false),
-	)
+		joins,
+		where,
+	), nil
 }
 
 // CountBatchSpecWorkspaces counts batch spec workspaces with the given filters.
 func (s *Store) CountBatchSpecWorkspaces(ctx context.Context, opts ListBatchSpecWorkspacesOpts) (count int64, err error) {
-	ctx, endObservation := s.operations.countBatchSpecWorkspaces.With(ctx, &err, observation.Args{})
+	ctx, _, endObservation := s.operations.countBatchSpecWorkspaces.With(ctx, &err, observation.Args{})
 	defer endObservation(1, observation.Args{})
 
-	q := countBatchSpecWorkspacesQuery(opts)
+	q, err := countBatchSpecWorkspacesQuery(ctx, s.DatabaseDB(), opts)
+	if err != nil {
+		return 0, err
+	}
 
 	count, _, err = basestore.ScanFirstInt64(s.Query(ctx, q))
 	return count, err
@@ -278,14 +342,21 @@ SELECT
 FROM
 	batch_spec_workspaces
 INNER JOIN repo ON repo.id = batch_spec_workspaces.repo_id
+%s
 WHERE %s
 `
 
-func countBatchSpecWorkspacesQuery(opts ListBatchSpecWorkspacesOpts) *sqlf.Query {
+func countBatchSpecWorkspacesQuery(ctx context.Context, db database.DB, opts ListBatchSpecWorkspacesOpts) (*sqlf.Query, error) {
+	where, joins, err := opts.SQLConds(ctx, db, true)
+	if err != nil {
+		return nil, err
+	}
+
 	return sqlf.Sprintf(
 		countBatchSpecWorkspacesQueryFmtstr+opts.LimitOpts.ToDB(),
-		opts.SQLConds(true),
-	)
+		joins,
+		where,
+	), nil
 }
 
 const markSkippedBatchSpecWorkspacesQueryFmtstr = `
@@ -304,7 +375,7 @@ AND NOT %s
 // MarkSkippedBatchSpecWorkspaces marks the workspace that were skipped in
 // CreateBatchSpecWorkspaceExecutionJobs as skipped.
 func (s *Store) MarkSkippedBatchSpecWorkspaces(ctx context.Context, batchSpecID int64) (err error) {
-	ctx, endObservation := s.operations.markSkippedBatchSpecWorkspaces.With(ctx, &err, observation.Args{LogFields: []log.Field{
+	ctx, _, endObservation := s.operations.markSkippedBatchSpecWorkspaces.With(ctx, &err, observation.Args{LogFields: []log.Field{
 		log.Int("batchSpecID", int(batchSpecID)),
 	}})
 	defer endObservation(1, observation.Args{})
@@ -382,7 +453,7 @@ type jsonIDsSet struct {
 }
 
 // Scan implements the Scanner interface.
-func (n *jsonIDsSet) Scan(value interface{}) error {
+func (n *jsonIDsSet) Scan(value any) error {
 	m := make(map[int64]struct{})
 
 	switch value := value.(type) {

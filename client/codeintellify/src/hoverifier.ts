@@ -75,7 +75,7 @@ export interface HoverifierOptions<C extends object, D, A> {
         /**
          * The closest parent element that is `position: relative`
          */
-        relativeElement: HTMLElement
+        relativeElement?: HTMLElement
     }>
 
     hoverOverlayElements: Subscribable<HTMLElement | null>
@@ -272,7 +272,7 @@ interface InternalHoverifierState<C extends object, D, A> {
     hoverOrError?: typeof LOADING | (HoverAttachment & D) | null | ErrorLike
 
     /** The desired position of the hover overlay */
-    hoverOverlayPosition?: { left: number; top: number }
+    hoverOverlayPosition?: { left: number } & ({ top: number } | { bottom: number })
 
     /** The currently hovered token */
     hoveredToken?: HoveredToken & C
@@ -346,7 +346,7 @@ const internalToExternalState = <C extends object, D, A>(
 export const LOADER_DELAY = 600
 
 /** The time in ms after the mouse has stopped moving in which to show the tooltip */
-export const TOOLTIP_DISPLAY_DELAY = 100
+export const TOOLTIP_DISPLAY_DELAY = 60
 
 /** The time in ms to debounce mouseover events. */
 export const MOUSEOVER_DELAY = 50
@@ -569,7 +569,15 @@ export function createHoverifier<C extends object, D, A>({
                     ...rest,
                 })),
                 map(({ hoverOverlayElement, relativeElement, target }) =>
-                    target ? calculateOverlayPosition({ relativeElement, target, hoverOverlayElement }) : undefined
+                    target
+                        ? calculateOverlayPosition({
+                              relativeElement,
+                              target,
+                              hoverOverlayElement,
+                              windowInnerHeight: window.innerHeight,
+                              windowScrollY: window.scrollY,
+                          })
+                        : undefined
                 )
             )
             .subscribe(hoverOverlayPosition => {
@@ -770,7 +778,6 @@ export function createHoverifier<C extends object, D, A>({
                             highlightedRange,
                             hoverOrError,
                             hoveredTokenElement,
-                            hoverOverlayPosition: undefined,
                         })
                     }
                 )

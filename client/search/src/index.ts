@@ -1,7 +1,7 @@
 import { map } from 'rxjs/operators'
 
+import { memoizeObservable } from '@sourcegraph/common'
 import { PlatformContext } from '@sourcegraph/shared/src/platform/context'
-import { memoizeObservable } from '@sourcegraph/shared/src/util/memoizeObservable'
 
 import {
     fetchAutoDefinedSearchContexts,
@@ -20,8 +20,8 @@ export * from './backend'
 export * from './searchQueryState'
 export * from './helpers'
 export * from './graphql-operations'
-export * from './useQueryIntelligence'
 export * from './helpers/queryExample'
+export * from './integration/streaming-search-mocks'
 
 export interface SearchPatternTypeProps {
     patternType: SearchPatternType

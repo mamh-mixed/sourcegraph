@@ -2,18 +2,20 @@ package background
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"net/url"
+	"sync"
 
-	"github.com/cockroachdb/errors"
 	"github.com/graph-gophers/graphql-go/relay"
 
 	edb "github.com/sourcegraph/sourcegraph/enterprise/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/api/internalapi"
+	"github.com/sourcegraph/sourcegraph/internal/search/result"
+	"github.com/sourcegraph/sourcegraph/internal/txemail"
 	"github.com/sourcegraph/sourcegraph/internal/txemail/txtypes"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
-
-var externalURL *url.URL
 
 // To avoid a circular dependency with the codemonitors/resolvers package
 // we have to redeclare the MonitorKind.
@@ -31,63 +33,93 @@ func SendEmailForNewSearchResult(ctx context.Context, userID int32, data *Templa
 	return sendEmail(ctx, userID, newSearchResultsEmailTemplates, data)
 }
 
+var (
+	//go:embed email_template.html.tmpl
+	htmlTemplate string
+
+	//go:embed email_template.txt.tmpl
+	textTemplate string
+)
+
+var newSearchResultsEmailTemplates = txemail.MustValidate(txtypes.Templates{
+	Subject: `{{ if .IsTest }}Test: {{ end }}{{.Priority}}Sourcegraph code monitor {{.Description}} detected {{.TotalCount}} new {{.ResultPluralized}}`,
+	Text:    textTemplate,
+	HTML:    htmlTemplate,
+})
+
 type TemplateDataNewSearchResults struct {
 	Priority                  string
 	CodeMonitorURL            string
 	SearchURL                 string
 	Description               string
-	NumberOfResultsWithDetail string
+	IncludeResults            bool
+	TruncatedResults          []*DisplayResult
+	TotalCount                int
+	TruncatedCount            int
+	ResultPluralized          string
+	TruncatedResultPluralized string
+	DisplayMoreLink           bool
 	IsTest                    bool
 }
 
-func NewTemplateDataForNewSearchResults(ctx context.Context, monitorDescription, queryString string, email *edb.EmailAction, numResults int) (d *TemplateDataNewSearchResults, err error) {
+func NewTemplateDataForNewSearchResults(args actionArgs, email *edb.EmailAction) (d *TemplateDataNewSearchResults, err error) {
 	var (
-		searchURL                 string
-		codeMonitorURL            string
-		priority                  string
-		numberOfResultsWithDetail string
+		priority string
 	)
-	searchURL, err = getSearchURL(ctx, queryString, utmSourceEmail)
-	if err != nil {
-		return nil, err
-	}
 
-	codeMonitorURL, err = getCodeMonitorURL(ctx, email.Monitor, utmSourceEmail)
-	if err != nil {
-		return nil, err
-	}
+	searchURL := getSearchURL(args.ExternalURL, args.Query, utmSourceEmail)
+	codeMonitorURL := getCodeMonitorURL(args.ExternalURL, email.Monitor, utmSourceEmail)
 
 	if email.Priority == priorityCritical {
-		priority = "Critical"
+		priority = "[Critical] "
 	} else {
-		priority = "New"
+		priority = ""
 	}
 
-	if numResults == 1 {
-		numberOfResultsWithDetail = fmt.Sprintf("There was %d new search result for your query", numResults)
-	} else {
-		numberOfResultsWithDetail = fmt.Sprintf("There were %d new search results for your query", numResults)
+	truncatedResults, totalCount, truncatedCount := truncateResults(args.Results, 5)
+
+	displayResults := make([]*DisplayResult, len(truncatedResults))
+	for i, result := range truncatedResults {
+		displayResults[i] = toDisplayResult(result, args.ExternalURL)
 	}
 
 	return &TemplateDataNewSearchResults{
 		Priority:                  priority,
 		CodeMonitorURL:            codeMonitorURL,
 		SearchURL:                 searchURL,
-		Description:               monitorDescription,
-		NumberOfResultsWithDetail: numberOfResultsWithDetail,
+		Description:               args.MonitorDescription,
+		IncludeResults:            args.IncludeResults,
+		TruncatedResults:          displayResults,
+		TotalCount:                totalCount,
+		TruncatedCount:            truncatedCount,
+		ResultPluralized:          pluralize("result", totalCount),
+		TruncatedResultPluralized: pluralize("result", truncatedCount),
+		DisplayMoreLink:           args.IncludeResults && truncatedCount > 0,
 	}, nil
 }
 
-func NewTestTemplateDataForNewSearchResults(ctx context.Context, monitorDescription string) *TemplateDataNewSearchResults {
+func NewTestTemplateDataForNewSearchResults(monitorDescription string) *TemplateDataNewSearchResults {
 	return &TemplateDataNewSearchResults{
-		Priority:                  "New",
-		Description:               monitorDescription,
-		NumberOfResultsWithDetail: "There was 1 new search result for your query",
 		IsTest:                    true,
+		Priority:                  "",
+		Description:               monitorDescription,
+		TotalCount:                1,
+		TruncatedCount:            0,
+		ResultPluralized:          "result",
+		TruncatedResultPluralized: "results",
+		IncludeResults:            true,
+		TruncatedResults: []*DisplayResult{{
+			ResultType: "Test",
+			RepoName:   "testorg/testrepo",
+			CommitID:   "0000000",
+			CommitURL:  "",
+			Content:    "This is a test\nfor a code monitoring result.",
+		}},
+		DisplayMoreLink: false,
 	}
 }
 
-func sendEmail(ctx context.Context, userID int32, template txtypes.Templates, data interface{}) error {
+func sendEmail(ctx context.Context, userID int32, template txtypes.Templates, data any) error {
 	email, err := internalapi.Client.UserEmailsGetEmail(ctx, userID)
 	if err != nil {
 		return errors.Errorf("internalapi.Client.UserEmailsGetEmail for userID=%d: %w", userID, err)
@@ -105,31 +137,41 @@ func sendEmail(ctx context.Context, userID int32, template txtypes.Templates, da
 	return nil
 }
 
-func getSearchURL(ctx context.Context, query, utmSource string) (string, error) {
-	return sourcegraphURL(ctx, "search", query, utmSource)
+func getSearchURL(externalURL *url.URL, query, utmSource string) string {
+	return sourcegraphURL(externalURL, "search", query, utmSource)
 }
 
-func getCodeMonitorURL(ctx context.Context, monitorID int64, utmSource string) (string, error) {
-	return sourcegraphURL(ctx, fmt.Sprintf("code-monitoring/%s", relay.MarshalID(MonitorKind, monitorID)), "", utmSource)
+func getCodeMonitorURL(externalURL *url.URL, monitorID int64, utmSource string) string {
+	return sourcegraphURL(externalURL, fmt.Sprintf("code-monitoring/%s", relay.MarshalID(MonitorKind, monitorID)), "", utmSource)
 }
 
-func sourcegraphURL(ctx context.Context, path, query, utmSource string) (string, error) {
+func getCommitURL(externalURL *url.URL, repoName, oid, utmSource string) string {
+	return sourcegraphURL(externalURL, fmt.Sprintf("%s/-/commit/%s", repoName, oid), "", utmSource)
+}
+
+var (
+	externalURLOnce  sync.Once
+	externalURLValue *url.URL
+	externalURLError error
+)
+
+func getExternalURL(ctx context.Context) (*url.URL, error) {
 	if MockExternalURL != nil {
-		externalURL = MockExternalURL()
+		return MockExternalURL(), nil
 	}
-	if externalURL == nil {
-		// Determine the external URL.
+
+	externalURLOnce.Do(func() {
 		externalURLStr, err := internalapi.Client.ExternalURL(ctx)
 		if err != nil {
-			return "", errors.Errorf("failed to get ExternalURL: %w", err)
+			externalURLError = err
+			return
 		}
-		externalURL, err = url.Parse(externalURLStr)
-		if err != nil {
+		externalURLValue, externalURLError = url.Parse(externalURLStr)
+	})
+	return externalURLValue, externalURLError
+}
 
-			return "", errors.Errorf("failed to get ExternalURL: %w", err)
-		}
-	}
-
+func sourcegraphURL(externalURL *url.URL, path, query, utmSource string) string {
 	// Construct URL to the search query.
 	u := externalURL.ResolveReference(&url.URL{Path: path})
 	q := u.Query()
@@ -138,5 +180,43 @@ func sourcegraphURL(ctx context.Context, path, query, utmSource string) (string,
 	}
 	q.Set("utm_source", utmSource)
 	u.RawQuery = q.Encode()
-	return u.String(), nil
+	return u.String()
+}
+
+// Only works for simple plurals (eg. result/results)
+func pluralize(word string, count int) string {
+	if count == 1 {
+		return word
+	}
+	return word + "s"
+}
+
+type DisplayResult struct {
+	ResultType string
+	CommitURL  string
+	RepoName   string
+	CommitID   string
+	Content    string
+}
+
+func toDisplayResult(result *result.CommitMatch, externalURL *url.URL) *DisplayResult {
+	resultType := "Message"
+	if result.DiffPreview != nil {
+		resultType = "Diff"
+	}
+
+	var content string
+	if result.DiffPreview != nil {
+		content = truncateString(result.DiffPreview.Content, 10)
+	} else {
+		content = truncateString(result.MessagePreview.Content, 10)
+	}
+
+	return &DisplayResult{
+		ResultType: resultType,
+		CommitURL:  getCommitURL(externalURL, string(result.Repo.Name), string(result.Commit.ID), utmSourceEmail),
+		RepoName:   string(result.Repo.Name),
+		CommitID:   result.Commit.ID.Short(),
+		Content:    content,
+	}
 }

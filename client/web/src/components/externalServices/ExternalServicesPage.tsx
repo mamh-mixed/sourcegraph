@@ -1,6 +1,7 @@
+import React, { useEffect, useMemo, useCallback, useState } from 'react'
+
 import * as H from 'history'
 import AddIcon from 'mdi-react/AddIcon'
-import React, { useEffect, useMemo, useCallback, useState } from 'react'
 import { Redirect } from 'react-router'
 import { Subject } from 'rxjs'
 import { tap } from 'rxjs/operators'
@@ -8,7 +9,7 @@ import { tap } from 'rxjs/operators'
 import { isErrorLike, ErrorLike } from '@sourcegraph/common'
 import { ActivationProps } from '@sourcegraph/shared/src/components/activation/Activation'
 import { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryService'
-import { Link, Button } from '@sourcegraph/wildcard'
+import { Link, Button, Icon, Typography } from '@sourcegraph/wildcard'
 
 import { AuthenticatedUser } from '../../auth'
 import { ListExternalServiceFields, Scalars, ExternalServicesResult } from '../../graphql-operations'
@@ -33,7 +34,7 @@ interface Props extends ActivationProps, TelemetryProps {
 /**
  * A page displaying the external services on this site.
  */
-export const ExternalServicesPage: React.FunctionComponent<Props> = ({
+export const ExternalServicesPage: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
     afterDeleteRoute,
     history,
     location,
@@ -87,7 +88,7 @@ export const ExternalServicesPage: React.FunctionComponent<Props> = ({
         <div className="site-admin-external-services-page">
             <PageTitle title="Manage code hosts" />
             <div className="d-flex justify-content-between align-items-center mb-3">
-                <h2 className="mb-0">Manage code hosts</h2>
+                <Typography.H2 className="mb-0">Manage code hosts</Typography.H2>
                 {!isManagingOtherUser && (
                     <Button
                         className="test-goto-add-external-service-page"
@@ -95,7 +96,7 @@ export const ExternalServicesPage: React.FunctionComponent<Props> = ({
                         variant="primary"
                         as={Link}
                     >
-                        <AddIcon className="icon-inline" /> Add code host
+                        <Icon as={AddIcon} /> Add code host
                     </Button>
                 )}
             </div>

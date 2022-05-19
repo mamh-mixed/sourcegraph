@@ -80,18 +80,31 @@ func TestSearch(t *testing.T) {
 	t.Run("graphql", func(t *testing.T) {
 		testSearchClient(t, client)
 	})
+
+	streamClient := &gqltestutil.SearchStreamClient{Client: client}
 	t.Run("stream", func(t *testing.T) {
-		testSearchClient(t, &gqltestutil.SearchStreamClient{
-			Client: client,
-		})
+		testSearchClient(t, streamClient)
 	})
 
 	testSearchOther(t)
+
+	// This test runs after all others because its adds a npm external service
+	// which expands the set of repositories in the instance. All previous tests
+	// assume only the repos from gqltest-github-search exist.
+	//
+	// Adding and deleting the dependency repos external services in between all other tests is
+	// flaky since deleting an external service doesn't cancel a running external
+	// service sync job for it.
+	t.Run("repo:deps", testDependenciesSearch(client, streamClient))
 }
 
 // searchClient is an interface so we can swap out a streaming vs graphql
 // based search API. It only supports the methods that streaming supports.
 type searchClient interface {
+	AddExternalService(input gqltestutil.AddExternalServiceInput) (string, error)
+	UpdateExternalService(input gqltestutil.UpdateExternalServiceInput) (string, error)
+	DeleteExternalService(id string, async bool) error
+
 	SearchRepositories(query string) (gqltestutil.SearchRepositoryResults, error)
 	SearchFiles(query string) (*gqltestutil.SearchFileResults, error)
 	SearchAll(query string) ([]*gqltestutil.AnyResult, error)
@@ -101,7 +114,10 @@ type searchClient interface {
 
 	OverwriteSettings(subjectID, contents string) error
 	AuthenticatedUserID() string
+
 	Repository(repositoryName string) (*gqltestutil.Repository, error)
+	WaitForReposToBeCloned(repos ...string) error
+
 	CreateSearchContext(input gqltestutil.CreateSearchContextInput, repositories []gqltestutil.SearchContextRepositoryRevisionsInput) (string, error)
 	GetSearchContext(id string) (*gqltestutil.GetSearchContextResult, error)
 	DeleteSearchContext(id string) error
@@ -285,18 +301,7 @@ func testSearchClient(t *testing.T, client searchClient) {
 	})
 
 	t.Run("context: search query", func(t *testing.T) {
-		err := client.OverwriteSettings(client.AuthenticatedUserID(), `{"experimentalFeatures":{"searchContextsQuery": true}}`)
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer func() {
-			err := client.OverwriteSettings(client.AuthenticatedUserID(), `{}`)
-			if err != nil {
-				t.Fatal(err)
-			}
-		}()
-
-		_, err = client.Repository("github.com/sgtest/java-langserver")
+		_, err := client.Repository("github.com/sgtest/java-langserver")
 		require.NoError(t, err)
 		_, err = client.Repository("github.com/sgtest/jsonrpc2")
 		require.NoError(t, err)
@@ -1154,9 +1159,9 @@ func testSearchClient(t *testing.T, client searchClient) {
 				counts: counts{Repo: 0},
 			},
 			{
-				`repo contains respects parameters that affect repo search (fork)`,
-				`repo:sgtest/mux fork:yes repo:contains.file(README)`,
-				counts{Repo: 1},
+				name:   `repo contains respects parameters that affect repo search (fork)`,
+				query:  `repo:sgtest/mux fork:yes repo:contains.file(README)`,
+				counts: counts{Repo: 1},
 			},
 			{
 				name:   `commit results without repo filter`,
@@ -1174,19 +1179,19 @@ func testSearchClient(t *testing.T, client searchClient) {
 				counts: counts{Repo: 6},
 			},
 			{
-				`repo has commit after`,
-				`repo:go-diff repo:contains.commit.after(10 years ago)`,
-				counts{Repo: 1},
+				name:   `repo has commit after`,
+				query:  `repo:go-diff repo:contains.commit.after(10 years ago)`,
+				counts: counts{Repo: 1},
 			},
 			{
-				`repo has commit after no results`,
-				`repo:go-diff repo:contains.commit.after(1 second ago)`,
-				counts{Repo: 0},
+				name:   `repo has commit after no results`,
+				query:  `repo:go-diff repo:contains.commit.after(1 second ago)`,
+				counts: counts{Repo: 0},
 			},
 			{
-				`unscoped repo has commit after no results`,
-				`repo:contains.commit.after(1 second ago)`,
-				counts{Repo: 0},
+				name:   `unscoped repo has commit after no results`,
+				query:  `repo:contains.commit.after(1 second ago)`,
+				counts: counts{Repo: 0},
 			},
 		}
 
@@ -1272,7 +1277,6 @@ func testSearchClient(t *testing.T, client searchClient) {
 				counts: counts{Commit: 1},
 			},
 			{
-				// https://github.com/sourcegraph/sourcegraph/issues/21031
 				name:   `search diffs with file filter and time filters`,
 				query:  `repo:go-diff patterntype:literal type:diff lang:go before:"May 10 2020" after:"May 5 2020" unquotedOrigName`,
 				counts: counts{Commit: 1},
@@ -1350,6 +1354,204 @@ func testSearchClient(t *testing.T, client searchClient) {
 			})
 		}
 	})
+}
+
+func testDependenciesSearch(client, streamClient searchClient) func(*testing.T) {
+	return func(t *testing.T) {
+		t.Helper()
+
+		// We are adding another GitHub external service here to make sure we don't
+		// pollute the other integration tests running earlier.
+		_, err := client.AddExternalService(gqltestutil.AddExternalServiceInput{
+			Kind:        extsvc.KindGitHub,
+			DisplayName: "gqltest-dependency-search",
+			Config: mustMarshalJSONString(struct {
+				URL                   string   `json:"url"`
+				Token                 string   `json:"token"`
+				Repos                 []string `json:"repos"`
+				RepositoryPathPattern string   `json:"repositoryPathPattern"`
+			}{
+				URL:   "https://ghe.sgdev.org/",
+				Token: *githubToken,
+				Repos: []string{
+					"sgtest/pipenv-hw",
+					"sgtest/poetry-hw",
+					"sgtest/empty",
+				},
+				RepositoryPathPattern: "github.com/{nameWithOwner}",
+			}),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		_, err = client.AddExternalService(gqltestutil.AddExternalServiceInput{
+			Kind:        extsvc.KindNpmPackages,
+			DisplayName: "gqltest-npm-search",
+			Config: mustMarshalJSONString(&schema.NpmPackagesConnection{
+				Registry: "https://registry.npmjs.org",
+				Dependencies: []string{
+					"urql@2.2.0", // We're searching the dependencies of this repo.
+				},
+			}),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		_, err = client.AddExternalService(gqltestutil.AddExternalServiceInput{
+			Kind:        extsvc.KindGoModules,
+			DisplayName: "gqltest-go-search",
+			Config: mustMarshalJSONString(&schema.GoModulesConnection{
+				Urls: []string{"https://proxy.golang.org"},
+				Dependencies: []string{
+					"github.com/oklog/ulid/v2@v2.0.2",
+				},
+			}),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		_, err = client.AddExternalService(gqltestutil.AddExternalServiceInput{
+			Kind:        extsvc.KindPythonPackages,
+			DisplayName: "gqltest-python-search",
+			Config: mustMarshalJSONString(&schema.PythonPackagesConnection{
+				Urls: []string{"https://pypi.org/simple"},
+				Dependencies: []string{
+					"rich == 12.3.0",
+				},
+			}),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		_, err = client.AddExternalService(gqltestutil.AddExternalServiceInput{
+			Kind:        extsvc.KindJVMPackages,
+			DisplayName: "gqltest-jvm-search",
+			Config: mustMarshalJSONString(&schema.JVMPackagesConnection{
+				Maven: &schema.Maven{
+					Dependencies: []string{
+						"com.google.guava:guava:19.0",
+						"com.google.guava:guava:21.0",
+					},
+				},
+			}),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		err = client.WaitForReposToBeCloned(
+			"npm/urql",
+			"go/github.com/oklog/ulid/v2",
+			"maven/com.google.guava/guava",
+			"python/rich",
+			"github.com/sgtest/pipenv-hw",
+			"github.com/sgtest/poetry-hw",
+			"github.com/sgtest/empty",
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		for _, tc := range []struct {
+			name   string
+			client searchClient
+		}{
+			{"graphql", client},
+			{"stream", streamClient},
+		} {
+			tc := tc
+
+			for _, listDepsTc := range []struct {
+				name  string
+				query string
+				want  []string
+			}{
+				{"repos-npm", `r:deps(^npm/urql$@v2.2.0)`, []string{
+					"/npm/urql/core@v1.9.2",
+					"/npm/wonka@v4.0.7",
+				}},
+				{"repos-go", `r:deps(oklog/ulid)`, []string{
+					"/go/github.com/pborman/getopt@v0.0.0-20170112200414-7148bc3a4c30",
+				}},
+				{"repos-python-poetry", `r:deps(^github\.com/sgtest/poetry-hw$)`, []string{
+					"/python/atomicwrites@v1.4.0",
+					"/python/attrs@v21.4.0",
+					"/python/colorama@v0.4.4",
+					"/python/more-itertools@v8.13.0",
+					"/python/packaging@v21.3",
+					"/python/pluggy@v0.13.1",
+					"/python/py@v1.11.0",
+					"/python/pyparsing@v3.0.8",
+					"/python/pytest@v5.4.3",
+					"/python/tqdm@v4.64.0",
+					"/python/wcwidth@v0.2.5",
+				}},
+				{"repos-python-pipenv", `r:deps(^github\.com/sgtest/pipenv-hw$)`, []string{
+					"/python/certifi@v2021.10.8",
+					"/python/charset-normalizer@v2.0.12",
+					"/python/idna@v3.3",
+					"/python/requests@v2.27.1",
+					"/python/urllib3@v1.26.9",
+				}},
+				{"empty", `r:deps(^github\.com/sgtest/empty$)`, nil},
+			} {
+				listDepsTc := listDepsTc
+
+				t.Run(tc.name+"/"+listDepsTc.name, func(t *testing.T) {
+					began := time.Now()
+					for {
+						results, err := tc.client.SearchRepositories(listDepsTc.query)
+						require.NoError(t, err)
+
+						var have []string
+						for _, r := range results {
+							have = append(have, r.URL)
+						}
+
+						sort.Strings(have)
+
+						if diff := cmp.Diff(have, listDepsTc.want); diff != "" {
+							if time.Since(began) >= time.Minute {
+								t.Fatalf("missing repositories after 1m: %v", diff)
+							}
+
+							t.Logf("still missing repositories: %v", diff)
+							time.Sleep(time.Second)
+							continue
+						}
+						break
+					}
+				})
+			}
+
+			t.Run(tc.name+"/"+"no-alert", func(t *testing.T) {
+				const query = `r:deps(^npm/urql$@v2.2.0) split`
+				results, err := tc.client.SearchFiles(query)
+
+				require.NoError(t, err)
+				require.NotEmpty(t, results.Results)
+				require.NotZero(t, results.MatchCount)
+				require.Nil(t, results.Alert)
+			})
+
+			t.Run(tc.name+"/"+"alert", func(t *testing.T) {
+				const query = `r:deps(^npm/urqLOL$) split`
+				results, err := tc.client.SearchFiles(query)
+
+				require.NoError(t, err)
+				require.Empty(t, results.Results)
+				require.Zero(t, results.MatchCount)
+				require.Equal(t, results.Alert, &gqltestutil.SearchAlert{
+					Title:       "No dependency repositories found",
+					Description: "Dependency repos are cloned on-demand when first searched. Try again in a few seconds if you know the given repositories have dependencies.\n\nRead more about dependencies search [here](https://docs.sourcegraph.com/code_search/how-to/dependencies_search).",
+				})
+			})
+		}
+	}
 }
 
 // testSearchOther other contains search tests for parts of the GraphQL API

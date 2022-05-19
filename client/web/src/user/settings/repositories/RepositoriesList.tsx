@@ -1,20 +1,22 @@
 import React from 'react'
+
 import { useHistory, useLocation } from 'react-router'
 import { Observable } from 'rxjs'
 
 import { ErrorLike } from '@sourcegraph/common'
+import { Container } from '@sourcegraph/wildcard'
+
 import {
     FilteredConnection,
     FilteredConnectionFilter,
     FilteredConnectionQueryArguments,
     Connection,
-} from '@sourcegraph/web/src/components/FilteredConnection'
-import { Container } from '@sourcegraph/wildcard'
-
+} from '../../../components/FilteredConnection'
 import { SiteAdminRepositoryFields, UserRepositoriesResult, Maybe } from '../../../graphql-operations'
 
-import styles from './RepositoriesList.module.scss'
 import { RepositoryNode } from './RepositoryNode'
+
+import styles from './RepositoriesList.module.scss'
 
 interface Props {
     queryRepos: (
@@ -39,7 +41,7 @@ interface RowProps {
     node: SiteAdminRepositoryFields
 }
 
-const Row: React.FunctionComponent<RowProps> = props => (
+const Row: React.FunctionComponent<React.PropsWithChildren<RowProps>> = props => (
     <RepositoryNode
         name={props.node.name}
         url={props.node.url}
@@ -55,7 +57,9 @@ const NoMatchedRepos = (
     </div>
 )
 
-const TotalCountSummary: React.FunctionComponent<{ totalCount: number }> = ({ totalCount }) => (
+const TotalCountSummary: React.FunctionComponent<React.PropsWithChildren<{ totalCount: number }>> = ({
+    totalCount,
+}) => (
     <div className="d-inline-block mt-4 mr-2">
         <small>
             {totalCount} {totalCount === 1 ? 'repository' : 'repositories'} total
@@ -66,7 +70,7 @@ const TotalCountSummary: React.FunctionComponent<{ totalCount: number }> = ({ to
 /**
  * A page displaying the repositories for this user.
  */
-export const RepositoriesList: React.FunctionComponent<Props> = ({
+export const RepositoriesList: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
     queryRepos,
     updateReposList,
     onRepoQueryUpdate,

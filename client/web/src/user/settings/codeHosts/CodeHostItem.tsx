@@ -1,10 +1,11 @@
+import React, { useState, useCallback } from 'react'
+
 import classNames from 'classnames'
 import AlertCircleIcon from 'mdi-react/AlertCircleIcon'
 import CheckCircleIcon from 'mdi-react/CheckCircleIcon'
-import React, { useState, useCallback } from 'react'
 
 import { ErrorLike } from '@sourcegraph/common'
-import { Button } from '@sourcegraph/wildcard'
+import { Button, Badge, Icon, Typography } from '@sourcegraph/wildcard'
 
 import { CircleDashedIcon } from '../../../components/CircleDashedIcon'
 import { LoaderButton } from '../../../components/LoaderButton'
@@ -12,17 +13,18 @@ import { ExternalServiceKind, ListExternalServiceFields } from '../../../graphql
 import { Owner } from '../cloud-ga'
 
 import { AddCodeHostConnectionModal } from './AddCodeHostConnectionModal'
-import styles from './CodeHostItem.module.scss'
 import { scopes } from './modalHints'
 import { RemoveCodeHostConnectionModal } from './RemoveCodeHostConnectionModal'
 import { UpdateCodeHostConnectionModal } from './UpdateCodeHostConnectionModal'
-import { ifNotNavigated } from './UserAddCodeHostsPage'
+import { ifNotNavigated, ServiceConfig } from './UserAddCodeHostsPage'
+
+import styles from './CodeHostItem.module.scss'
 
 interface CodeHostItemProps {
     kind: ExternalServiceKind
     owner: Owner
     name: string
-    icon: React.ComponentType<{ className?: string }>
+    icon: React.ComponentType<React.PropsWithChildren<{ className?: string }>>
     navigateToAuthProvider: (kind: ExternalServiceKind) => void
     isTokenUpdateRequired: boolean | undefined
     // optional service object fields when the code host connection is active
@@ -37,13 +39,17 @@ interface CodeHostItemProps {
     useGitHubApp?: boolean
 }
 
-export const CodeHostItem: React.FunctionComponent<CodeHostItemProps> = ({
+export interface ParentWindow extends Window {
+    onSuccess?: (reason: string | null) => void
+}
+
+export const CodeHostItem: React.FunctionComponent<React.PropsWithChildren<CodeHostItemProps>> = ({
     owner,
     service,
     kind,
     name,
     isTokenUpdateRequired,
-    icon: Icon,
+    icon: ItemIcon,
     navigateToAuthProvider,
     onDidRemove,
     onDidError,
@@ -75,17 +81,14 @@ export const CodeHostItem: React.FunctionComponent<CodeHostItemProps> = ({
         navigateToAuthProvider(kind)
     }, [kind, navigateToAuthProvider])
 
-    const toGitHubApp = function (): void {
-        window.location.assign(
-            `https://github.com/apps/${window.context.githubAppCloudSlug}/installations/new?state=${encodeURIComponent(
-                owner.id
-            )}`
-        )
-    }
-
     const isUserOwner = owner.type === 'user'
     const connectAction = isUserOwner ? toAuthProvider : toggleAddConnectionModal
     const updateAction = isUserOwner ? toAuthProvider : toggleUpdateModal
+
+    let serviceConfig: ServiceConfig = { pending: false }
+    if (service) {
+        serviceConfig = JSON.parse(service.config) as ServiceConfig
+    }
 
     return (
         <div className="d-flex align-items-start">
@@ -112,7 +115,7 @@ export const CodeHostItem: React.FunctionComponent<CodeHostItemProps> = ({
                     onDidError={onDidError}
                 />
             )}
-            {service && toggleUpdateModal && onDidUpsert && isUpdateModalOpen && (
+            {service && toggleUpdateModal && onDidUpsert && isUpdateModalOpen && !serviceConfig.pending && (
                 <UpdateCodeHostConnectionModal
                     serviceID={service.id}
                     serviceConfig={service.config}
@@ -126,21 +129,25 @@ export const CodeHostItem: React.FunctionComponent<CodeHostItemProps> = ({
                 />
             )}
             <div className="align-self-center">
-                {service?.warning || service?.lastSyncError ? (
-                    <AlertCircleIcon className="icon-inline mb-0 mr-2 text-warning" />
+                {serviceConfig.pending ? (
+                    <Icon className="mb-0 mr-2 text-info" as={AlertCircleIcon} />
+                ) : service?.warning || service?.lastSyncError ? (
+                    <Icon className="mb-0 mr-2 text-warning" as={AlertCircleIcon} />
                 ) : service?.id ? (
-                    <CheckCircleIcon className="icon-inline mb-0 mr-2 text-success" />
+                    <Icon className="mb-0 mr-2 text-success" as={CheckCircleIcon} />
                 ) : (
-                    <CircleDashedIcon className={classNames('icon-inline mb-0 mr-2', styles.iconDashed)} />
+                    <Icon className={classNames('mb-0 mr-2', styles.iconDashed)} as={CircleDashedIcon} />
                 )}
-                <Icon className="mb-0 mr-1" />
+                <Icon className="mb-0 mr-1" as={ItemIcon} />
             </div>
             <div className="flex-1 align-self-center">
-                <h3 className="m-0">{name}</h3>
+                <Typography.H3 className="m-0">
+                    {name} {serviceConfig.pending ? <Badge color="secondary">Pending</Badge> : null}
+                </Typography.H3>
             </div>
             <div className="align-self-center">
                 {/* Show one of: update, updating, connect, connecting buttons */}
-                {!service?.id ? (
+                {!service?.id || serviceConfig.pending ? (
                     oauthInFlight ? (
                         <LoaderButton
                             loading={true}
@@ -158,7 +165,7 @@ export const CodeHostItem: React.FunctionComponent<CodeHostItemProps> = ({
                             alwaysShowLabel={false}
                         />
                     ) : (
-                        <Button onClick={useGitHubApp ? toGitHubApp : connectAction} variant="primary">
+                        <Button onClick={useGitHubApp ? toAuthProvider : connectAction} variant="primary">
                             Connect
                         </Button>
                     )
@@ -173,13 +180,15 @@ export const CodeHostItem: React.FunctionComponent<CodeHostItemProps> = ({
                             variant="merged"
                         />
                     ) : (
-                        <Button
-                            className={classNames(!isUserOwner && 'p-0 shadow-none font-weight-normal')}
-                            variant={isUserOwner ? 'merged' : 'link'}
-                            onClick={updateAction}
-                        >
-                            Update
-                        </Button>
+                        !useGitHubApp && (
+                            <Button
+                                className={classNames(!isUserOwner && 'p-0 shadow-none font-weight-normal')}
+                                variant={isUserOwner ? 'merged' : 'link'}
+                                onClick={updateAction}
+                            >
+                                Update
+                            </Button>
+                        )
                     ))
                 )}
 

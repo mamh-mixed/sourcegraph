@@ -1,5 +1,6 @@
-import MapSearchIcon from 'mdi-react/MapSearchIcon'
 import React, { useMemo } from 'react'
+
+import MapSearchIcon from 'mdi-react/MapSearchIcon'
 import { Route, RouteComponentProps, Switch } from 'react-router'
 
 import { BreadcrumbSetters } from '../../components/Breadcrumbs'
@@ -9,7 +10,7 @@ import { RepositoryFields } from '../../graphql-operations'
 import { RepositoryStatsContributorsPage } from './RepositoryStatsContributorsPage'
 import { RepositoryStatsNavbar } from './RepositoryStatsNavbar'
 
-const NotFoundPage: React.FunctionComponent = () => (
+const NotFoundPage: React.FunctionComponent<React.PropsWithChildren<unknown>> = () => (
     <HeroPage
         icon={MapSearchIcon}
         title="404: Not Found"
@@ -37,7 +38,7 @@ const showNavbar = false
 /**
  * Renders pages related to repository stats.
  */
-export const RepositoryStatsArea: React.FunctionComponent<Props> = ({
+export const RepositoryStatsArea: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
     useBreadcrumb,
 
     ...props

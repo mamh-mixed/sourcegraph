@@ -1,7 +1,7 @@
 import * as React from 'react'
 
+import { numberWithCommas } from '@sourcegraph/common'
 import * as GQL from '@sourcegraph/shared/src/schema'
-import { numberWithCommas } from '@sourcegraph/shared/src/util/strings'
 import { Link } from '@sourcegraph/wildcard'
 
 import { SingleValueCard } from '../../components/SingleValueCard'
@@ -26,7 +26,7 @@ interface Props {
 /**
  * Displays a summary of the site's true-up pricing status.
  */
-export const TrueUpStatusSummary: React.FunctionComponent<Props> = ({
+export const TrueUpStatusSummary: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
     actualUserCount,
     actualUserCountDate,
     license,

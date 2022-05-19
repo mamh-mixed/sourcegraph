@@ -1,5 +1,6 @@
-import classNames from 'classnames'
 import React, { InputHTMLAttributes } from 'react'
+
+import classNames from 'classnames'
 
 interface RadioInputProps extends InputHTMLAttributes<HTMLInputElement> {
     /** Title of radio input. */
@@ -15,7 +16,7 @@ interface RadioInputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 /** Displays form radio input for code insight creation form. */
-export const FormRadioInput: React.FunctionComponent<RadioInputProps> = props => {
+export const FormRadioInput: React.FunctionComponent<React.PropsWithChildren<RadioInputProps>> = props => {
     const { title, description, className, labelTooltipText, labelTooltipPosition, ...otherProps } = props
 
     return (

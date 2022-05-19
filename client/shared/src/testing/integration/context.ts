@@ -13,10 +13,11 @@ import * as prettier from 'prettier'
 import { Subject, Subscription, throwError } from 'rxjs'
 import { first, timeoutWith } from 'rxjs/operators'
 
-import { asError } from '@sourcegraph/common'
+import { asError, keyExistsIn } from '@sourcegraph/common'
 import { ErrorGraphQLResult, SuccessGraphQLResult } from '@sourcegraph/http-client'
+// eslint-disable-next-line no-restricted-imports
+import { SourcegraphContext } from '@sourcegraph/web/src/jscontext'
 
-import { keyExistsIn } from '../../util/types'
 import { recordCoverage } from '../coverage'
 import { Driver } from '../driver'
 import { readEnvironmentString } from '../utils'
@@ -52,7 +53,6 @@ export interface IntegrationTestContext<
     TGraphQlOperations extends Record<TGraphQlOperationNames, (variables: any) => any>,
     TGraphQlOperationNames extends string
 > {
-    driver: Driver
     server: PollyServer
 
     /**
@@ -82,7 +82,7 @@ export interface IntegrationTestOptions {
     /**
      * The test driver created in a `before()` hook.
      */
-    driver: Driver
+    driver: Pick<Driver, 'newPage' | 'browser' | 'sourcegraphBaseUrl' | 'page'>
 
     /**
      * The value of `this.currentTest` in the `beforeEach()` hook.
@@ -94,6 +94,12 @@ export interface IntegrationTestOptions {
      * The directory (value of `__dirname`) of the test file.
      */
     directory: string
+
+    /**
+     * Test specific JS context object override. It's used in order to override
+     * standard JSContext object for some particulars test.
+     */
+    customContext?: Partial<SourcegraphContext>
 }
 
 const DISPOSE_ACTION_TIMEOUT = 5 * 1000
@@ -200,6 +206,8 @@ export const createSharedIntegrationTestContext = async <
     let graphQlOverrides: Partial<TGraphQlOperations> = {}
     const graphQlRequests = new Subject<GraphQLRequestEvent<TGraphQlOperationNames>>()
     server.post(new URL('/.api/graphql', driver.sourcegraphBaseUrl).href).intercept((request, response) => {
+        response.setHeader('Access-Control-Allow-Origin', '*')
+
         const operationName = new URL(request.absoluteUrl).search.slice(1) as TGraphQlOperationNames
         const { variables, query } = request.jsonBody() as {
             query: string
@@ -237,6 +245,14 @@ export const createSharedIntegrationTestContext = async <
         }
     })
 
+    // Handle preflight requests.
+    server.options(new URL('/.api/graphql', driver.sourcegraphBaseUrl).href).intercept((request, response) => {
+        response
+            .setHeader('Access-Control-Allow-Origin', '*')
+            .setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+            .send(200)
+    })
+
     // Filter out 'server' header filled in by Caddy before persisting responses,
     // otherwise tests will hang when replayed from recordings.
     server
@@ -246,7 +262,6 @@ export const createSharedIntegrationTestContext = async <
         })
 
     return {
-        driver,
         server,
         overrideGraphQL: overrides => {
             graphQlOverrides = { ...graphQlOverrides, ...overrides }

@@ -1,5 +1,6 @@
-import MapSearchIcon from 'mdi-react/MapSearchIcon'
 import React from 'react'
+
+import MapSearchIcon from 'mdi-react/MapSearchIcon'
 import { RouteComponentProps, Switch, Route } from 'react-router'
 
 import { ExtensionsControllerProps } from '@sourcegraph/shared/src/extensions/controller'
@@ -16,7 +17,7 @@ import { HeroPage } from '../../../components/HeroPage'
 import type { BatchChangeClosePageProps } from '../close/BatchChangeClosePage'
 import type { CreateBatchChangePageProps } from '../create/CreateBatchChangePage'
 import type { BatchChangeDetailsPageProps } from '../detail/BatchChangeDetailsPage'
-import type { BatchSpecExecutionDetailsPageProps } from '../execution/BatchSpecExecutionDetailsPage'
+import { TabName } from '../detail/BatchChangeDetailsTabs'
 import type { BatchChangeListPageProps, NamespaceBatchChangeListPageProps } from '../list/BatchChangeListPage'
 import type { BatchChangePreviewPageProps } from '../preview/BatchChangePreviewPage'
 
@@ -46,16 +47,12 @@ const BatchChangeClosePage = lazyComponent<BatchChangeClosePageProps, 'BatchChan
     () => import('../close/BatchChangeClosePage'),
     'BatchChangeClosePage'
 )
-const BatchSpecExecutionDetailsPage = lazyComponent<
-    BatchSpecExecutionDetailsPageProps,
-    'BatchSpecExecutionDetailsPage'
->(() => import('../execution/BatchSpecExecutionDetailsPage'), 'BatchSpecExecutionDetailsPage')
 const DotcomGettingStartedPage = lazyComponent<DotcomGettingStartedPageProps, 'DotcomGettingStartedPage'>(
     () => import('./DotcomGettingStartedPage'),
     'DotcomGettingStartedPage'
 )
-interface Props
-    extends RouteComponentProps<{}>,
+interface Props<RouteProps extends {} = {}>
+    extends RouteComponentProps<RouteProps>,
         ThemeProps,
         ExtensionsControllerProps,
         TelemetryProps,
@@ -68,13 +65,15 @@ interface Props
 /**
  * The global batch changes area.
  */
-export const GlobalBatchChangesArea: React.FunctionComponent<Props> = props => (
+export const GlobalBatchChangesArea: React.FunctionComponent<React.PropsWithChildren<Props>> = props => (
     <div className="w-100">
         {props.isSourcegraphDotCom ? <DotcomGettingStartedPage /> : <AuthenticatedBatchChangesArea {...props} />}
     </div>
 )
 
-const NotFoundPage: React.FunctionComponent = () => <HeroPage icon={MapSearchIcon} title="404: Not Found" />
+const NotFoundPage: React.FunctionComponent<React.PropsWithChildren<unknown>> = () => (
+    <HeroPage icon={MapSearchIcon} title="404: Not Found" />
+)
 
 interface AuthenticatedProps extends Props {
     authenticatedUser: AuthenticatedUser
@@ -92,22 +91,11 @@ export const AuthenticatedBatchChangesArea = withAuthenticatedUser<Authenticated
             render={props => <CreateBatchChangePage headingElement="h1" {...outerProps} {...props} />}
             exact={true}
         />
-        <Route
-            path={`${match.url}/executions/:batchSpecID`}
-            render={({ match, ...props }: RouteComponentProps<{ batchSpecID: string }>) => (
-                <BatchSpecExecutionDetailsPage
-                    {...outerProps}
-                    {...props}
-                    match={match}
-                    batchSpecID={match.params.batchSpecID}
-                />
-            )}
-        />
         <Route component={NotFoundPage} key="hardcoded-key" />
     </Switch>
 ))
 
-export interface NamespaceBatchChangesAreaProps extends Props {
+export interface NamespaceBatchChangesAreaProps<RouteProps = {}> extends Props<RouteProps> {
     namespaceID: Scalars['ID']
 }
 
@@ -130,6 +118,18 @@ export const NamespaceBatchChangesArea = withAuthenticatedUser<
                         {...props}
                         namespaceID={namespaceID}
                         batchChangeName={match.params.batchChangeName}
+                    />
+                )}
+            />
+            <Route
+                path={`${match.url}/:batchChangeName/executions`}
+                render={({ match, ...props }: RouteComponentProps<{ batchChangeName: string }>) => (
+                    <BatchChangeDetailsPage
+                        {...outerProps}
+                        {...props}
+                        namespaceID={namespaceID}
+                        batchChangeName={match.params.batchChangeName}
+                        initialTab={TabName.Executions}
                     />
                 )}
             />

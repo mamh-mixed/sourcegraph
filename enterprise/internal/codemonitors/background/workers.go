@@ -6,18 +6,20 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/errors"
-	"github.com/inconshreveable/log15"
 	"github.com/keegancsmith/sqlf"
 
+	"github.com/sourcegraph/sourcegraph/enterprise/internal/codemonitors"
 	edb "github.com/sourcegraph/sourcegraph/enterprise/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/actor"
 	"github.com/sourcegraph/sourcegraph/internal/database/basestore"
 	"github.com/sourcegraph/sourcegraph/internal/featureflag"
 	"github.com/sourcegraph/sourcegraph/internal/goroutine"
+	"github.com/sourcegraph/sourcegraph/internal/search/result"
 	"github.com/sourcegraph/sourcegraph/internal/workerutil"
 	"github.com/sourcegraph/sourcegraph/internal/workerutil/dbworker"
 	dbworkerstore "github.com/sourcegraph/sourcegraph/internal/workerutil/dbworker/store"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
+	"github.com/sourcegraph/sourcegraph/lib/log"
 )
 
 const (
@@ -26,11 +28,12 @@ const (
 
 func newTriggerQueryRunner(ctx context.Context, db edb.EnterpriseDB, metrics codeMonitorsMetrics) *workerutil.Worker {
 	options := workerutil.WorkerOptions{
-		Name:              "code_monitors_trigger_jobs_worker",
-		NumHandlers:       1,
-		Interval:          5 * time.Second,
-		HeartbeatInterval: 15 * time.Second,
-		Metrics:           metrics.workerMetrics,
+		Name:                 "code_monitors_trigger_jobs_worker",
+		NumHandlers:          4,
+		Interval:             5 * time.Second,
+		HeartbeatInterval:    15 * time.Second,
+		Metrics:              metrics.workerMetrics,
+		MaximumRuntimePerJob: time.Minute,
 	}
 	worker := dbworker.NewWorker(ctx, createDBWorkerStoreForTriggerJobs(db), &queryRunner{db: db}, options)
 	return worker
@@ -46,7 +49,7 @@ func newTriggerQueryEnqueuer(ctx context.Context, store edb.CodeMonitorStore) go
 	return goroutine.NewPeriodicGoroutine(ctx, 1*time.Minute, enqueueActive)
 }
 
-func newTriggerQueryResetter(ctx context.Context, s edb.CodeMonitorStore, metrics codeMonitorsMetrics) *dbworker.Resetter {
+func newTriggerQueryResetter(_ context.Context, s edb.CodeMonitorStore, metrics codeMonitorsMetrics) *dbworker.Resetter {
 	workerStore := createDBWorkerStoreForTriggerJobs(s)
 
 	options := dbworker.ResetterOptions{
@@ -92,7 +95,7 @@ func newActionRunner(ctx context.Context, s edb.CodeMonitorStore, metrics codeMo
 	return worker
 }
 
-func newActionJobResetter(ctx context.Context, s edb.CodeMonitorStore, metrics codeMonitorsMetrics) *dbworker.Resetter {
+func newActionJobResetter(_ context.Context, s edb.CodeMonitorStore, metrics codeMonitorsMetrics) *dbworker.Resetter {
 	workerStore := createDBWorkerStoreForActionJobs(s)
 
 	options := dbworker.ResetterOptions{
@@ -137,10 +140,10 @@ type queryRunner struct {
 	db edb.EnterpriseDB
 }
 
-func (r *queryRunner) Handle(ctx context.Context, record workerutil.Record) (err error) {
+func (r *queryRunner) Handle(ctx context.Context, logger log.Logger, record workerutil.Record) (err error) {
 	defer func() {
 		if err != nil {
-			log15.Error("queryRunner.Handle", "error", err)
+			logger.Error("queryRunner.Handle", log.Error(err))
 		}
 	}()
 
@@ -164,47 +167,44 @@ func (r *queryRunner) Handle(ctx context.Context, record workerutil.Record) (err
 	if err != nil {
 		return err
 	}
+
 	// SECURITY: set the actor to the user that owns the code monitor.
 	// For all downstream actions (specifically executing searches),
 	// we should run as the user who owns the code monitor.
 	ctx = actor.WithActor(ctx, actor.FromUser(m.UserID))
+	ctx = featureflag.WithFlags(ctx, r.db.FeatureFlags())
 
-	flags, err := r.db.FeatureFlags().GetUserFlags(ctx, m.UserID)
+	settings, err := codemonitors.Settings(ctx)
 	if err != nil {
-		return errors.Wrap(err, "fetch feature flags for user")
+		return errors.Wrap(err, "query settings")
 	}
 
-	hasRepoAware := featureflag.FlagSet(flags).GetBoolOr("cc-repo-aware-code-monitors", false)
-
-	var (
-		results  *searchResults
-		newQuery string
-	)
-	if hasRepoAware {
-		newQuery = q.QueryString
-		results, err = search(ctx, newQuery, &m.ID)
-	} else {
-		newQuery = newQueryWithAfterFilter(q)
-		results, err = search(ctx, newQuery, nil)
+	query := q.QueryString
+	if !featureflag.FromContext(ctx).GetBoolOr("cc-repo-aware-monitors", false) {
+		// Only add an after filter when repo-aware monitors is disabled
+		query = newQueryWithAfterFilter(q)
 	}
-	if err != nil {
-		return errors.Wrap(err, "run search")
-	}
+	results, searchErr := codemonitors.Search(ctx, r.db, query, m.ID, settings)
 
 	// Log next_run and latest_result to table cm_queries.
-	newLatestResult := latestResultTime(q.LatestResult, results, err)
+	newLatestResult := latestResultTime(q.LatestResult, results, searchErr)
 	err = s.SetQueryTriggerNextRun(ctx, q.ID, s.Clock()().Add(5*time.Minute), newLatestResult.UTC())
 	if err != nil {
 		return err
 	}
 
+	// After setting the next run, check the error value
+	if searchErr != nil {
+		return errors.Wrap(searchErr, "execute search")
+	}
+
 	// Log the actual query we ran and whether we got any new results.
-	err = s.UpdateTriggerJobWithResults(ctx, triggerJob.ID, newQuery, results.Results)
+	err = s.UpdateTriggerJobWithResults(ctx, triggerJob.ID, query, results)
 	if err != nil {
 		return errors.Wrap(err, "UpdateTriggerJobWithResults")
 	}
 
-	if len(results.Results) > 0 {
+	if len(results) > 0 {
 		_, err := s.EnqueueActionJobsForMonitor(ctx, m.ID, triggerJob.ID)
 		if err != nil {
 			return errors.Wrap(err, "store.EnqueueActionJobsForQuery")
@@ -217,11 +217,11 @@ type actionRunner struct {
 	edb.CodeMonitorStore
 }
 
-func (r *actionRunner) Handle(ctx context.Context, record workerutil.Record) (err error) {
-	log15.Info("actionRunner.Handle starting")
+func (r *actionRunner) Handle(ctx context.Context, logger log.Logger, record workerutil.Record) (err error) {
+	logger.Info("actionRunner.Handle starting")
 	defer func() {
 		if err != nil {
-			log15.Error("actionRunner.Handle", "error", err)
+			logger.Error("actionRunner.Handle", log.Error(err))
 		}
 	}()
 
@@ -264,7 +264,23 @@ func (r *actionRunner) handleEmail(ctx context.Context, j *edb.ActionJob) error 
 		return errors.Wrap(err, "ListRecipients")
 	}
 
-	data, err := NewTemplateDataForNewSearchResults(ctx, m.Description, m.Query, e, zeroOrVal(m.NumResults))
+	externalURL, err := getExternalURL(ctx)
+	if err != nil {
+		return err
+	}
+
+	args := actionArgs{
+		MonitorDescription: m.Description,
+		MonitorID:          m.MonitorID,
+		ExternalURL:        externalURL,
+		UTMSource:          utmSourceEmail,
+		Query:              m.Query,
+		MonitorOwnerName:   m.OwnerName,
+		Results:            m.Results,
+		IncludeResults:     e.IncludeResults,
+	}
+
+	data, err := NewTemplateDataForNewSearchResults(args, e)
 	if err != nil {
 		return errors.Wrap(err, "NewTemplateDataForNewSearchResults")
 	}
@@ -301,23 +317,20 @@ func (r *actionRunner) handleWebhook(ctx context.Context, j *edb.ActionJob) erro
 		return errors.Wrap(err, "GetWebhookAction")
 	}
 
-	utmSource := "code-monitor-webhook"
-	searchURL, err := getSearchURL(ctx, m.Query, utmSource)
+	externalURL, err := getExternalURL(ctx)
 	if err != nil {
-		return errors.Wrap(err, "GetSearchURL")
-	}
-
-	codeMonitorURL, err := getCodeMonitorURL(ctx, w.Monitor, utmSource)
-	if err != nil {
-		return errors.Wrap(err, "GetCodeMonitorURL")
+		return err
 	}
 
 	args := actionArgs{
 		MonitorDescription: m.Description,
-		MonitorURL:         codeMonitorURL,
+		MonitorID:          w.Monitor,
+		ExternalURL:        externalURL,
+		UTMSource:          "code-monitor-webhook",
 		Query:              m.Query,
-		QueryURL:           searchURL,
-		NumResults:         zeroOrVal(m.NumResults),
+		MonitorOwnerName:   m.OwnerName,
+		Results:            m.Results,
+		IncludeResults:     w.IncludeResults,
 	}
 
 	return sendWebhookNotification(ctx, w.URL, args)
@@ -340,23 +353,20 @@ func (r *actionRunner) handleSlackWebhook(ctx context.Context, j *edb.ActionJob)
 		return errors.Wrap(err, "GetSlackWebhookAction")
 	}
 
-	utmSource := "code-monitor-slack-webhook"
-	searchURL, err := getSearchURL(ctx, m.Query, utmSource)
+	externalURL, err := getExternalURL(ctx)
 	if err != nil {
-		return errors.Wrap(err, "GetSearchURL")
-	}
-
-	codeMonitorURL, err := getCodeMonitorURL(ctx, w.Monitor, utmSource)
-	if err != nil {
-		return errors.Wrap(err, "GetCodeMonitorURL")
+		return err
 	}
 
 	args := actionArgs{
 		MonitorDescription: m.Description,
-		MonitorURL:         codeMonitorURL,
+		MonitorID:          w.Monitor,
+		ExternalURL:        externalURL,
+		UTMSource:          "code-monitor-slack-webhook",
 		Query:              m.Query,
-		QueryURL:           searchURL,
-		NumResults:         zeroOrVal(m.NumResults),
+		MonitorOwnerName:   m.OwnerName,
+		Results:            m.Results,
+		IncludeResults:     w.IncludeResults,
 	}
 
 	return sendSlackNotification(ctx, w.URL, args)
@@ -391,8 +401,8 @@ func newQueryWithAfterFilter(q *edb.QueryTrigger) string {
 	return strings.Join([]string{q.QueryString, fmt.Sprintf(`after:"%s"`, afterTime)}, " ")
 }
 
-func latestResultTime(previousLastResult *time.Time, v *searchResults, searchErr error) time.Time {
-	if searchErr != nil || len(v.Results) == 0 {
+func latestResultTime(previousLastResult *time.Time, results []*result.CommitMatch, searchErr error) time.Time {
+	if searchErr != nil || len(results) == 0 {
 		// Error performing the search, or there were no results. Assume the
 		// previous info's result time.
 		if previousLastResult != nil {
@@ -401,18 +411,8 @@ func latestResultTime(previousLastResult *time.Time, v *searchResults, searchErr
 		return time.Now()
 	}
 
-	// Results are ordered chronologically, so first result is the latest.
-	t, err := extractTime(v.Results[0])
-	if err != nil {
-		// Error already logged by extractTime.
-		return time.Now()
+	if results[0].Commit.Committer != nil {
+		return results[0].Commit.Committer.Date
 	}
-	return t
-}
-
-func zeroOrVal(i *int) int {
-	if i == nil {
-		return 0
-	}
-	return *i
+	return time.Now()
 }

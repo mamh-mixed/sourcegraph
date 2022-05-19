@@ -5,111 +5,236 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/Masterminds/semver"
-	"github.com/peterbourgon/ff/v3/ffcli"
+	"github.com/urfave/cli/v2"
 
 	"github.com/sourcegraph/sourcegraph/dev/sg/internal/db"
 	"github.com/sourcegraph/sourcegraph/dev/sg/internal/migration"
-	"github.com/sourcegraph/sourcegraph/dev/sg/internal/stdout"
+	"github.com/sourcegraph/sourcegraph/dev/sg/internal/sgconf"
+	"github.com/sourcegraph/sourcegraph/dev/sg/internal/std"
+	"github.com/sourcegraph/sourcegraph/dev/sg/root"
 	connections "github.com/sourcegraph/sourcegraph/internal/database/connections/live"
 	"github.com/sourcegraph/sourcegraph/internal/database/migration/cliutil"
-	"github.com/sourcegraph/sourcegraph/internal/database/migration/runner"
 	"github.com/sourcegraph/sourcegraph/internal/database/migration/schemas"
 	"github.com/sourcegraph/sourcegraph/internal/database/migration/store"
 	"github.com/sourcegraph/sourcegraph/internal/database/postgresdsn"
 	"github.com/sourcegraph/sourcegraph/internal/observation"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 	"github.com/sourcegraph/sourcegraph/lib/output"
 )
 
 var (
-	migrationAddFlagSet          = flag.NewFlagSet("sg migration add", flag.ExitOnError)
-	migrationAddDatabaseNameFlag = migrationAddFlagSet.String("db", db.DefaultDatabase.Name, "The target database instance.")
-	migrationAddCommand          = &ffcli.Command{
-		Name:       "add",
-		ShortUsage: fmt.Sprintf("sg migration add [-db=%s] <name>", db.DefaultDatabase.Name),
-		ShortHelp:  "Add a new migration file",
-		FlagSet:    migrationAddFlagSet,
-		Exec:       migrationAddExec,
-		LongHelp:   cliutil.ConstructLongHelp(),
+	migrateTargetDatabase     string
+	migrateTargetDatabaseFlag = &cli.StringFlag{
+		Name:        "db",
+		Usage:       "The target database `schema` to modify",
+		Value:       db.DefaultDatabase.Name,
+		Destination: &migrateTargetDatabase,
+	}
+)
+
+var (
+	addCommand = &cli.Command{
+		Name:        "add",
+		ArgsUsage:   "<name>",
+		Usage:       "Add a new migration file",
+		Description: cliutil.ConstructLongHelp(),
+		Flags:       []cli.Flag{migrateTargetDatabaseFlag},
+		Action:      execAdapter(addExec),
 	}
 
-	upCommand     = cliutil.Up("sg migration", runMigration, stdout.Out)
-	upToCommand   = cliutil.UpTo("sg migration", runMigration, stdout.Out)
-	UndoCommand   = cliutil.Undo("sg migration", runMigration, stdout.Out)
-	downToCommand = cliutil.DownTo("sg migration", runMigration, stdout.Out)
-
-	migrationSquashFlagSet          = flag.NewFlagSet("sg migration squash", flag.ExitOnError)
-	migrationSquashDatabaseNameFlag = migrationSquashFlagSet.String("db", db.DefaultDatabase.Name, "The target database instance")
-	migrationSquashCommand          = &ffcli.Command{
-		Name:       "squash",
-		ShortUsage: fmt.Sprintf("sg migration squash [-db=%s] <current-release>", db.DefaultDatabase.Name),
-		ShortHelp:  "Collapse migration files from historic releases together",
-		FlagSet:    migrationSquashFlagSet,
-		Exec:       migrationSquashExec,
-		LongHelp:   cliutil.ConstructLongHelp(),
+	revertCommand = &cli.Command{
+		Name:        "revert",
+		ArgsUsage:   "<commit>",
+		Usage:       "Revert the migrations defined on the given commit",
+		Description: cliutil.ConstructLongHelp(),
+		Action:      execAdapter(revertExec),
 	}
 
-	migrationFlagSet = flag.NewFlagSet("sg migration", flag.ExitOnError)
-	migrationCommand = &ffcli.Command{
-		Name:       "migration",
-		ShortUsage: "sg migration <command>",
-		ShortHelp:  "Modifies and runs database migrations",
-		FlagSet:    migrationFlagSet,
-		Exec: func(ctx context.Context, args []string) error {
-			return flag.ErrHelp
-		},
-		Subcommands: []*ffcli.Command{
-			migrationAddCommand,
+	// outputFactory lazily retrieves the global output that might not yet be instantiated
+	// at compile-time in sg.
+	outputFactory = func() *output.Output { return std.Out.Output }
+
+	upCommand       = cliutil.Up("sg migration", makeRunner, outputFactory, true)
+	upToCommand     = cliutil.UpTo("sg migration", makeRunner, outputFactory, true)
+	undoCommand     = cliutil.Undo("sg migration", makeRunner, outputFactory, true)
+	downToCommand   = cliutil.DownTo("sg migration", makeRunner, outputFactory, true)
+	validateCommand = cliutil.Validate("sg migration", makeRunner, outputFactory)
+	describeCommand = cliutil.Describe("sg migration", makeRunner, outputFactory)
+	driftCommand    = cliutil.Drift("sg migration", makeRunner, outputFactory)
+	addLogCommand   = cliutil.AddLog("sg migration", makeRunner, outputFactory)
+
+	leavesCommand = &cli.Command{
+		Name:        "leaves",
+		ArgsUsage:   "<commit>",
+		Usage:       "Identiy the migration leaves for the given commit",
+		Description: cliutil.ConstructLongHelp(),
+		Action:      execAdapter(leavesExec),
+	}
+
+	squashCommand = &cli.Command{
+		Name:        "squash",
+		ArgsUsage:   "<current-release>",
+		Usage:       "Collapse migration files from historic releases together",
+		Description: cliutil.ConstructLongHelp(),
+		Flags:       []cli.Flag{migrateTargetDatabaseFlag},
+		Action:      execAdapter(squashExec),
+	}
+
+	migrationCommand = &cli.Command{
+		Name:     "migration",
+		Usage:    "Modifies and runs database migrations",
+		Category: CategoryDev,
+		Subcommands: []*cli.Command{
+			addCommand,
+			revertCommand,
 			upCommand,
 			upToCommand,
-			UndoCommand,
+			undoCommand,
 			downToCommand,
-			migrationSquashCommand,
+			validateCommand,
+			describeCommand,
+			driftCommand,
+			addLogCommand,
+			leavesCommand,
+			squashCommand,
 		},
 	}
 )
 
-func runMigration(ctx context.Context, options runner.Options) error {
+func makeRunner(ctx context.Context, schemaNames []string) (cliutil.Runner, error) {
+	// Try to read the `sg` configuration so we can read ENV vars from the
+	// configuration and use process env as fallback.
+	var getEnv func(string) string
+	config, _ := sgconf.Get(configFile, configOverwriteFile)
+	if config != nil {
+		getEnv = config.GetEnv
+	} else {
+		getEnv = os.Getenv
+	}
+
 	storeFactory := func(db *sql.DB, migrationsTable string) connections.Store {
 		return connections.NewStoreShim(store.NewWithDB(db, migrationsTable, store.NewOperations(&observation.TestContext)))
 	}
+	schemas, err := getFilesystemSchemas()
+	if err != nil {
+		return nil, err
+	}
+	r, err := connections.RunnerFromDSNsWithSchemas(postgresdsn.RawDSNsBySchema(schemaNames, getEnv), "sg", storeFactory, schemas)
+	if err != nil {
+		return nil, err
+	}
 
-	return connections.RunnerFromDSNs(postgresdsn.RawDSNsBySchema(schemas.SchemaNames), "sg", storeFactory).Run(ctx, options)
+	return cliutil.NewShim(r), nil
 }
 
-func migrationAddExec(ctx context.Context, args []string) error {
+func getFilesystemSchemas() (schemas []*schemas.Schema, errs error) {
+	for _, name := range []string{"frontend", "codeintel", "codeinsights"} {
+		schema, err := resolveSchema(name)
+		if err != nil {
+			errs = errors.Append(errs, errors.Newf("%s: %w", name, err))
+		} else {
+			schemas = append(schemas, schema)
+		}
+	}
+	return
+}
+
+func resolveSchema(name string) (*schemas.Schema, error) {
+	repositoryRoot, err := root.RepositoryRoot()
+	if err != nil {
+		if errors.Is(err, root.ErrNotInsideSourcegraph) {
+			return nil, errors.Newf("sg migration command uses the migrations defined on the local filesystem: %w", err)
+		}
+		return nil, err
+	}
+
+	schema, err := schemas.ResolveSchema(os.DirFS(filepath.Join(repositoryRoot, "migrations", name)), name)
+	if err != nil {
+		return nil, errors.Newf("malformed migration definitions: %w", err)
+	}
+
+	return schema, nil
+}
+
+func addExec(ctx context.Context, args []string) error {
 	if len(args) == 0 {
-		stdout.Out.WriteLine(output.Linef("", output.StyleWarning, "No migration name specified"))
+		std.Out.WriteLine(output.Styled(output.StyleWarning, "No migration name specified"))
 		return flag.ErrHelp
 	}
 	if len(args) != 1 {
-		stdout.Out.WriteLine(output.Linef("", output.StyleWarning, "ERROR: too many arguments"))
+		std.Out.WriteLine(output.Styled(output.StyleWarning, "ERROR: too many arguments"))
 		return flag.ErrHelp
 	}
 
 	var (
-		databaseName  = *migrationAddDatabaseNameFlag
-		migrationName = args[0]
-		database, ok  = db.DatabaseByName(databaseName)
+		databaseName = migrateTargetDatabase
+		database, ok = db.DatabaseByName(databaseName)
 	)
 	if !ok {
-		stdout.Out.WriteLine(output.Linef("", output.StyleWarning, "ERROR: database %q not found :(", databaseName))
+		std.Out.WriteLine(output.Styledf(output.StyleWarning, "ERROR: database %q not found :(", databaseName))
 		return flag.ErrHelp
 	}
 
-	upFile, downFile, metadataFile, err := migration.Add(database, migrationName)
+	return migration.Add(database, args[0])
+}
+
+func revertExec(ctx context.Context, args []string) error {
+	if len(args) == 0 {
+		std.Out.WriteLine(output.Styled(output.StyleWarning, "No commit specified"))
+		return flag.ErrHelp
+	}
+	if len(args) != 1 {
+		std.Out.WriteLine(output.Styled(output.StyleWarning, "ERROR: too many arguments"))
+		return flag.ErrHelp
+	}
+
+	return migration.Revert(db.Databases(), args[0])
+}
+
+func squashExec(ctx context.Context, args []string) (err error) {
+	if len(args) == 0 {
+		std.Out.WriteLine(output.Styled(output.StyleWarning, "No current-version specified"))
+		return flag.ErrHelp
+	}
+	if len(args) != 1 {
+		std.Out.WriteLine(output.Styled(output.StyleWarning, "ERROR: too many arguments"))
+		return flag.ErrHelp
+	}
+
+	var (
+		databaseName = migrateTargetDatabase
+		database, ok = db.DatabaseByName(databaseName)
+	)
+	if !ok {
+		std.Out.WriteLine(output.Styledf(output.StyleWarning, "ERROR: database %q not found :(", databaseName))
+		return flag.ErrHelp
+	}
+
+	// Get the last migration that existed in the version _before_ `minimumMigrationSquashDistance` releases ago
+	commit, err := findTargetSquashCommit(args[0])
 	if err != nil {
 		return err
 	}
+	std.Out.Writef("Squashing migration files defined up through %s", commit)
 
-	block := stdout.Out.Block(output.Linef("", output.StyleBold, "Migration files created"))
-	block.Writef("Up query file: %s", upFile)
-	block.Writef("Down query file: %s", downFile)
-	block.Writef("Metadata file: %s", metadataFile)
-	block.Close()
+	return migration.Squash(database, commit)
+}
 
-	return nil
+func leavesExec(ctx context.Context, args []string) (err error) {
+	if len(args) == 0 {
+		std.Out.WriteLine(output.Styled(output.StyleWarning, "No commit specified"))
+		return flag.ErrHelp
+	}
+	if len(args) != 1 {
+		std.Out.WriteLine(output.Styled(output.StyleWarning, "ERROR: too many arguments"))
+		return flag.ErrHelp
+	}
+
+	return migration.LeavesForCommit(db.Databases(), args[0])
 }
 
 // minimumMigrationSquashDistance is the minimum number of releases a migration is guaranteed to exist
@@ -120,34 +245,13 @@ func migrationAddExec(ctx context.Context, args []string) error {
 // etc
 const minimumMigrationSquashDistance = 2
 
-func migrationSquashExec(ctx context.Context, args []string) (err error) {
-	if len(args) == 0 {
-		stdout.Out.WriteLine(output.Linef("", output.StyleWarning, "No current-version specified"))
-		return flag.ErrHelp
-	}
-	if len(args) != 1 {
-		stdout.Out.WriteLine(output.Linef("", output.StyleWarning, "ERROR: too many arguments"))
-		return flag.ErrHelp
-	}
-
-	var (
-		databaseName  = *migrationSquashDatabaseNameFlag
-		migrationName = args[0]
-		database, ok  = db.DatabaseByName(databaseName)
-	)
-	if !ok {
-		stdout.Out.WriteLine(output.Linef("", output.StyleWarning, "ERROR: database %q not found :(", databaseName))
-		return flag.ErrHelp
-	}
-
+// findTargetSquashCommit constructs the git version tag that is `minimumMIgrationSquashDistance` minor
+// releases ago.
+func findTargetSquashCommit(migrationName string) (string, error) {
 	currentVersion, err := semver.NewVersion(migrationName)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	// Get the last migration that existed in the version _before_ `minimumMigrationSquashDistance` releases ago
-	commit := fmt.Sprintf("v%d.%d.0", currentVersion.Major(), currentVersion.Minor()-minimumMigrationSquashDistance-1)
-	stdout.Out.Writef("Squashing migration files defined up through %s", commit)
-
-	return migration.Squash(database, commit)
+	return fmt.Sprintf("v%d.%d.0", currentVersion.Major(), currentVersion.Minor()-minimumMigrationSquashDistance-1), nil
 }

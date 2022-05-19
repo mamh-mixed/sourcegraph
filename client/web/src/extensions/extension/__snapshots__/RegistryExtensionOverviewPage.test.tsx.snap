@@ -10,6 +10,7 @@ exports[`RegistryExtensionOverviewPage renders 1`] = `
     >
       <div
         class="markdown"
+        data-testid="registry-extension-overview"
       >
         <p>
           <strong>
@@ -39,9 +40,11 @@ exports[`RegistryExtensionOverviewPage renders 1`] = `
       <div
         class="pt-2 pb-3"
       >
-        <h3>
+        <h2
+          class="h2 h3"
+        >
           Publisher
-        </h3>
+        </h2>
         <small>
           x
         </small>
@@ -49,12 +52,14 @@ exports[`RegistryExtensionOverviewPage renders 1`] = `
       <div
         class="sidebarSection"
       >
-        <h3>
+        <h3
+          class="h3"
+        >
           Resources
         </h3>
         <small>
           <a
-            class="d-block mb-1"
+            class="anchorLink d-block mb-1"
             href="https://example.com"
             rel="nofollow noopener noreferrer"
             target="_blank"
@@ -65,10 +70,10 @@ exports[`RegistryExtensionOverviewPage renders 1`] = `
             class="d-flex"
           >
             <githubicon
-              class="icon-inline mr-1"
+              class="iconInline mr-1"
             />
             <a
-              class="d-block"
+              class="anchorLink d-block"
               href="https://github.com/foo/bar"
               rel="nofollow noreferrer noopener"
               target="_blank"
@@ -81,7 +86,9 @@ exports[`RegistryExtensionOverviewPage renders 1`] = `
       <div
         class="sidebarSection"
       >
-        <h3>
+        <h3
+          class="h3"
+        >
           Extension ID
         </h3>
         <small
@@ -93,7 +100,9 @@ exports[`RegistryExtensionOverviewPage renders 1`] = `
       <div
         class="pb-0 sidebarSection"
       >
-        <h3>
+        <h3
+          class="h3"
+        >
           Categories
         </h3>
         <ul
@@ -104,7 +113,7 @@ exports[`RegistryExtensionOverviewPage renders 1`] = `
             class="list-inline-item mb-2"
           >
             <a
-              class="btn btnOutlineSecondary btnSm"
+              class="anchorLink btn btnOutlineSecondary btnSm"
               href="/extensions?category=Programming+languages"
             >
               Programming languages
@@ -114,7 +123,7 @@ exports[`RegistryExtensionOverviewPage renders 1`] = `
             class="list-inline-item mb-2"
           >
             <a
-              class="btn btnOutlineSecondary btnSm"
+              class="anchorLink btn btnOutlineSecondary btnSm"
               href="/extensions?category=Other"
             >
               Other
@@ -125,7 +134,9 @@ exports[`RegistryExtensionOverviewPage renders 1`] = `
       <div
         class="pb-0 sidebarSection"
       >
-        <h3>
+        <h3
+          class="h3"
+        >
           Tags
         </h3>
         <ul
@@ -135,7 +146,7 @@ exports[`RegistryExtensionOverviewPage renders 1`] = `
             class="list-inline-item mb-2"
           >
             <a
-              class="btn btnOutlineSecondary btnSm tag"
+              class="anchorLink btn btnOutlineSecondary btnSm tag"
               href="/extensions?query=tag%3AT1"
             >
               T1
@@ -145,7 +156,7 @@ exports[`RegistryExtensionOverviewPage renders 1`] = `
             class="list-inline-item mb-2"
           >
             <a
-              class="btn btnOutlineSecondary btnSm tag"
+              class="anchorLink btn btnOutlineSecondary btnSm tag"
               href="/extensions?query=tag%3AT2"
             >
               T2
@@ -168,6 +179,7 @@ exports[`RegistryExtensionOverviewPage renders with no tags 1`] = `
     >
       <div
         class="markdown"
+        data-testid="registry-extension-overview"
       >
         <p>
           <strong>
@@ -197,9 +209,11 @@ exports[`RegistryExtensionOverviewPage renders with no tags 1`] = `
       <div
         class="pt-2 pb-3"
       >
-        <h3>
+        <h2
+          class="h2 h3"
+        >
           Publisher
-        </h3>
+        </h2>
         <small>
           x
         </small>
@@ -207,12 +221,14 @@ exports[`RegistryExtensionOverviewPage renders with no tags 1`] = `
       <div
         class="sidebarSection"
       >
-        <h3>
+        <h3
+          class="h3"
+        >
           Resources
         </h3>
         <small>
           <a
-            class="d-block mb-1"
+            class="anchorLink d-block mb-1"
             href="https://example.com"
             rel="nofollow noopener noreferrer"
             target="_blank"
@@ -223,10 +239,10 @@ exports[`RegistryExtensionOverviewPage renders with no tags 1`] = `
             class="d-flex"
           >
             <githubicon
-              class="icon-inline mr-1"
+              class="iconInline mr-1"
             />
             <a
-              class="d-block"
+              class="anchorLink d-block"
               href="https://github.com/foo/bar"
               rel="nofollow noreferrer noopener"
               target="_blank"
@@ -239,7 +255,9 @@ exports[`RegistryExtensionOverviewPage renders with no tags 1`] = `
       <div
         class="sidebarSection"
       >
-        <h3>
+        <h3
+          class="h3"
+        >
           Extension ID
         </h3>
         <small
@@ -251,7 +269,9 @@ exports[`RegistryExtensionOverviewPage renders with no tags 1`] = `
       <div
         class="pb-0 sidebarSection"
       >
-        <h3>
+        <h3
+          class="h3"
+        >
           Categories
         </h3>
         <ul
@@ -262,7 +282,7 @@ exports[`RegistryExtensionOverviewPage renders with no tags 1`] = `
             class="list-inline-item mb-2"
           >
             <a
-              class="btn btnOutlineSecondary btnSm"
+              class="anchorLink btn btnOutlineSecondary btnSm"
               href="/extensions?category=Programming+languages"
             >
               Programming languages
@@ -272,7 +292,7 @@ exports[`RegistryExtensionOverviewPage renders with no tags 1`] = `
             class="list-inline-item mb-2"
           >
             <a
-              class="btn btnOutlineSecondary btnSm"
+              class="anchorLink btn btnOutlineSecondary btnSm"
               href="/extensions?category=Other"
             >
               Other

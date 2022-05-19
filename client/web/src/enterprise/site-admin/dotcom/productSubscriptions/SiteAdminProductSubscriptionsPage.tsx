@@ -1,12 +1,13 @@
-import AddIcon from 'mdi-react/AddIcon'
 import React, { useEffect } from 'react'
+
+import AddIcon from 'mdi-react/AddIcon'
 import { RouteComponentProps } from 'react-router'
 import { Observable } from 'rxjs'
 import { map } from 'rxjs/operators'
 
 import { dataOrThrowErrors, gql } from '@sourcegraph/http-client'
 import * as GQL from '@sourcegraph/shared/src/schema'
-import { Button, Link } from '@sourcegraph/wildcard'
+import { Button, Link, Icon, Typography } from '@sourcegraph/wildcard'
 
 import { queryGraphQL } from '../../../../backend/graphql'
 import { FilteredConnection } from '../../../../components/FilteredConnection'
@@ -30,15 +31,18 @@ class FilteredSiteAdminProductSubscriptionConnection extends FilteredConnection<
 /**
  * Displays the product subscriptions that have been created on Sourcegraph.com.
  */
-export const SiteAdminProductSubscriptionsPage: React.FunctionComponent<Props> = ({ history, location }) => {
+export const SiteAdminProductSubscriptionsPage: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
+    history,
+    location,
+}) => {
     useEffect(() => eventLogger.logViewEvent('SiteAdminProductSubscriptions'), [])
     return (
         <div className="site-admin-product-subscriptions-page">
             <PageTitle title="Product subscriptions" />
             <div className="d-flex justify-content-between align-items-center mb-3">
-                <h2 className="mb-0">Product subscriptions</h2>
+                <Typography.H2 className="mb-0">Product subscriptions</Typography.H2>
                 <Button to="/site-admin/dotcom/product/subscriptions/new" variant="primary" as={Link}>
-                    <AddIcon className="icon-inline" />
+                    <Icon as={AddIcon} />
                     Create product subscription
                 </Button>
             </div>

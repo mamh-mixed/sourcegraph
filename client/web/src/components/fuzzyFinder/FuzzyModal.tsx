@@ -1,11 +1,12 @@
+import React, { useState, useEffect } from 'react'
+
 import { ApolloError } from '@apollo/client'
 import classNames from 'classnames'
 import CloseIcon from 'mdi-react/CloseIcon'
-import React, { useState, useEffect } from 'react'
 
-import { pluralize } from '@sourcegraph/shared/src/util/strings'
+import { pluralize } from '@sourcegraph/common'
 import { toPrettyBlobURL } from '@sourcegraph/shared/src/util/url'
-import { useLocalStorage, Button, Modal } from '@sourcegraph/wildcard'
+import { useLocalStorage, Button, Modal, Icon, Typography } from '@sourcegraph/wildcard'
 
 import { CaseInsensitiveFuzzySearch } from '../../fuzzyFinder/CaseInsensitiveFuzzySearch'
 import { FuzzySearch, FuzzySearchResult, SearchIndexing, SearchValue } from '../../fuzzyFinder/FuzzySearch'
@@ -13,8 +14,9 @@ import { WordSensitiveFuzzySearch } from '../../fuzzyFinder/WordSensitiveFuzzySe
 import { parseBrowserRepoURL } from '../../util/url'
 
 import { Indexing, FuzzyFSM } from './FuzzyFinder'
-import styles from './FuzzyModal.module.scss'
 import { HighlightedLink } from './HighlightedLink'
+
+import styles from './FuzzyModal.module.scss'
 
 // The default value of 80k filenames is picked from the following observations:
 // - case-insensitive search is slow but works in the torvalds/linux repo (72k files)
@@ -50,7 +52,7 @@ export interface FuzzyModalProps {
  *
  * Similar to "Go to file" in VS Code or the "t" keyboard shortcut on github.com
  */
-export const FuzzyModal: React.FunctionComponent<FuzzyModalProps> = props => {
+export const FuzzyModal: React.FunctionComponent<React.PropsWithChildren<FuzzyModalProps>> = props => {
     // NOTE: the query is cached in local storage to mimic the file pickers in
     // IntelliJ (by default) and VS Code (when "Workbench > Quick Open >
     // Preserve Input" is enabled).
@@ -236,11 +238,11 @@ export const FuzzyModal: React.FunctionComponent<FuzzyModalProps> = props => {
         >
             <div className={styles.content}>
                 <div className={styles.header}>
-                    <h3 className="mb-0" id={FUZZY_MODAL_TITLE}>
+                    <Typography.H3 className="mb-0" id={FUZZY_MODAL_TITLE}>
                         Find file
-                    </h3>
+                    </Typography.H3>
                     <Button variant="icon" onClick={() => props.onClose()} aria-label="Close">
-                        <CloseIcon className={classNames('icon-inline', styles.closeIcon)} />
+                        <Icon className={styles.closeIcon} as={CloseIcon} />
                     </Button>
                 </div>
                 <input
@@ -297,7 +299,7 @@ interface FuzzyResultsSummaryProps {
     totalFileCount: number
 }
 
-const FuzzyResultsSummary: React.FunctionComponent<FuzzyResultsSummaryProps> = ({
+const FuzzyResultsSummary: React.FunctionComponent<React.PropsWithChildren<FuzzyResultsSummaryProps>> = ({
     fsm,
     resultsCount,
     isComplete,

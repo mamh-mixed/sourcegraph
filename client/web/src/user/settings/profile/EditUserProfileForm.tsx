@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react'
+
 import { useHistory } from 'react-router'
 
 import { Form } from '@sourcegraph/branded/src/components/Form'
@@ -32,7 +33,11 @@ interface Props {
 /**
  * A form to edit a user's profile.
  */
-export const EditUserProfileForm: React.FunctionComponent<Props> = ({ user, initialValue, after }) => {
+export const EditUserProfileForm: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
+    user,
+    initialValue,
+    after,
+}) => {
     const history = useHistory()
     const [updateUser, { data, loading, error }] = useMutation<UpdateUserResult, UpdateUserVariables>(UPDATE_USER, {
         onCompleted: ({ updateUser }) => {

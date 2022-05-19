@@ -1,13 +1,14 @@
 import * as React from 'react'
+
 import { RouteComponentProps } from 'react-router'
 import { Observable } from 'rxjs'
 import { map } from 'rxjs/operators'
 
+import { HoverMerged } from '@sourcegraph/client-api'
 import { Hoverifier } from '@sourcegraph/codeintellify'
 import { createAggregateError } from '@sourcegraph/common'
 import { gql } from '@sourcegraph/http-client'
 import { ActionItemAction } from '@sourcegraph/shared/src/actions/ActionItem'
-import { HoverMerged } from '@sourcegraph/shared/src/api/client/types/hover'
 import { ExtensionsControllerProps } from '@sourcegraph/shared/src/extensions/controller'
 import { Scalars } from '@sourcegraph/shared/src/graphql-operations'
 import { PlatformContextProps } from '@sourcegraph/shared/src/platform/context'
@@ -92,7 +93,7 @@ export class RepositoryCompareDiffPage extends React.PureComponent<RepositoryCom
         return (
             <div className="repository-compare-page">
                 <FileDiffConnection
-                    listClassName="list-group list-group-flush"
+                    listClassName="list-group list-group-flush test-file-diff-connection"
                     noun="changed file"
                     pluralNoun="changed files"
                     queryConnection={this.queryDiffs}

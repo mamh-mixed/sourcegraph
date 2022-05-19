@@ -30,13 +30,13 @@
       "group": "Search"
     },
     "search.largeFiles": {
-      "description": "A list of file glob patterns where matching files will be indexed and searched regardless of their size. Files still need to be valid utf-8 to be indexed. The glob pattern syntax can be found here: https://golang.org/pkg/path/filepath/#Match.",
+      "description": "A list of file glob patterns where matching files will be indexed and searched regardless of their size. Files still need to be valid utf-8 to be indexed. The glob pattern syntax can be found here: https://github.com/bmatcuk/doublestar#patterns.",
       "type": "array",
       "items": {
         "type": "string"
       },
       "group": "Search",
-      "examples": [["go.sum", "package-lock.json", "*.thrift"]]
+      "examples": [["go.sum", "package-lock.json", "**/*.thrift"]]
     },
     "debug.search.symbolsParallelism": {
       "description": "(debug) controls the amount of symbol search parallelism. Defaults to 20. It is not recommended to change this outside of debugging scenarios. This option will be removed in a future version.",
@@ -45,7 +45,7 @@
       "examples": [["20"]]
     },
     "apidocs.search.index-size-limit-factor": {
-      "description": "Limit factor for API docs search index size. A multiple of 250 million symbols. 1.0 indicates 250 million symbols (approx 12.5k repos) can be indexed. 2.0 indicates double that, and so on. See https://docs.sourcegraph.com/code_intelligence/apidocs",
+      "description": "Deprecated.",
       "type": "number",
       "default": 1.0,
       "additionalProperties": false
@@ -54,6 +54,11 @@
       "description": "Whether clone progress should be logged to a file. If enabled, logs are written to files in the OS default path for temporary files.",
       "type": "boolean",
       "default": false
+    },
+    "defaultRateLimit": {
+      "description": "The rate limit (in requests per hour) for the default rate limiter in the rate limiters registry. By default this is disabled and the default rate limit is infinity.",
+      "type": "number",
+      "default": -1
     },
     "experimentalFeatures": {
       "description": "Experimental features to enable or disable. Features that are now enabled by default are marked as deprecated.",
@@ -71,6 +76,39 @@
           "enum": ["enabled", "disabled"],
           "default": "enabled"
         },
+        "passwordPolicy": {
+          "description": "Enables and configures password policy. This will allow admins to enforce password complexity and length requirements.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "description": "Enables password policy",
+              "type": "boolean",
+              "default": true
+            },
+            "minimumLength": {
+              "description": "The minimum length required for a password",
+              "type": "integer",
+              "length": 12,
+              "default": 12
+            },
+            "numberOfSpecialCharacters": {
+              "description": "The required number of special characters",
+              "type": "integer",
+              "length": 2
+            },
+            "requireAtLeastOneNumber": {
+              "description": "Does the password require a number",
+              "type": "boolean",
+              "default": true
+            },
+            "requireUpperandLowerCase": {
+              "description": "Require Mixed characters",
+              "type": "boolean",
+              "default": true
+            }
+          }
+        },
         "debug.log": {
           "description": "Turns on debug logging for specific debugging scenarios.",
           "type": "object",
@@ -84,13 +122,19 @@
           }
         },
         "apidocs.search.indexing": {
-          "description": "Index API docs for search, see https://docs.sourcegraph.com/code_intelligence/apidocs",
+          "description": "Deprecated.",
           "type": "string",
           "enum": ["enabled", "disabled"],
           "default": "enabled"
         },
         "structuralSearch": {
           "description": "Enables structural search.",
+          "type": "string",
+          "enum": ["enabled", "disabled"],
+          "default": "enabled"
+        },
+        "dependenciesSearch": {
+          "description": "Enables support for repo:dependencies predicate queries.",
           "type": "string",
           "enum": ["enabled", "disabled"],
           "default": "enabled"
@@ -131,6 +175,12 @@
           "enum": ["enabled", "disabled"],
           "default": "disabled"
         },
+        "gerrit": {
+          "description": "Allow adding Gerrit code host connections",
+          "type": "string",
+          "enum": ["enabled", "disabled"],
+          "default": "disabled"
+        },
         "subRepoPermissions": {
           "type": "object",
           "additionalProperties": false,
@@ -155,7 +205,7 @@
           }
         },
         "npmPackages": {
-          "description": "Allow adding NPM packages code host connections",
+          "description": "Allow adding npm packages code host connections",
           "type": "string",
           "enum": ["enabled", "disabled"],
           "default": "enabled"
@@ -371,10 +421,35 @@
           "type": "boolean",
           "default": false
         },
-        "enableRepoUpdateIntervalJitter": {
-          "description": "Enable a jitter of 5% in the update interval of a repo in the schedule",
+        "enableGitServerCommandExecFilter": {
+          "description": "Enable filtering of all exec commands on gitserver based on a pre-defined allowlist",
+          "type": "boolean",
+          "default": true
+        },
+        "enableGitserverClientLookupTable": {
+          "description": "Enable getting repository location from the database. Works only on Cloud.",
           "type": "boolean",
           "default": false
+        },
+        "gitserverClientLookupTable.Rate": {
+          "description": "Percentage of calls to AddrFromRepo that read from the database. Only used if enableGitserverClientLookupTable is true.",
+          "type": "integer",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 100
+        },
+        "gitServerPinnedRepos": {
+          "description": "List of repositories pinned to specific gitserver instances. The specified repositories will remain at their pinned servers on scaling the cluster. If the specified pinned server differs from the current server that stores the repository, then it must be re-cloned to the specified server.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "examples": [
+            {
+              "github.com/foo/bar": "gitserverHostname",
+              "github.com/foo/bar2": "gitserverHostname2"
+            }
+          ]
         }
       },
       "examples": [
@@ -389,6 +464,12 @@
               "fetch": "customgitbinary someflag anotherflag"
             }
           ]
+        },
+        {
+          "tls.external": {
+            "certificates": ["-----BEGIN CERTIFICATE-----\n..."],
+            "insecureSkipVerify": true
+          }
         }
       ],
       "group": "Experimental"
@@ -611,6 +692,63 @@
       "default": -1,
       "group": "External services"
     },
+    "syntaxHighlighting": {
+      "title": "SyntaxHighlighting",
+      "description": "Syntax highlighting configuration",
+      "type": "object",
+      "required": ["engine", "languages"],
+      "properties": {
+        "engine": {
+          "title": "SyntaxHighlightingEngine",
+          "type": "object",
+          "required": ["default"],
+          "properties": {
+            "default": {
+              "description": "The default syntax highlighting engine to use",
+              "type": "string",
+              "enum": ["tree-sitter", "syntect"]
+            },
+            "overrides": {
+              "description": "Manually specify overrides for syntax highlighting engine per language",
+              "type": "object",
+              "additionalProperties": { "type": "string", "enum": ["tree-sitter", "syntect"] }
+            }
+          }
+        },
+        "languages": {
+          "title": "SyntaxHighlightingLanguage",
+          "type": "object",
+          "required": ["extensions", "patterns"],
+          "properties": {
+            "extensions": {
+              "description": "Map of extension to language",
+              "type": "object",
+              "additionalProperties": { "type": "string" }
+            },
+            "patterns": {
+              "description": "Map of patterns to language. Will return after first match, if any.",
+              "type": "array",
+              "items": {
+                "title": "SyntaxHighlightingLanguagePatterns",
+                "type": "object",
+                "required": ["pattern", "language"],
+                "properties": {
+                  "pattern": {
+                    "description": "Regular expression which matches the filepath",
+                    "type": "string",
+                    "format": "regex"
+                  },
+                  "language": {
+                    "description": "Name of the language if pattern matches",
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "repoListUpdateInterval": {
       "description": "Interval (in minutes) for checking code hosts (such as GitHub, Gitolite, etc.) for new repositories.",
       "type": "integer",
@@ -700,6 +838,11 @@
       "type": "boolean",
       "default": false
     },
+    "authz.refreshInterval": {
+      "description": "Time interval (in seconds) of how often each component picks up authorization changes in external services.",
+      "type": "integer",
+      "default": 5
+    },
     "externalService.userMode": {
       "description": "Enable to allow users to add external services for public and private repositories to the Sourcegraph instance.",
       "type": "string",
@@ -729,6 +872,31 @@
       },
       "examples": [{ "bindID": "email" }, { "bindID": "username" }],
       "group": "Security"
+    },
+    "permissions.syncScheduleInterval": {
+      "description": "Time interval (in seconds) of how often each component picks up authorization changes in external services.",
+      "type": "integer",
+      "default": 15
+    },
+    "permissions.syncOldestUsers": {
+      "description": "Number of user permissions to schedule for syncing in single scheduler iteration",
+      "type": "integer",
+      "default": 10
+    },
+    "permissions.syncOldestRepos": {
+      "description": "Number of repo permissions to schedule for syncing in single scheduler iteration",
+      "type": "integer",
+      "default": 10
+    },
+    "permissions.syncUsersBackoffSeconds": {
+      "description": "Don't sync a user's permissions if they have synced within the last n seconds",
+      "type": "integer",
+      "default": 60
+    },
+    "permissions.syncReposBackoffSeconds": {
+      "description": "Don't sync a repo's permissions if it has synced within the last n seconds",
+      "type": "integer",
+      "default": 60
     },
     "branding": {
       "description": "Customize Sourcegraph homepage logo and search icon.\n\nOnly available in Sourcegraph Enterprise.",
@@ -774,7 +942,7 @@
     },
     "email.smtp": {
       "title": "SMTPServerConfig",
-      "description": "The SMTP server used to send transactional emails (such as email verifications, reset-password emails, and notifications).",
+      "description": "The SMTP server used to send transactional emails.\nPlease see https://docs.sourcegraph.com/admin/config/email",
       "type": "object",
       "additionalProperties": false,
       "required": ["host", "port", "authentication"],
@@ -822,7 +990,7 @@
       "group": "Email"
     },
     "email.address": {
-      "description": "The \"from\" address for emails sent by this server.",
+      "description": "The \"from\" address for emails sent by this server.\nPlease see https://docs.sourcegraph.com/admin/config/email",
       "type": "string",
       "format": "email",
       "group": "Email",
@@ -917,15 +1085,57 @@
       "type": "string",
       "examples": ["https://sourcegraph.example.com"]
     },
-    "useJaeger": {
-      "description": "DEPRECATED. Use `\"observability.tracing\": { \"sampling\": \"all\" }`, instead. Enables Jaeger tracing.",
-      "type": "boolean",
-      "group": "Misc."
+    "observability.logging": {
+      "description": "Configuration for logging to external services.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "datadog": {
+          "description": "Datadog configuration",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "RUM": {
+              "description": "Datadog RUM configuration",
+              "type": "object",
+              "required": ["clientToken", "applicationId"],
+              "additionalProperties": false,
+              "properties": {
+                "clientToken": {
+                  "description": "Datadog client token required RUM (https://docs.datadoghq.com/real_user_monitoring/browser/#setup).",
+                  "type": "string"
+                },
+                "applicationId": {
+                  "description": "Datadog application ID required RUM (https://docs.datadoghq.com/real_user_monitoring/browser/#setup).",
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "examples": [
+        {
+          "datadog": {
+            "RUM": {
+              "clientToken": "aaa1111a1a11a1aa11a1aa1a111aaa111aa",
+              "applicationId": "a11aa111-a1aa-1a11-aaa1-a11a111a111a"
+            }
+          }
+        }
+      ],
+      "group": "Debug"
     },
     "observability.tracing": {
       "description": "Controls the settings for distributed tracing.",
       "type": "object",
       "properties": {
+        "type": {
+          "description": "Determines what tracing provider to enable. Supports \"datadog\" or \"opentracing\"",
+          "type": "string",
+          "enum": ["datadog", "opentracing"],
+          "default": "opentracing"
+        },
         "sampling": {
           "description": "Determines the requests for which distributed traces are recorded. \"none\" (default) turns off tracing entirely. \"selective\" sends traces whenever `?trace=1` is present in the URL. \"all\" sends traces on every request. Note that this only affects the behavior of the distributed tracing client. The Jaeger instance must be running for traces to be collected (as described in the Sourcegraph installation instructions). Additional downsampling can be configured in Jaeger, itself (https://www.jaegertracing.io/docs/1.17/sampling)",
           "type": "string",
@@ -1044,6 +1254,20 @@
       "examples": [10.0, 0.5],
       "!go": { "pointer": true }
     },
+    "insights.compute.graphql": {
+      "description": "Force GraphQL mode for insights compute searches. This will overwrite the default streaming behavior and force search clients to use the GraphQL API",
+      "type": "boolean",
+      "!go": { "pointer": true },
+      "group": "CodeInsights",
+      "default": false
+    },
+    "insights.search.graphql": {
+      "description": "Force GraphQL mode for insights searches. This will overwrite the default streaming behavior and force search clients to use the GraphQL API",
+      "type": "boolean",
+      "!go": { "pointer": true },
+      "group": "CodeInsights",
+      "default": false
+    },
     "insights.historical.worker.rateLimit": {
       "description": "Maximum number of historical Code Insights data frames that may be analyzed per second.",
       "type": "number",
@@ -1058,6 +1282,13 @@
       "group": "CodeInsights",
       "default": 60,
       "examples": [120]
+    },
+    "insights.commit.indexer.windowDuration": {
+      "description": "The number of days of commits the insights commit indexer will pull during each request (0 is no limit).",
+      "type": "integer",
+      "group": "CodeInsights",
+      "default": 0,
+      "examples": [30]
     },
     "htmlHeadTop": {
       "description": "HTML to inject at the top of the `<head>` element on each page, for analytics scripts",
@@ -1108,6 +1339,14 @@
             "privateKey": {
               "description": "The base64-encoded private key of the GitHub App for Sourcegraph Cloud.",
               "type": "string"
+            },
+            "clientID": {
+              "type": "string",
+              "description": "The Client ID of the GitHub App for Sourcegraph Cloud, accessible from https://github.com/settings/apps ."
+            },
+            "clientSecret": {
+              "type": "string",
+              "description": "The Client Secret of the GitHub App for Sourcegraph Cloud, accessible from https://github.com/settings/apps ."
             }
           }
         }
@@ -1170,6 +1409,39 @@
       "type": "integer",
       "default": 14400,
       "group": "Authentication"
+    },
+    "auth.lockout": {
+      "description": "The config options for account lockout",
+      "type": "object",
+      "properties": {
+        "failedAttemptThreshold": {
+          "description": "The threshold of failed sign-in attempts in a consecutive period",
+          "type": "integer",
+          "default": 5
+        },
+        "lockoutPeriod": {
+          "description": "The number of seconds for the lockout period",
+          "type": "integer",
+          "default": 1800
+        },
+        "consecutivePeriod": {
+          "description": "The number of seconds to be considered as a consecutive period",
+          "type": "integer",
+          "default": 3600
+        }
+      },
+      "group": "Authentication"
+    },
+    "auth.unlockAccountLinkSigningKey": {
+      "description": "Base64-encoded HMAC signing key to sign the JWT token for account unlock URLs",
+      "type": "string",
+      "group": "Authentication"
+    },
+    "auth.unlockAccountLinkExpiry": {
+      "description": "Validity expressed in minutes of the unlock account token",
+      "type": "integer",
+      "group": "Authentication",
+      "default": 5
     },
     "update.channel": {
       "description": "The channel on which to automatically check for Sourcegraph updates.",
@@ -1299,7 +1571,7 @@
           "default": 48
         },
         "signingKey": {
-          "description": "HMAC Signing key to sign a JWT token, which is attached to each invitation URL. Can be any string.\nMore documentation here: https://pkg.go.dev/github.com/golang-jwt/jwt#SigningMethodHMAC \n\nIf not provided, will fall back to legacy invitation to an organization.\n\nThe legacy invitation will be deprecated in the future and creating an organization invitation will fail with an error if this setting is not present.",
+          "description": "Base64 encoded HMAC Signing key to sign a JWT token, which is attached to each invitation URL.\nMore documentation here: https://pkg.go.dev/github.com/golang-jwt/jwt#SigningMethodHMAC \n\nIf not provided, will fall back to legacy invitation to an organization.\n\nThe legacy invitation will be deprecated in the future and creating an organization invitation will fail with an error if this setting is not present.",
           "type": "string"
         }
       }
@@ -1373,6 +1645,11 @@
           "description": "Only allow users to authenticate if their email domain is equal to this value (example: mycompany.com). Do not include a leading \"@\". If not set, all users on this OpenID Connect provider can authenticate to Sourcegraph.",
           "type": "string",
           "pattern": "^[^<@]"
+        },
+        "allowSignup": {
+          "description": "Allows new visitors to sign up for accounts via OpenID Connect authentication. If false, users signing in via OpenID Connect must have an existing Sourcegraph account, which will be linked to their OpenID Connect identity after sign-in.",
+          "type": "boolean",
+          "!go": { "pointer": true }
         }
       }
     },
@@ -1521,8 +1798,30 @@
             "minLength": 1
           }
         },
+        "allowOrgsMap": {
+          "description": "Restricts new logins to members of GitHub teams. Each list of teams should have their Github org name as a key. Subteams inheritance is not supported, therefore only members of the listed teams will be granted access. Existing sessions won't be invalidated. Leave empty or unset for no team restrictions.",
+          "default": {},
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "examples": [
+            {
+              "orgName": ["team1"],
+              "anotherOrgName": ["team2", "team3"]
+            }
+          ]
+        },
         "allowGroupsPermissionsSync": {
           "description": "Experimental: Allows sync of GitHub teams and organizations permissions across all external services associated with this provider to allow enabling of [repository permissions caching](https://docs.sourcegraph.com/admin/repo/permissions#permissions-caching).",
+          "default": false,
+          "type": "boolean"
+        },
+        "hidden": {
+          "description": "Hides the configured auth provider from regular use through our web interface by omitting it from the JSContext, useful for experimental auth setups.",
           "default": false,
           "type": "boolean"
         }

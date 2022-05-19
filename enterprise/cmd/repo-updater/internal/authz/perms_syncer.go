@@ -7,8 +7,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/RoaringBitmap/roaring"
-	"github.com/cockroachdb/errors"
 	"github.com/inconshreveable/log15"
 	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -26,10 +24,12 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/errcode"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc/github"
+	"github.com/sourcegraph/sourcegraph/internal/metrics"
 	"github.com/sourcegraph/sourcegraph/internal/ratelimit"
 	"github.com/sourcegraph/sourcegraph/internal/repos"
 	"github.com/sourcegraph/sourcegraph/internal/trace"
 	"github.com/sourcegraph/sourcegraph/internal/types"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 var scheduleReposCounter = promauto.NewCounter(prometheus.CounterOpts{
@@ -47,7 +47,7 @@ type PermsSyncer struct {
 	// The generic database handle.
 	db database.DB
 	// The database interface for any repos and external services operations.
-	reposStore *repos.Store
+	reposStore repos.Store
 	// The database interface for any permissions operations.
 	permsStore edb.PermsStore
 	// The mockable function to return the current time.
@@ -61,7 +61,7 @@ type PermsSyncer struct {
 // NewPermsSyncer returns a new permissions syncing manager.
 func NewPermsSyncer(
 	db database.DB,
-	reposStore *repos.Store,
+	reposStore repos.Store,
 	permsStore edb.PermsStore,
 	clock func() time.Time,
 	rateLimiterRegistry *ratelimit.Registry,
@@ -73,7 +73,7 @@ func NewPermsSyncer(
 		permsStore:          permsStore,
 		clock:               clock,
 		rateLimiterRegistry: rateLimiterRegistry,
-		scheduleInterval:    15 * time.Second,
+		scheduleInterval:    scheduleInterval(),
 	}
 }
 
@@ -210,7 +210,7 @@ func (s *PermsSyncer) listPrivateRepoNamesBySpecs(ctx context.Context, repoSpecs
 
 	repoNames := make([]types.MinimalRepo, 0, len(repoSpecs))
 	for nextCut > 0 {
-		rs, err := s.reposStore.RepoStore.ListMinimalRepos(ctx,
+		rs, err := s.reposStore.RepoStore().ListMinimalRepos(ctx,
 			database.ReposListOptions{
 				ExternalRepos: remaining[:nextCut],
 				OnlyPrivate:   true,
@@ -318,7 +318,7 @@ func (s *PermsSyncer) fetchUserPermsViaExternalAccounts(ctx context.Context, use
 			continue
 		}
 
-		if err := s.waitForRateLimit(ctx, provider.ServiceID(), 1); err != nil {
+		if err := s.waitForRateLimit(ctx, provider.URN(), 1, "user"); err != nil {
 			return nil, nil, errors.Wrap(err, "wait for rate limiter")
 		}
 
@@ -420,7 +420,7 @@ func (s *PermsSyncer) fetchUserPermsViaExternalAccounts(ctx context.Context, use
 	// Exclusions are relative to inclusions, so if there is no inclusion, exclusion
 	// are meaningless and no need to trigger a DB query.
 	if len(includeContainsSpecs) > 0 {
-		rs, err := s.reposStore.RepoStore.ListMinimalRepos(ctx,
+		rs, err := s.reposStore.RepoStore().ListMinimalRepos(ctx,
 			database.ReposListOptions{
 				ExternalRepoIncludeContains: includeContainsSpecs,
 				ExternalRepoExcludeContains: excludeContainsSpecs,
@@ -470,7 +470,7 @@ func (s *PermsSyncer) fetchUserPermsViaExternalServices(ctx context.Context, use
 
 	var repoSpecs, includeContainsSpecs, excludeContainsSpecs []api.ExternalRepoSpec
 	for _, svc := range svcs {
-		provider, err := eauthz.ProviderFromExternalService(conf.Get().SiteConfiguration, svc)
+		provider, err := eauthz.ProviderFromExternalService(s.db.ExternalServices(), conf.Get().SiteConfiguration, svc, s.db)
 		if err != nil {
 			return nil, errors.Wrapf(err, "new provider from external service %d", svc.ID)
 		}
@@ -493,7 +493,7 @@ func (s *PermsSyncer) fetchUserPermsViaExternalServices(ctx context.Context, use
 			return nil, errors.Errorf("empty token from external service %d", svc.ID)
 		}
 
-		if err := s.waitForRateLimit(ctx, provider.ServiceID(), 1); err != nil {
+		if err := s.waitForRateLimit(ctx, provider.URN(), 1, "user"); err != nil {
 			return nil, errors.Wrap(err, "wait for rate limiter")
 		}
 
@@ -571,7 +571,7 @@ func (s *PermsSyncer) fetchUserPermsViaExternalServices(ctx context.Context, use
 	// Exclusions are relative to inclusions, so if there is no inclusion, exclusion
 	// are meaningless and no need to trigger a DB query.
 	if len(includeContainsSpecs) > 0 {
-		rs, err := s.reposStore.RepoStore.ListMinimalRepos(ctx,
+		rs, err := s.reposStore.RepoStore().ListMinimalRepos(ctx,
 			database.ReposListOptions{
 				ExternalRepoIncludeContains: includeContainsSpecs,
 				ExternalRepoExcludeContains: excludeContainsSpecs,
@@ -624,14 +624,19 @@ func (s *PermsSyncer) syncUserPerms(ctx context.Context, userID int32, noPerms b
 		UserID: user.ID,
 		Perm:   authz.Read, // Note: We currently only support read for repository permissions.
 		Type:   authz.PermRepos,
-		IDs:    roaring.NewBitmap(),
+		IDs:    map[int32]struct{}{},
 	}
 	for i := range repoIDs {
-		p.IDs.Add(uint32(repoIDs[i]))
+		p.IDs[int32(repoIDs[i])] = struct{}{}
 	}
-	p.IDs.AddMany(externalAccountsRepoIDs)
-	p.IDs.AddMany(externalServicesRepoIDs)
 
+	// Looping over two slices individually in order to avoid unnecessary memory allocation.
+	for i := range externalAccountsRepoIDs {
+		p.IDs[int32(externalAccountsRepoIDs[i])] = struct{}{}
+	}
+	for i := range externalServicesRepoIDs {
+		p.IDs[int32(externalServicesRepoIDs[i])] = struct{}{}
+	}
 	err = s.permsStore.SetUserPermissions(ctx, p)
 	if err != nil {
 		return errors.Wrap(err, "set user permissions")
@@ -639,7 +644,7 @@ func (s *PermsSyncer) syncUserPerms(ctx context.Context, userID int32, noPerms b
 
 	log15.Debug("PermsSyncer.syncUserPerms.synced",
 		"userID", user.ID,
-		"count", p.IDs.GetCardinality(),
+		"count", len(p.IDs),
 		"fetchOpts.invalidateCaches", fetchOpts.InvalidateCaches,
 	)
 
@@ -668,7 +673,7 @@ func (s *PermsSyncer) syncRepoPerms(ctx context.Context, repoID api.RepoID, noPe
 	ctx, save := s.observe(ctx, "PermsSyncer.syncRepoPerms", "")
 	defer save(requestTypeRepo, int32(repoID), &err)
 
-	rs, err := s.reposStore.RepoStore.List(ctx, database.ReposListOptions{
+	rs, err := s.reposStore.RepoStore().List(ctx, database.ReposListOptions{
 		IDs: []api.RepoID{repoID},
 	})
 	if err != nil {
@@ -720,7 +725,7 @@ func (s *PermsSyncer) syncRepoPerms(ctx context.Context, repoID api.RepoID, noPe
 	pendingAccountIDsSet := make(map[string]struct{})
 	accountIDsToUserIDs := make(map[string]int32) // Account ID -> User ID
 	if provider != nil {
-		if err := s.waitForRateLimit(ctx, provider.ServiceID(), 1); err != nil {
+		if err := s.waitForRateLimit(ctx, provider.URN(), 1, "repo"); err != nil {
 			return errors.Wrap(err, "wait for rate limiter")
 		}
 
@@ -746,6 +751,13 @@ func (s *PermsSyncer) syncRepoPerms(ctx context.Context, repoID api.RepoID, noPe
 		// Skip repo if unimplemented
 		if errors.Is(err, &authz.ErrUnimplemented{}) {
 			log15.Debug("PermsSyncer.syncRepoPerms.unimplemented", "repoID", repo.ID, "err", err)
+
+			// We should still touch the repo perms so that we don't keep scheduling the repo
+			// for permissions syncs on a tight interval.
+			if err = s.permsStore.TouchRepoPermissions(ctx, int32(repoID)); err != nil {
+				log15.Warn("Error touching permissions for unimplemented authz provider", "err", err)
+			}
+
 			return nil
 		}
 
@@ -785,15 +797,15 @@ func (s *PermsSyncer) syncRepoPerms(ctx context.Context, repoID api.RepoID, noPe
 	p := &authz.RepoPermissions{
 		RepoID:  int32(repoID),
 		Perm:    authz.Read, // Note: We currently only support read for repository permissions.
-		UserIDs: roaring.NewBitmap(),
+		UserIDs: map[int32]struct{}{},
 	}
 
 	for i := range userIDs {
-		p.UserIDs.Add(uint32(userIDs[i]))
+		p.UserIDs[userIDs[i]] = struct{}{}
 	}
 	for aid, uid := range accountIDsToUserIDs {
 		// Add existing user to permissions
-		p.UserIDs.Add(uint32(uid))
+		p.UserIDs[uid] = struct{}{}
 
 		// Remove existing user from the set of pending users
 		delete(pendingAccountIDsSet, aid)
@@ -829,7 +841,7 @@ func (s *PermsSyncer) syncRepoPerms(ctx context.Context, repoID api.RepoID, noPe
 	log15.Debug("PermsSyncer.syncRepoPerms.synced",
 		"repoID", repo.ID,
 		"name", repo.Name,
-		"count", p.UserIDs.GetCardinality(),
+		"count", len(p.UserIDs),
 		"fetchOpts.invalidateCaches", fetchOpts.InvalidateCaches,
 	)
 	return nil
@@ -839,15 +851,18 @@ func (s *PermsSyncer) syncRepoPerms(ctx context.Context, repoID api.RepoID, noPe
 // an error if n exceeds the limiter's burst size, the context is canceled, or the
 // expected wait time exceeds the context's deadline. The burst limit is ignored if
 // the rate limit is Inf.
-func (s *PermsSyncer) waitForRateLimit(ctx context.Context, serviceID string, n int) error {
+func (s *PermsSyncer) waitForRateLimit(ctx context.Context, urn string, n int, syncType string) error {
 	if s.rateLimiterRegistry == nil {
 		return nil
 	}
 
-	rl := s.rateLimiterRegistry.Get(serviceID)
+	rl := s.rateLimiterRegistry.Get(urn)
+	began := time.Now()
 	if err := rl.WaitN(ctx, n); err != nil {
+		metricsRateLimiterWaitDuration.WithLabelValues(syncType, strconv.FormatBool(false)).Observe(time.Since(began).Seconds())
 		return err
 	}
+	metricsRateLimiterWaitDuration.WithLabelValues(syncType, strconv.FormatBool(true)).Observe(time.Since(began).Seconds())
 	return nil
 }
 
@@ -859,8 +874,11 @@ func (s *PermsSyncer) syncPerms(ctx context.Context, request *syncRequest) error
 	var err error
 	switch request.Type {
 	case requestTypeUser:
+		// Ensure the job field is recorded when monitoring external API calls
+		ctx = metrics.ContextWithTask(ctx, "SyncUserPerms")
 		err = s.syncUserPerms(ctx, request.ID, request.NoPerms, request.Options)
 	case requestTypeRepo:
+		ctx = metrics.ContextWithTask(ctx, "SyncRepoPerms")
 		err = s.syncRepoPerms(ctx, api.RepoID(request.ID), request.NoPerms, request.Options)
 	default:
 		err = errors.Errorf("unexpected request type: %v", request.Type)
@@ -976,8 +994,8 @@ func (s *PermsSyncer) scheduleReposWithNoPerms(ctx context.Context) ([]scheduled
 
 // scheduleUsersWithOldestPerms returns computed schedules for users who have oldest
 // permissions in database and capped results by the limit.
-func (s *PermsSyncer) scheduleUsersWithOldestPerms(ctx context.Context, limit int) ([]scheduledUser, error) {
-	results, err := s.permsStore.UserIDsWithOldestPerms(ctx, limit)
+func (s *PermsSyncer) scheduleUsersWithOldestPerms(ctx context.Context, limit int, age time.Duration) ([]scheduledUser, error) {
+	results, err := s.permsStore.UserIDsWithOldestPerms(ctx, limit, age)
 	if err != nil {
 		return nil, err
 	}
@@ -995,8 +1013,8 @@ func (s *PermsSyncer) scheduleUsersWithOldestPerms(ctx context.Context, limit in
 
 // scheduleReposWithOldestPerms returns computed schedules for private repositories that
 // have oldest permissions in database.
-func (s *PermsSyncer) scheduleReposWithOldestPerms(ctx context.Context, limit int) ([]scheduledRepo, error) {
-	results, err := s.permsStore.ReposIDsWithOldestPerms(ctx, limit)
+func (s *PermsSyncer) scheduleReposWithOldestPerms(ctx context.Context, limit int, age time.Duration) ([]scheduledRepo, error) {
+	results, err := s.permsStore.ReposIDsWithOldestPerms(ctx, limit, age)
 	if err != nil {
 		return nil, err
 	}
@@ -1076,18 +1094,18 @@ func (s *PermsSyncer) schedule(ctx context.Context) (*schedule, error) {
 	//	 consumed by users = <initial limit> / (<total repos> / <page size>)
 	//   consumed by repos = (<initial limit> - <consumed by users>) / (<total users> / <page size>)
 	// Hard coded both to 10 for now.
-	const limit = 10
+	userLimit, repoLimit := oldestUserPermissionsBatchSize(), oldestRepoPermissionsBatchSize()
 
 	// TODO(jchen): Use better heuristics for setting NextSyncAt, the initial version
 	// just uses the value of LastUpdatedAt get from the perms tables.
 
-	users, err = s.scheduleUsersWithOldestPerms(ctx, limit)
+	users, err = s.scheduleUsersWithOldestPerms(ctx, userLimit, syncUserBackoff())
 	if err != nil {
 		return nil, errors.Wrap(err, "load users with oldest permissions")
 	}
 	schedule.Users = append(schedule.Users, users...)
 
-	repos, err = s.scheduleReposWithOldestPerms(ctx, limit)
+	repos, err = s.scheduleReposWithOldestPerms(ctx, repoLimit, syncRepoBackoff())
 	if err != nil {
 		return nil, errors.Wrap(err, "scan repositories with oldest permissions")
 	}
@@ -1133,14 +1151,13 @@ func (s *PermsSyncer) runSchedule(ctx context.Context) {
 			log15.Error("Failed to compute schedule", "err", err)
 			continue
 		}
-
 		s.scheduleUsers(ctx, schedule.Users...)
 		s.scheduleRepos(ctx, schedule.Repos...)
 	}
 }
 
 // DebugDump returns the state of the permissions syncer for debugging.
-func (s *PermsSyncer) DebugDump() interface{} {
+func (s *PermsSyncer) DebugDump() any {
 	type requestInfo struct {
 		Meta     *requestMeta
 		Acquired bool
@@ -1212,7 +1229,7 @@ func (s *PermsSyncer) observe(ctx context.Context, family, title string) (contex
 
 		if !success {
 			tr.SetError(*err)
-			metricsSyncErrors.WithLabelValues(typLabel).Add(1)
+			metricsSyncErrors.WithLabelValues(typLabel).Inc()
 		}
 	}
 }
@@ -1234,12 +1251,20 @@ func (s *PermsSyncer) collectMetrics(ctx context.Context) {
 			log15.Error("Failed to get metrics from database", "err", err)
 			continue
 		}
+		mstrict, err := s.permsStore.Metrics(ctx, 1*time.Hour)
+		if err != nil {
+			log15.Error("Failed to get metrics from database", "err", err)
+			continue
+		}
 
 		metricsStalePerms.WithLabelValues("user").Set(float64(m.UsersWithStalePerms))
+		metricsStrictStalePerms.WithLabelValues("user").Set(float64(mstrict.UsersWithStalePerms))
 		metricsPermsGap.WithLabelValues("user").Set(m.UsersPermsGapSeconds)
 		metricsStalePerms.WithLabelValues("repo").Set(float64(m.ReposWithStalePerms))
+		metricsStrictStalePerms.WithLabelValues("repo").Set(float64(mstrict.ReposWithStalePerms))
 		metricsPermsGap.WithLabelValues("repo").Set(m.ReposPermsGapSeconds)
 		metricsStalePerms.WithLabelValues("sub-repo").Set(float64(m.SubReposWithStalePerms))
+		metricsStrictStalePerms.WithLabelValues("sub-repo").Set(float64(mstrict.SubReposWithStalePerms))
 		metricsPermsGap.WithLabelValues("sub-repo").Set(m.SubReposPermsGapSeconds)
 
 		s.queue.mu.RLock()
@@ -1256,4 +1281,44 @@ func (s *PermsSyncer) Run(ctx context.Context) {
 	go s.collectMetrics(ctx)
 
 	<-ctx.Done()
+}
+
+func scheduleInterval() time.Duration {
+	seconds := conf.Get().PermissionsSyncScheduleInterval
+	if seconds <= 0 {
+		return 15 * time.Second
+	}
+	return time.Duration(seconds) * time.Second
+}
+
+func oldestUserPermissionsBatchSize() int {
+	batchSize := conf.Get().PermissionsSyncOldestUsers
+	if batchSize <= 0 {
+		return 10
+	}
+	return batchSize
+}
+
+func oldestRepoPermissionsBatchSize() int {
+	batchSize := conf.Get().PermissionsSyncOldestRepos
+	if batchSize <= 0 {
+		return 10
+	}
+	return batchSize
+}
+
+func syncUserBackoff() time.Duration {
+	seconds := conf.Get().PermissionsSyncUsersBackoffSeconds
+	if seconds <= 0 {
+		return 60 * time.Second
+	}
+	return time.Duration(seconds) * time.Second
+}
+
+func syncRepoBackoff() time.Duration {
+	seconds := conf.Get().PermissionsSyncReposBackoffSeconds
+	if seconds <= 0 {
+		return 60 * time.Second
+	}
+	return time.Duration(seconds) * time.Second
 }

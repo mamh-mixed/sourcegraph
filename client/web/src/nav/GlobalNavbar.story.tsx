@@ -1,7 +1,7 @@
+import React from 'react'
+
 import { storiesOf } from '@storybook/react'
 import { createMemoryHistory } from 'history'
-import { SuiteFunction } from 'mocha'
-import React from 'react'
 
 import { NOOP_TELEMETRY_SERVICE } from '@sourcegraph/shared/src/telemetry/telemetryService'
 import {
@@ -21,7 +21,7 @@ import { ThemePreference } from '../stores/themeState'
 import { GlobalNavbar } from './GlobalNavbar'
 
 if (!window.context) {
-    window.context = {} as SourcegraphContext & SuiteFunction
+    window.context = {} as SourcegraphContext & Mocha.SuiteFunction
 }
 
 const history = createMemoryHistory()
@@ -62,7 +62,6 @@ const defaultProps = (
     hasUserAddedRepositories: false,
     hasUserAddedExternalServices: false,
     getUserSearchContextNamespaces: mockGetUserSearchContextNamespaces,
-    extensionViews: () => null,
 })
 
 const { add } = storiesOf('web/nav/GlobalNav', module).addDecorator(Story => {

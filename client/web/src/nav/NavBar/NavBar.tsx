@@ -1,13 +1,15 @@
+import React, { useEffect, useRef, useState } from 'react'
+
 import classNames from 'classnames'
 import H from 'history'
 import ChevronDownIcon from 'mdi-react/ChevronDownIcon'
 import ChevronUpIcon from 'mdi-react/ChevronUpIcon'
 import MenuIcon from 'mdi-react/MenuIcon'
-import React, { useEffect, useRef, useState } from 'react'
 import { LinkProps, NavLink as RouterLink } from 'react-router-dom'
 
-import { PageRoutes } from '@sourcegraph/web/src/routes.constants'
-import { Button, Link } from '@sourcegraph/wildcard'
+import { Button, Link, Icon, Typography } from '@sourcegraph/wildcard'
+
+import { PageRoutes } from '../../routes.constants'
 
 import navActionStyles from './NavAction.module.scss'
 import navBarStyles from './NavBar.module.scss'
@@ -59,12 +61,12 @@ const useOutsideClickDetector = (
 
 export const NavBar = ({ children, logo }: NavBarProps): JSX.Element => (
     <nav aria-label="Main Menu" className={navBarStyles.navbar}>
-        <h1 className={navBarStyles.logo}>
+        <Typography.H1 className={navBarStyles.logo}>
             <RouterLink className="d-flex align-items-center" to={PageRoutes.Search}>
                 {logo}
             </RouterLink>
-        </h1>
-        <hr className={navBarStyles.divider} />
+        </Typography.H1>
+        <hr className={navBarStyles.divider} aria-hidden={true} />
         {children}
     </nav>
 )
@@ -76,19 +78,19 @@ export const NavGroup = ({ children }: NavGroupProps): JSX.Element => {
     return (
         <div className={navBarStyles.menu} ref={menuReference}>
             <Button className={navBarStyles.menuButton} onClick={() => setOpen(!open)} aria-label="Sections Navigation">
-                <MenuIcon className="icon-inline" />
-                {!open ? <ChevronDownIcon className="icon-inline" /> : <ChevronUpIcon className="icon-inline" />}
+                <Icon role="img" as={MenuIcon} aria-hidden={true} />
+                <Icon role="img" as={open ? ChevronUpIcon : ChevronDownIcon} aria-hidden={true} />
             </Button>
             <ul className={classNames(navBarStyles.list, { [navBarStyles.menuClose]: !open })}>{children}</ul>
         </div>
     )
 }
 
-export const NavActions: React.FunctionComponent<NavActionsProps> = ({ children }) => (
+export const NavActions: React.FunctionComponent<React.PropsWithChildren<NavActionsProps>> = ({ children }) => (
     <ul className={navActionStyles.actions}>{children}</ul>
 )
 
-export const NavAction: React.FunctionComponent<NavActionsProps> = ({ children }) => (
+export const NavAction: React.FunctionComponent<React.PropsWithChildren<NavActionsProps>> = ({ children }) => (
     <>
         {React.Children.map(children, action => (
             <li className={navActionStyles.action}>{action}</li>
@@ -96,7 +98,11 @@ export const NavAction: React.FunctionComponent<NavActionsProps> = ({ children }
     </>
 )
 
-export const NavItem: React.FunctionComponent<NavItemProps> = ({ children, className, icon }) => {
+export const NavItem: React.FunctionComponent<React.PropsWithChildren<NavItemProps>> = ({
+    children,
+    className,
+    icon,
+}) => {
     if (!children) {
         throw new Error('NavItem must be include at least one child')
     }
@@ -112,10 +118,16 @@ export const NavItem: React.FunctionComponent<NavItemProps> = ({ children, class
     )
 }
 
-export const NavLink: React.FunctionComponent<NavLinkProps> = ({ icon: Icon, children, to, external, className }) => {
+export const NavLink: React.FunctionComponent<React.PropsWithChildren<NavLinkProps>> = ({
+    icon: LinkIcon,
+    children,
+    to,
+    external,
+    className,
+}) => {
     const content = (
         <span className={classNames(navItemStyles.linkContent, className)}>
-            {Icon ? <Icon className={classNames('icon-inline', navItemStyles.icon)} /> : null}
+            {LinkIcon ? <Icon role="img" className={navItemStyles.icon} as={LinkIcon} aria-hidden={true} /> : null}
             <span
                 className={classNames(navItemStyles.text, {
                     [navItemStyles.iconIncluded]: Icon,

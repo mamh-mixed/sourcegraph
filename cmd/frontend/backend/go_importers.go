@@ -7,17 +7,17 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"regexp"
 	"strconv"
 	"strings"
 
-	"github.com/cockroachdb/errors"
+	"github.com/grafana/regexp"
 
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/envvar"
 	"github.com/sourcegraph/sourcegraph/internal/api"
 	"github.com/sourcegraph/sourcegraph/internal/api/internalapi"
 	"github.com/sourcegraph/sourcegraph/internal/httpcli"
 	"github.com/sourcegraph/sourcegraph/internal/rcache"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 var MockCountGoImporters func(ctx context.Context, repo api.RepoName) (int, error)
@@ -58,11 +58,11 @@ func CountGoImporters(ctx context.Context, cli httpcli.Doer, repo api.RepoName) 
 
 	var q struct {
 		Query     string
-		Variables map[string]interface{}
+		Variables map[string]any
 	}
 
 	q.Query = countGoImportersGraphQLQuery
-	q.Variables = map[string]interface{}{
+	q.Variables = map[string]any{
 		"query": countGoImportersSearchQuery(repo),
 	}
 
@@ -96,7 +96,7 @@ func CountGoImporters(ctx context.Context, cli httpcli.Doer, repo api.RepoName) 
 		Data struct {
 			Search struct{ Results struct{ MatchCount int } }
 		}
-		Errors []interface{}
+		Errors []any
 	}
 
 	if err := json.Unmarshal(respBody, &v); err != nil {

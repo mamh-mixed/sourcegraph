@@ -8,8 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/errors"
-	"github.com/dghubble/gologin/github"
+	"github.com/dghubble/gologin/v2/github"
 	"github.com/inconshreveable/log15"
 	"golang.org/x/oauth2"
 
@@ -25,14 +24,17 @@ import (
 	githubsvc "github.com/sourcegraph/sourcegraph/internal/extsvc/github"
 	"github.com/sourcegraph/sourcegraph/internal/jsonc"
 	"github.com/sourcegraph/sourcegraph/internal/types"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
+	"github.com/sourcegraph/sourcegraph/lib/log"
 )
 
 type sessionIssuerHelper struct {
 	*extsvc.CodeHost
-	db          database.DB
-	clientID    string
-	allowSignup bool
-	allowOrgs   []string
+	db           database.DB
+	clientID     string
+	allowSignup  bool
+	allowOrgs    []string
+	allowOrgsMap map[string][]string
 }
 
 func (s *sessionIssuerHelper) GetOrCreateUser(ctx context.Context, token *oauth2.Token, anonymousUserID, firstSourceURL, lastSourceURL string) (actr *actor.Actor, safeErrMsg string, err error) {
@@ -59,9 +61,11 @@ func (s *sessionIssuerHelper) GetOrCreateUser(ctx context.Context, token *oauth2
 		return nil, "Could not get verified email for GitHub user. Check that your GitHub account has a verified email that matches one of your Sourcegraph verified emails.", errors.New("no verified email")
 	}
 
-	// 🚨 SECURITY: Ensure that the user is part of one of the white listed orgs, if any.
-	if !s.verifyUserOrgs(ctx, ghClient) {
-		return nil, "Could not verify user is part of the allowed GitHub organizations.", errors.New("couldn't verify user is part of allowed GitHub organizations")
+	// 🚨 SECURITY: Ensure that the user is part of one of the allow listed orgs or teams, if any.
+	userBelongsToAllowedOrgsOrTeams := s.verifyUserOrgsAndTeams(ctx, ghClient)
+	if !userBelongsToAllowedOrgsOrTeams {
+		message := "user does not belong to allowed GitHub organizations or teams."
+		return nil, message, errors.New(message)
 	}
 
 	// Try every verified email in succession until the first that succeeds
@@ -131,15 +135,15 @@ func (s *sessionIssuerHelper) GetOrCreateUser(ctx context.Context, token *oauth2
 	return nil, fmt.Sprintf("No user exists matching any of the verified emails: %s.\n\nFirst error was: %s", strings.Join(verifiedEmails, ", "), firstSafeErrMsg), firstErr
 }
 
-func (s *sessionIssuerHelper) CreateCodeHostConnection(ctx context.Context, token *oauth2.Token, providerID string) (safeErrMsg string, err error) {
+func (s *sessionIssuerHelper) CreateCodeHostConnection(ctx context.Context, token *oauth2.Token, providerID string) (svc *types.ExternalService, safeErrMsg string, err error) {
 	actor := actor.FromContext(ctx)
 	if !actor.IsAuthenticated() {
-		return "Must be authenticated to create code host connection from OAuth flow.", errors.New("unauthenticated request")
+		return nil, "Must be authenticated to create code host connection from OAuth flow.", errors.New("unauthenticated request")
 	}
 
 	p := oauth.GetProvider(extsvc.TypeGitHub, providerID)
 	if p == nil {
-		return "Could not find OAuth provider for the state.", errors.Errorf("provider not found for %q", providerID)
+		return nil, "Could not find OAuth provider for the state.", errors.Errorf("provider not found for %q", providerID)
 	}
 
 	ghUser, err := github.UserFromContext(ctx)
@@ -149,7 +153,7 @@ func (s *sessionIssuerHelper) CreateCodeHostConnection(ctx context.Context, toke
 		} else {
 			err = errors.New("could not read user from context")
 		}
-		return "Could not read GitHub user from callback request.", err
+		return nil, "Could not read GitHub user from callback request.", err
 	}
 
 	// We have a special flow enabled when a user added code host has been created
@@ -172,9 +176,8 @@ func (s *sessionIssuerHelper) CreateCodeHostConnection(ctx context.Context, toke
 		Kinds:           []string{extsvc.KindGitHub},
 	})
 	if err != nil {
-		return "Error checking for existing external service", err
+		return nil, "Error checking for existing external service", err
 	}
-	var svc *types.ExternalService
 	now := time.Now()
 	if len(services) == 0 {
 		// Nothing found, create new one
@@ -193,13 +196,13 @@ func (s *sessionIssuerHelper) CreateCodeHostConnection(ctx context.Context, toke
 			UpdatedAt:       now,
 		}
 	} else if len(services) > 1 {
-		return "Multiple services of same kind found for user", errors.New("multiple services of same kind found for user")
+		return nil, "Multiple services of same kind found for user", errors.New("multiple services of same kind found for user")
 	} else {
 		// We have an existing service, update it
 		svc = services[0]
 		newConfig, err := jsonc.Edit(svc.Config, token.AccessToken, "token")
 		if err != nil {
-			return "Error updating OAuth token", err
+			return nil, "Error updating OAuth token", err
 		}
 		svc.Config = newConfig
 		svc.UpdatedAt = now
@@ -207,9 +210,9 @@ func (s *sessionIssuerHelper) CreateCodeHostConnection(ctx context.Context, toke
 
 	err = tx.Upsert(ctx, svc)
 	if err != nil {
-		return "Could not create code host connection.", err
+		return nil, "Could not create code host connection.", err
 	}
-	return "", nil // success
+	return svc, "", nil // success
 }
 
 func (s *sessionIssuerHelper) DeleteStateCookie(w http.ResponseWriter) {
@@ -246,7 +249,8 @@ func derefInt64(i *int64) int64 {
 
 func (s *sessionIssuerHelper) newClient(token string) *githubsvc.V3Client {
 	apiURL, _ := githubsvc.APIRoot(s.BaseURL)
-	return githubsvc.NewV3Client(apiURL, &esauth.OAuthBearerToken{Token: token}, nil)
+	return githubsvc.NewV3Client(log.Scoped("session.github.v3", "github v3 client for session issuer"),
+		extsvc.URNGitHubOAuth, apiURL, &esauth.OAuthBearerToken{Token: token}, nil)
 }
 
 // getVerifiedEmails returns the list of user emails that are verified. If the primary email is verified,
@@ -271,12 +275,10 @@ func getVerifiedEmails(ctx context.Context, ghClient *githubsvc.V3Client) (verif
 	return verifiedEmails
 }
 
+// verifyUserOrgs checks whether the authenticated user belongs to one of the GitHub orgs listed in auth.provider > allowOrgs configuration
 func (s *sessionIssuerHelper) verifyUserOrgs(ctx context.Context, ghClient *githubsvc.V3Client) bool {
-	if len(s.allowOrgs) == 0 {
-		return true
-	}
-
 	userOrgs, err := ghClient.GetAuthenticatedUserOrgs(ctx)
+
 	if err != nil {
 		log15.Warn("Could not get GitHub authenticated user organizations", "error", err)
 		return false
@@ -291,6 +293,58 @@ func (s *sessionIssuerHelper) verifyUserOrgs(ctx context.Context, ghClient *gith
 		if allowed[org.Login] {
 			return true
 		}
+	}
+
+	return false
+}
+
+// verifyUserTeams checks whether the authenticated user belongs to one of the GitHub teams listed in the auth.provider > allowOrgsMap configuration
+func (s *sessionIssuerHelper) verifyUserTeams(ctx context.Context, ghClient *githubsvc.V3Client) bool {
+	var err error
+	hasNextPage := true
+	allowedTeams := make(map[string]map[string]bool, len(s.allowOrgsMap))
+
+	for org, teams := range s.allowOrgsMap {
+		teamsMap := make(map[string]bool)
+		for _, team := range teams {
+			teamsMap[team] = true
+		}
+
+		allowedTeams[org] = teamsMap
+	}
+
+	for page := 1; hasNextPage; page++ {
+		var githubTeams []*githubsvc.Team
+
+		githubTeams, hasNextPage, _, err = ghClient.GetAuthenticatedUserTeams(ctx, page)
+		if err != nil {
+			log15.Warn("Could not get GitHub authenticated user teams", "error", err)
+			return false
+		}
+
+		for _, ghTeam := range githubTeams {
+			_, ok := allowedTeams[ghTeam.Organization.Login][ghTeam.Name]
+			if ok {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+// verifyUserOrgsAndTeams checks if the user belongs to one of the allowed listed orgs or teams provided in the auth.provider configuration.
+func (s *sessionIssuerHelper) verifyUserOrgsAndTeams(ctx context.Context, ghClient *githubsvc.V3Client) bool {
+	if len(s.allowOrgs) == 0 && len(s.allowOrgsMap) == 0 {
+		return true
+	}
+
+	if len(s.allowOrgs) > 0 && s.verifyUserOrgs(ctx, ghClient) {
+		return true
+	}
+
+	if len(s.allowOrgsMap) > 0 && s.verifyUserTeams(ctx, ghClient) {
+		return true
 	}
 
 	return false

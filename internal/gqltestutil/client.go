@@ -7,11 +7,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/cockroachdb/errors"
-	"github.com/hashicorp/go-multierror"
 	jsoniter "github.com/json-iterator/go"
 
 	"github.com/sourcegraph/sourcegraph/internal/lazyregexp"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 // NeedsSiteInit returns true if the instance hasn't done "Site admin init" step.
@@ -59,7 +58,7 @@ func SignIn(baseURL, email, password string) (*Client, error) {
 }
 
 // authenticate initializes an authenticated client with given request body.
-func authenticate(baseURL, path string, body interface{}) (*Client, error) {
+func authenticate(baseURL, path string, body any) (*Client, error) {
 	client, err := NewClient(baseURL)
 	if err != nil {
 		return nil, errors.Wrap(err, "new client")
@@ -134,7 +133,7 @@ func NewClient(baseURL string) (*Client, error) {
 // authenticate is used to send a HTTP POST request to an URL that is able to authenticate
 // a user with given body (marshalled to JSON), e.g. site admin init, sign in. Once the
 // client is authenticated, the session cookie will be stored as a proof of authentication.
-func (c *Client) authenticate(path string, body interface{}) error {
+func (c *Client) authenticate(path string, body any) error {
 	p, err := jsoniter.Marshal(body)
 	if err != nil {
 		return errors.Wrap(err, "marshal body")
@@ -211,6 +210,29 @@ func (c *Client) CurrentUserID(token string) (string, error) {
 	return resp.Data.CurrentUser.ID, nil
 }
 
+func (c *Client) IsCurrentUserSiteAdmin(token string) (bool, error) {
+	const query = `
+	query{
+      currentUser{
+        siteAdmin
+    }
+  }
+`
+	var resp struct {
+		Data struct {
+			CurrentUser struct {
+				SiteAdmin bool `json:"siteAdmin"`
+			} `json:"currentUser"`
+		} `json:"data"`
+	}
+	err := c.GraphQL(token, query, nil, &resp)
+	if err != nil {
+		return false, errors.Wrap(err, "request GraphQL")
+	}
+
+	return resp.Data.CurrentUser.SiteAdmin, nil
+}
+
 // AuthenticatedUserID returns the GraphQL node ID of current authenticated user.
 func (c *Client) AuthenticatedUserID() string {
 	return c.userID
@@ -221,8 +243,8 @@ var graphqlQueryNameRe = lazyregexp.New(`(query|mutation) +(\w)+`)
 // GraphQL makes a GraphQL request to the server on behalf of the user authenticated by the client.
 // An optional token can be passed to impersonate other users. A nil target will skip unmarshalling
 // the returned JSON response.
-func (c *Client) GraphQL(token, query string, variables map[string]interface{}, target interface{}) error {
-	body, err := jsoniter.Marshal(map[string]interface{}{
+func (c *Client) GraphQL(token, query string, variables map[string]any, target any) error {
+	body, err := jsoniter.Marshal(map[string]any{
 		"query":     query,
 		"variables": variables,
 	})
@@ -277,9 +299,9 @@ func (c *Client) GraphQL(token, query string, variables map[string]interface{}, 
 			return errors.Wrap(err, "unmarshal response body to errors")
 		}
 		if len(errResp.Errors) > 0 {
-			var errs *multierror.Error
+			var errs error
 			for _, err := range errResp.Errors {
-				errs = multierror.Append(errs, errors.New(err.Message))
+				errs = errors.Append(errs, errors.New(err.Message))
 			}
 			return errs
 		}
@@ -298,12 +320,23 @@ func (c *Client) GraphQL(token, query string, variables map[string]interface{}, 
 
 // Get performs a GET request to the URL with authenticated user.
 func (c *Client) Get(url string) (*http.Response, error) {
+	return c.GetWithHeaders(url, nil)
+}
+
+// GetWithHeaders performs a GET request to the URL with authenticated user and provided headers.
+func (c *Client) GetWithHeaders(url string, header http.Header) (*http.Response, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	c.addCookies(req)
+
+	for name, values := range header {
+		for _, value := range values {
+			req.Header.Add(name, value)
+		}
+	}
 
 	return http.DefaultClient.Do(req)
 }

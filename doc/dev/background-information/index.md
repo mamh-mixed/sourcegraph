@@ -19,7 +19,7 @@
   - [Working with GraphQL](web/graphql.md)
   - [Wildcard Component Library](web/wildcard.md)
   - [Styling UI](web/styling.md)
-  - [Accessibility](web/accessibility.md)
+  - [Accessibility](web/accessibility/index.md)
   - [Temporary settings](web/temporary_settings.md)
   - [Build process](web/build.md)
 - [Developing the GraphQL API](graphql_api.md)
@@ -47,10 +47,6 @@
 - [Bash](languages/bash.md)
 - [Terraform](languages/terraform.md)
 
-### [Extended guides](languages/extended_guide/index.md)
-
-- [Terraform Extended Guide](languages/extended_guide/terraform.md)
-
 ## [SQL](sql/index.md)
 
 - [Migrations](sql/migrations.md)
@@ -60,7 +56,7 @@
 
 ## Testing
 
-- [Continuous Integration](continuous_integration.md)
+- [Continuous Integration](ci/index.md)
 - [Testing Principles](testing_principles.md)
 - [Testing Go code](languages/testing_go_code.md)
 - [Testing web code](testing_web_code.md)
@@ -75,3 +71,4 @@
 
 - [Telemetry](telemetry.md)
 - [Adding, changing and debugging pings](adding_ping_data.md)
+- [Deploy Sourcegraph with Helm chart (BETA)](../../admin/deploy/kubernetes/helm.md)

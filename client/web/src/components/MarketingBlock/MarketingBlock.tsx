@@ -1,5 +1,6 @@
-import classNames from 'classnames'
 import React from 'react'
+
+import classNames from 'classnames'
 
 import styles from './MarketingBlock.module.scss'
 
@@ -8,7 +9,7 @@ interface MarketingBlockProps {
     contentClassName?: string
 }
 
-export const MarketingBlock: React.FunctionComponent<MarketingBlockProps> = ({
+export const MarketingBlock: React.FunctionComponent<React.PropsWithChildren<MarketingBlockProps>> = ({
     wrapperClassName,
     contentClassName,
     children,

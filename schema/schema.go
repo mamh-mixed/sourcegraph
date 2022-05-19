@@ -72,6 +72,16 @@ type AuthAccessTokens struct {
 	Allow string `json:"allow,omitempty"`
 }
 
+// AuthLockout description: The config options for account lockout
+type AuthLockout struct {
+	// ConsecutivePeriod description: The number of seconds to be considered as a consecutive period
+	ConsecutivePeriod int `json:"consecutivePeriod,omitempty"`
+	// FailedAttemptThreshold description: The threshold of failed sign-in attempts in a consecutive period
+	FailedAttemptThreshold int `json:"failedAttemptThreshold,omitempty"`
+	// LockoutPeriod description: The number of seconds for the lockout period
+	LockoutPeriod int `json:"lockoutPeriod,omitempty"`
+}
+
 // AuthProviderCommon description: Common properties for authentication providers.
 type AuthProviderCommon struct {
 	// DisplayName description: The name to use when displaying this authentication provider in the UI. Defaults to an auto-generated name with the type of authentication provider and other relevant identifiers (such as a hostname).
@@ -211,6 +221,8 @@ type BitbucketCloudConnection struct {
 	Url string `json:"url"`
 	// Username description: The username to use when authenticating to the Bitbucket Cloud. Also set the corresponding "appPassword" field.
 	Username string `json:"username"`
+	// WebhookSecret description: A shared secret used to authenticate incoming webhooks (minimum 12 characters).
+	WebhookSecret string `json:"webhookSecret,omitempty"`
 }
 
 // BitbucketCloudRateLimit description: Rate limit applied when making background API requests to Bitbucket Cloud.
@@ -419,6 +431,12 @@ type CloudKMSEncryptionKey struct {
 	Keyname         string `json:"keyname"`
 	Type            string `json:"type"`
 }
+type CodeIntelRepositoryBadge struct {
+	// Enabled description: Show the code intelligence badge when viewing a repository.
+	Enabled bool `json:"enabled"`
+	// ForNerds description: Show entirely too much information.
+	ForNerds *bool `json:"forNerds,omitempty"`
+}
 
 // CustomGitFetchMapping description: Mapping from Git clone URl domain/path to git fetch command. The `domainPath` field contains the Git clone URL domain/path part. The `fetch` field contains the custom git fetch command.
 type CustomGitFetchMapping struct {
@@ -426,6 +444,12 @@ type CustomGitFetchMapping struct {
 	DomainPath string `json:"domainPath"`
 	// Fetch description: Git fetch command
 	Fetch string `json:"fetch"`
+}
+
+// Datadog description: Datadog configuration
+type Datadog struct {
+	// RUM description: Datadog RUM configuration
+	RUM *RUM `json:"RUM,omitempty"`
 }
 
 // DebugLog description: Turns on debug logging for specific debugging scenarios.
@@ -561,7 +585,7 @@ type ExpandedGitCommitDescription struct {
 type ExperimentalFeatures struct {
 	// AndOrQuery description: DEPRECATED: Interpret a search input query as an and/or query.
 	AndOrQuery string `json:"andOrQuery,omitempty"`
-	// ApidocsSearchIndexing description: Index API docs for search, see https://docs.sourcegraph.com/code_intelligence/apidocs
+	// ApidocsSearchIndexing description: Deprecated.
 	ApidocsSearchIndexing string `json:"apidocs.search.indexing,omitempty"`
 	// BitbucketServerFastPerm description: DEPRECATED: Configure in Bitbucket Server config.
 	BitbucketServerFastPerm string `json:"bitbucketServerFastPerm,omitempty"`
@@ -569,22 +593,34 @@ type ExperimentalFeatures struct {
 	CustomGitFetch []*CustomGitFetchMapping `json:"customGitFetch,omitempty"`
 	// DebugLog description: Turns on debug logging for specific debugging scenarios.
 	DebugLog *DebugLog `json:"debug.log,omitempty"`
+	// DependenciesSearch description: Enables support for repo:dependencies predicate queries.
+	DependenciesSearch string `json:"dependenciesSearch,omitempty"`
+	// EnableGitServerCommandExecFilter description: Enable filtering of all exec commands on gitserver based on a pre-defined allowlist
+	EnableGitServerCommandExecFilter bool `json:"enableGitServerCommandExecFilter,omitempty"`
 	// EnableGithubInternalRepoVisibility description: Enable support for visilibity of internal Github repositories
 	EnableGithubInternalRepoVisibility bool `json:"enableGithubInternalRepoVisibility,omitempty"`
+	// EnableGitserverClientLookupTable description: Enable getting repository location from the database. Works only on Cloud.
+	EnableGitserverClientLookupTable bool `json:"enableGitserverClientLookupTable,omitempty"`
 	// EnablePermissionsWebhooks description: Enables webhook consumers to sync permissions from external services faster than the defaults schedule
 	EnablePermissionsWebhooks bool `json:"enablePermissionsWebhooks,omitempty"`
 	// EnablePostSignupFlow description: Enables post sign-up user flow to add code hosts and sync code
 	EnablePostSignupFlow bool `json:"enablePostSignupFlow,omitempty"`
-	// EnableRepoUpdateIntervalJitter description: Enable a jitter of 5% in the update interval of a repo in the schedule
-	EnableRepoUpdateIntervalJitter bool `json:"enableRepoUpdateIntervalJitter,omitempty"`
 	// EventLogging description: Enables user event logging inside of the Sourcegraph instance. This will allow admins to have greater visibility of user activity, such as frequently viewed pages, frequent searches, and more. These event logs (and any specific user actions) are only stored locally, and never leave this Sourcegraph instance.
 	EventLogging string `json:"eventLogging,omitempty"`
+	// Gerrit description: Allow adding Gerrit code host connections
+	Gerrit string `json:"gerrit,omitempty"`
+	// GitServerPinnedRepos description: List of repositories pinned to specific gitserver instances. The specified repositories will remain at their pinned servers on scaling the cluster. If the specified pinned server differs from the current server that stores the repository, then it must be re-cloned to the specified server.
+	GitServerPinnedRepos map[string]string `json:"gitServerPinnedRepos,omitempty"`
+	// GitserverClientLookupTableRate description: Percentage of calls to AddrFromRepo that read from the database. Only used if enableGitserverClientLookupTable is true.
+	GitserverClientLookupTableRate int `json:"gitserverClientLookupTable.Rate,omitempty"`
 	// JvmPackages description: Allow adding JVM packages code host connections
 	JvmPackages string `json:"jvmPackages,omitempty"`
-	// NpmPackages description: Allow adding NPM packages code host connections
+	// NpmPackages description: Allow adding npm packages code host connections
 	NpmPackages string `json:"npmPackages,omitempty"`
 	// Pagure description: Allow adding Pagure code host connections
 	Pagure string `json:"pagure,omitempty"`
+	// PasswordPolicy description: Enables and configures password policy. This will allow admins to enforce password complexity and length requirements.
+	PasswordPolicy *PasswordPolicy `json:"passwordPolicy,omitempty"`
 	// Perforce description: Allow adding Perforce code host connections
 	Perforce string `json:"perforce,omitempty"`
 	// Ranking description: Experimental search result ranking options.
@@ -635,6 +671,8 @@ type ExternalIdentity struct {
 type FusionClient struct {
 	// Enabled description: Enable the p4-fusion client for cloning and fetching repos
 	Enabled bool `json:"enabled"`
+	// FsyncEnable description:  Enable fsync() while writing objects to disk to ensure they get written to permanent storage immediately instead of being cached. This is to mitigate data loss in events of hardware failure.
+	FsyncEnable bool `json:"fsyncEnable,omitempty"`
 	// IncludeBinaries description: Whether to include binary files
 	IncludeBinaries bool `json:"includeBinaries,omitempty"`
 	// LookAhead description: How many CLs in the future, at most, shall we keep downloaded by the time it is to commit them
@@ -651,6 +689,16 @@ type FusionClient struct {
 	Refresh int `json:"refresh,omitempty"`
 	// Retries description: How many times a command should be retried before the process exits in a failure
 	Retries int `json:"retries,omitempty"`
+}
+
+// GerritConnection description: Configuration for a connection to Gerrit.
+type GerritConnection struct {
+	// Password description: The password associated with the Gerrit username used for authentication.
+	Password string `json:"password"`
+	// Url description: URL of a Gerrit instance, such as https://gerrit.example.com.
+	Url string `json:"url"`
+	// Username description: A username for authentication withe the Gerrit code host.
+	Username string `json:"username"`
 }
 
 // GitCommitAuthor description: The author of the Git commit.
@@ -679,6 +727,8 @@ type GitHubAuthProvider struct {
 	AllowGroupsPermissionsSync bool `json:"allowGroupsPermissionsSync,omitempty"`
 	// AllowOrgs description: Restricts new logins to members of these GitHub organizations. Existing sessions won't be invalidated. Leave empty or unset for no org restrictions.
 	AllowOrgs []string `json:"allowOrgs,omitempty"`
+	// AllowOrgsMap description: Restricts new logins to members of GitHub teams. Each list of teams should have their Github org name as a key. Subteams inheritance is not supported, therefore only members of the listed teams will be granted access. Existing sessions won't be invalidated. Leave empty or unset for no team restrictions.
+	AllowOrgsMap map[string][]string `json:"allowOrgsMap,omitempty"`
 	// AllowSignup description: Allows new visitors to sign up for accounts via GitHub authentication. If false, users signing in via GitHub must have an existing Sourcegraph account, which will be linked to their GitHub identity after sign-in.
 	AllowSignup bool `json:"allowSignup,omitempty"`
 	// ClientID description: The Client ID of the GitHub OAuth app, accessible from https://github.com/settings/developers (or the same path on GitHub Enterprise).
@@ -686,7 +736,9 @@ type GitHubAuthProvider struct {
 	// ClientSecret description: The Client Secret of the GitHub OAuth app, accessible from https://github.com/settings/developers (or the same path on GitHub Enterprise).
 	ClientSecret string `json:"clientSecret"`
 	DisplayName  string `json:"displayName,omitempty"`
-	Type         string `json:"type"`
+	// Hidden description: Hides the configured auth provider from regular use through our web interface by omitting it from the JSContext, useful for experimental auth setups.
+	Hidden bool   `json:"hidden,omitempty"`
+	Type   string `json:"type"`
 	// Url description: URL of the GitHub instance, such as https://github.com or https://github-enterprise.example.com.
 	Url string `json:"url,omitempty"`
 }
@@ -725,6 +777,8 @@ type GitHubConnection struct {
 	InitialRepositoryEnablement bool `json:"initialRepositoryEnablement,omitempty"`
 	// Orgs description: An array of organization names identifying GitHub organizations whose repositories should be mirrored on Sourcegraph.
 	Orgs []string `json:"orgs,omitempty"`
+	// Pending description: Whether the code host connection is in a pending state.
+	Pending bool `json:"pending,omitempty"`
 	// RateLimit description: Rate limit applied when making background API requests to GitHub.
 	RateLimit *GitHubRateLimit `json:"rateLimit,omitempty"`
 	// Repos description: An array of repository "owner/name" strings specifying which GitHub or GitHub Enterprise repositories to mirror on Sourcegraph.
@@ -868,6 +922,10 @@ type GitLabWebhook struct {
 type GithubAppCloud struct {
 	// AppID description: The app ID of the GitHub App for Sourcegraph Cloud.
 	AppID string `json:"appID,omitempty"`
+	// ClientID description: The Client ID of the GitHub App for Sourcegraph Cloud, accessible from https://github.com/settings/apps .
+	ClientID string `json:"clientID,omitempty"`
+	// ClientSecret description: The Client Secret of the GitHub App for Sourcegraph Cloud, accessible from https://github.com/settings/apps .
+	ClientSecret string `json:"clientSecret,omitempty"`
 	// PrivateKey description: The base64-encoded private key of the GitHub App for Sourcegraph Cloud.
 	PrivateKey string `json:"privateKey,omitempty"`
 	// Slug description: The slug of the GitHub App for Sourcegraph Cloud.
@@ -880,14 +938,32 @@ type GitoliteConnection struct {
 	Exclude []*ExcludedGitoliteRepo `json:"exclude,omitempty"`
 	// Host description: Gitolite host that stores the repositories (e.g., git@gitolite.example.com, ssh://git@gitolite.example.com:2222/).
 	Host string `json:"host"`
-	// Phabricator description: Phabricator instance that integrates with this Gitolite instance
+	// Phabricator description: This is DEPRECATED
 	Phabricator *Phabricator `json:"phabricator,omitempty"`
-	// PhabricatorMetadataCommand description: This is DEPRECATED. Use the `phabricator` field instead.
+	// PhabricatorMetadataCommand description: This is DEPRECATED
 	PhabricatorMetadataCommand string `json:"phabricatorMetadataCommand,omitempty"`
 	// Prefix description: Repository name prefix that will map to this Gitolite host. This should likely end with a trailing slash. E.g., "gitolite.example.com/".
 	//
 	// It is important that the Sourcegraph repository name generated with this prefix be unique to this code host. If different code hosts generate repository names that collide, Sourcegraph's behavior is undefined.
 	Prefix string `json:"prefix"`
+}
+
+// GoModulesConnection description: Configuration for a connection to Go module proxies
+type GoModulesConnection struct {
+	// Dependencies description: An array of strings specifying Go modules to mirror in Sourcegraph.
+	Dependencies []string `json:"dependencies,omitempty"`
+	// RateLimit description: Rate limit applied when making background API requests to the configured Go module proxies.
+	RateLimit *GoRateLimit `json:"rateLimit,omitempty"`
+	// Urls description: The list of Go module proxy URLs to fetch modules from. 404 Not found or 410 Gone responses will result in the next URL to be attempted.
+	Urls []string `json:"urls"`
+}
+
+// GoRateLimit description: Rate limit applied when making background API requests to the configured Go module proxies.
+type GoRateLimit struct {
+	// Enabled description: true if rate limiting is enabled.
+	Enabled bool `json:"enabled"`
+	// RequestsPerHour description: Requests per hour permitted. This is an average, calculated per second. Internally, the burst limit is set to 100, which implies that for a requests per hour limit as low as 1, users will continue to be able to send a maximum of 100 requests immediately, provided that the complexity cost of each request is 1.
+	RequestsPerHour float64 `json:"requestsPerHour"`
 }
 
 // HTTPHeaderAuthProvider description: Configures the HTTP header authentication provider (which authenticates users by consulting an HTTP request header set by an authentication proxy such as https://github.com/bitly/oauth2_proxy).
@@ -1020,26 +1096,6 @@ type MountedEncryptionKey struct {
 	Version    string `json:"version,omitempty"`
 }
 
-// NPMPackagesConnection description: Configuration for a connection to an NPM packages repository.
-type NPMPackagesConnection struct {
-	// Credentials description: Access token for logging into the NPM registry.
-	Credentials string `json:"credentials,omitempty"`
-	// Dependencies description: An array of "(@scope/)?packageName@version" strings specifying which NPM packages to mirror on Sourcegraph.
-	Dependencies []string `json:"dependencies,omitempty"`
-	// RateLimit description: Rate limit applied when making background API requests to the NPM registry.
-	RateLimit *NPMRateLimit `json:"rateLimit,omitempty"`
-	// Registry description: The URL at which the NPM registry can be found.
-	Registry string `json:"registry"`
-}
-
-// NPMRateLimit description: Rate limit applied when making background API requests to the NPM registry.
-type NPMRateLimit struct {
-	// Enabled description: true if rate limiting is enabled.
-	Enabled bool `json:"enabled"`
-	// RequestsPerHour description: Requests per hour permitted. This is an average, calculated per second. Internally, the burst limit is set to 100, which implies that for a requests per hour limit as low as 1, users will continue to be able to send a maximum of 100 requests immediately, provided that the complexity cost of each request is 1.
-	RequestsPerHour float64 `json:"requestsPerHour"`
-}
-
 // NoOpEncryptionKey description: This encryption key is a no op, leaving your data in plaintext (not recommended).
 type NoOpEncryptionKey struct {
 	Type string `json:"type"`
@@ -1153,6 +1209,26 @@ type NotifierWebhook struct {
 	Url         string `json:"url"`
 	Username    string `json:"username,omitempty"`
 }
+
+// NpmPackagesConnection description: Configuration for a connection to an npm packages repository.
+type NpmPackagesConnection struct {
+	// Credentials description: Access token for logging into the npm registry.
+	Credentials string `json:"credentials,omitempty"`
+	// Dependencies description: An array of "(@scope/)?packageName@version" strings specifying which npm packages to mirror on Sourcegraph.
+	Dependencies []string `json:"dependencies,omitempty"`
+	// RateLimit description: Rate limit applied when making background API requests to the npm registry.
+	RateLimit *NpmRateLimit `json:"rateLimit,omitempty"`
+	// Registry description: The URL at which the npm registry can be found.
+	Registry string `json:"registry"`
+}
+
+// NpmRateLimit description: Rate limit applied when making background API requests to the npm registry.
+type NpmRateLimit struct {
+	// Enabled description: true if rate limiting is enabled.
+	Enabled bool `json:"enabled"`
+	// RequestsPerHour description: Requests per hour permitted. This is an average, calculated per second. Internally, the burst limit is set to 100, which implies that for a requests per hour limit as low as 1, users will continue to be able to send a maximum of 100 requests immediately, provided that the complexity cost of each request is 1.
+	RequestsPerHour float64 `json:"requestsPerHour"`
+}
 type OAuthIdentity struct {
 	Type string `json:"type"`
 }
@@ -1166,12 +1242,20 @@ type ObservabilityAlerts struct {
 	Owners []string `json:"owners,omitempty"`
 }
 
+// ObservabilityLogging description: Configuration for logging to external services.
+type ObservabilityLogging struct {
+	// Datadog description: Datadog configuration
+	Datadog *Datadog `json:"datadog,omitempty"`
+}
+
 // ObservabilityTracing description: Controls the settings for distributed tracing.
 type ObservabilityTracing struct {
 	// Debug description: Turns on debug logging of opentracing client requests. This can be useful for debugging connectivity issues between the tracing client and the Jaeger agent, the performance overhead of tracing, and other issues related to the use of distributed tracing.
 	Debug bool `json:"debug,omitempty"`
 	// Sampling description: Determines the requests for which distributed traces are recorded. "none" (default) turns off tracing entirely. "selective" sends traces whenever `?trace=1` is present in the URL. "all" sends traces on every request. Note that this only affects the behavior of the distributed tracing client. The Jaeger instance must be running for traces to be collected (as described in the Sourcegraph installation instructions). Additional downsampling can be configured in Jaeger, itself (https://www.jaegertracing.io/docs/1.17/sampling)
 	Sampling string `json:"sampling,omitempty"`
+	// Type description: Determines what tracing provider to enable. Supports "datadog" or "opentracing"
+	Type string `json:"type,omitempty"`
 }
 
 // OnQuery description: A Sourcegraph search query that matches a set of repositories (and branches). Each matched repository branch is added to the list of repositories that the batch change will be run on.
@@ -1192,6 +1276,8 @@ type OnRepository struct {
 
 // OpenIDConnectAuthProvider description: Configures the OpenID Connect authentication provider for SSO.
 type OpenIDConnectAuthProvider struct {
+	// AllowSignup description: Allows new visitors to sign up for accounts via OpenID Connect authentication. If false, users signing in via OpenID Connect must have an existing Sourcegraph account, which will be linked to their OpenID Connect identity after sign-in.
+	AllowSignup *bool `json:"allowSignup,omitempty"`
 	// ClientID description: The client ID for the OpenID Connect client for this site.
 	//
 	// For Google Apps: obtain this value from the API console (https://console.developers.google.com), as described at https://developers.google.com/identity/protocols/OpenIDConnect#getcredentials
@@ -1216,7 +1302,7 @@ type OpenIDConnectAuthProvider struct {
 type OrganizationInvitations struct {
 	// ExpiryTime description: Time before the invitation expires, in hours (experimental, not enforced at the moment).
 	ExpiryTime int `json:"expiryTime,omitempty"`
-	// SigningKey description: HMAC Signing key to sign a JWT token, which is attached to each invitation URL. Can be any string.
+	// SigningKey description: Base64 encoded HMAC Signing key to sign a JWT token, which is attached to each invitation URL.
 	// More documentation here: https://pkg.go.dev/github.com/golang-jwt/jwt#SigningMethodHMAC
 	//
 	// If not provided, will fall back to legacy invitation to an organization.
@@ -1280,6 +1366,20 @@ type ParentSourcegraph struct {
 	Url string `json:"url,omitempty"`
 }
 
+// PasswordPolicy description: Enables and configures password policy. This will allow admins to enforce password complexity and length requirements.
+type PasswordPolicy struct {
+	// Enabled description: Enables password policy
+	Enabled bool `json:"enabled,omitempty"`
+	// MinimumLength description: The minimum length required for a password
+	MinimumLength int `json:"minimumLength,omitempty"`
+	// NumberOfSpecialCharacters description: The required number of special characters
+	NumberOfSpecialCharacters int `json:"numberOfSpecialCharacters,omitempty"`
+	// RequireAtLeastOneNumber description: Does the password require a number
+	RequireAtLeastOneNumber bool `json:"requireAtLeastOneNumber,omitempty"`
+	// RequireUpperandLowerCase description: Require Mixed characters
+	RequireUpperandLowerCase bool `json:"requireUpperandLowerCase,omitempty"`
+}
+
 // PerforceAuthorization description: If non-null, enforces Perforce depot permissions.
 type PerforceAuthorization struct {
 	// SubRepoPermissions description: Experimental: infer sub-repository permissions from protection rules.
@@ -1330,7 +1430,7 @@ type PermissionsUserMapping struct {
 	Enabled bool `json:"enabled,omitempty"`
 }
 
-// Phabricator description: Phabricator instance that integrates with this Gitolite instance
+// Phabricator description: This is DEPRECATED
 type Phabricator struct {
 	// CallsignCommand description:  Bash command that prints out the Phabricator callsign for a Gitolite repository. This will be run with environment variable $REPO set to the name of the repository and used to obtain the Phabricator metadata for a Gitolite repository. (Note: this requires `bash` to be installed.)
 	CallsignCommand string `json:"callsignCommand"`
@@ -1347,6 +1447,24 @@ type PhabricatorConnection struct {
 	// Url description: URL of a Phabricator instance, such as https://phabricator.example.com
 	Url string `json:"url,omitempty"`
 }
+
+// PythonPackagesConnection description: Configuration for a connection to Python simple repository APIs compatible with PEP 503
+type PythonPackagesConnection struct {
+	// Dependencies description: An array of strings specifying Python packages to mirror in Sourcegraph.
+	Dependencies []string `json:"dependencies,omitempty"`
+	// RateLimit description: Rate limit applied when making background API requests to the configured Python simple repository APIs.
+	RateLimit *PythonRateLimit `json:"rateLimit,omitempty"`
+	// Urls description: The list of Python simple repository URLs to fetch packages from. 404 Not found or 410 Gone responses will result in the next URL to be attempted.
+	Urls []string `json:"urls"`
+}
+
+// PythonRateLimit description: Rate limit applied when making background API requests to the configured Python simple repository APIs.
+type PythonRateLimit struct {
+	// Enabled description: true if rate limiting is enabled.
+	Enabled bool `json:"enabled"`
+	// RequestsPerHour description: Requests per hour permitted. This is an average, calculated per second. Internally, the burst limit is set to 100, which implies that for a requests per hour limit as low as 1, users will continue to be able to send a maximum of 100 requests immediately, provided that the complexity cost of each request is 1.
+	RequestsPerHour float64 `json:"requestsPerHour"`
+}
 type QuickLink struct {
 	// Description description: A description for this quick link
 	Description string `json:"description,omitempty"`
@@ -1354,6 +1472,14 @@ type QuickLink struct {
 	Name string `json:"name"`
 	// Url description: The URL of this quick link (absolute or relative)
 	Url string `json:"url"`
+}
+
+// RUM description: Datadog RUM configuration
+type RUM struct {
+	// ApplicationId description: Datadog application ID required RUM (https://docs.datadoghq.com/real_user_monitoring/browser/#setup).
+	ApplicationId string `json:"applicationId"`
+	// ClientToken description: Datadog client token required RUM (https://docs.datadoghq.com/real_user_monitoring/browser/#setup).
+	ClientToken string `json:"clientToken"`
 }
 
 // Ranking description: Experimental search result ranking options.
@@ -1404,7 +1530,8 @@ type SAMLAuthProvider struct {
 	Type         string `json:"type"`
 }
 
-// SMTPServerConfig description: The SMTP server used to send transactional emails (such as email verifications, reset-password emails, and notifications).
+// SMTPServerConfig description: The SMTP server used to send transactional emails.
+// Please see https://docs.sourcegraph.com/admin/config/email
 type SMTPServerConfig struct {
 	// Authentication description: The type of authentication to use for the SMTP server.
 	Authentication string `json:"authentication"`
@@ -1484,6 +1611,8 @@ type Settings struct {
 	CodeIntelligenceAutoIndexPopularRepoLimit int `json:"codeIntelligence.autoIndexPopularRepoLimit,omitempty"`
 	// CodeIntelligenceAutoIndexRepositoryGroups description: A list of search.repositoryGroups that have auto-indexing enabled.
 	CodeIntelligenceAutoIndexRepositoryGroups []string `json:"codeIntelligence.autoIndexRepositoryGroups,omitempty"`
+	// CodeIntelligenceClickToGoToDefinition description: Enable click to go to definition.
+	CodeIntelligenceClickToGoToDefinition bool `json:"codeIntelligence.clickToGoToDefinition,omitempty"`
 	// CodeIntelligenceMaxPanelResults description: Maximum number of references/definitions (or other code intelligence results provided by extensions) shown in the panel. If not set a default value will be used to ensure best performance.
 	CodeIntelligenceMaxPanelResults int `json:"codeIntelligence.maxPanelResults,omitempty"`
 	// ExperimentalFeatures description: Experimental features to enable or disable. Features that are now enabled by default are marked as deprecated.
@@ -1494,6 +1623,8 @@ type Settings struct {
 	ExtensionsActiveLoggers []string `json:"extensions.activeLoggers,omitempty"`
 	// FileSidebarVisibleByDefault description: Whether the sidebar on the repo view should be open by default.
 	FileSidebarVisibleByDefault bool `json:"fileSidebarVisibleByDefault,omitempty"`
+	// HistoryPreferAbsoluteTimestamps description: Show absolute timestamps in the history panel and only show relative timestamps (e.g.: "5 days ago") in tooltip when hovering.
+	HistoryPreferAbsoluteTimestamps bool `json:"history.preferAbsoluteTimestamps,omitempty"`
 	// Insights description: EXPERIMENTAL: Code Insights
 	Insights []*Insight `json:"insights,omitempty"`
 	// InsightsAllrepos description: EXPERIMENTAL: Backend-based Code Insights
@@ -1549,7 +1680,7 @@ type Settings struct {
 
 // SettingsExperimentalFeatures description: Experimental features to enable or disable. Features that are now enabled by default are marked as deprecated.
 type SettingsExperimentalFeatures struct {
-	// ApiDocs description: Enables API documentation.
+	// ApiDocs description: Deprecated.
 	ApiDocs *bool `json:"apiDocs,omitempty"`
 	// BatchChangesExecution description: Enables/disables the Batch Changes server side execution feature.
 	BatchChangesExecution *bool `json:"batchChangesExecution,omitempty"`
@@ -1561,17 +1692,22 @@ type SettingsExperimentalFeatures struct {
 	CodeInsightsAllRepos *bool `json:"codeInsightsAllRepos,omitempty"`
 	// CodeInsightsGqlApi description: DEPRECATED: Enables gql api instead of using setting cascade as a main storage fro code insights entities
 	CodeInsightsGqlApi *bool `json:"codeInsightsGqlApi,omitempty"`
-	// CodeInsightsLandingPage description: Enables code insights landing page layout.
-	CodeInsightsLandingPage *bool `json:"codeInsightsLandingPage,omitempty"`
+	// CodeInsightsLandingPage description: DEPRECATED: Enables code insights landing page layout.
+	CodeInsightsLandingPage  *bool                     `json:"codeInsightsLandingPage,omitempty"`
+	CodeIntelRepositoryBadge *CodeIntelRepositoryBadge `json:"codeIntelRepositoryBadge,omitempty"`
 	// CodeMonitoring description: Enables code monitoring.
 	CodeMonitoring *bool `json:"codeMonitoring,omitempty"`
 	// CodeMonitoringWebHooks description: Shows code monitor webhook and Slack webhook actions in the UI, allowing users to configure them.
 	CodeMonitoringWebHooks *bool `json:"codeMonitoringWebHooks,omitempty"`
+	// CoolCodeIntel description: Use the (cool) experimental reference panel for code intelligence.
+	CoolCodeIntel *bool `json:"coolCodeIntel,omitempty"`
 	// CopyQueryButton description: DEPRECATED: This feature is now permanently enabled. Enables displaying the copy query button in the search bar when hovering over the global navigation bar.
 	CopyQueryButton *bool `json:"copyQueryButton,omitempty"`
+	// Editor description: Specifies which (code) editor to use for query and text input
+	Editor *string `json:"editor,omitempty"`
 	// EnableFastResultLoading description: Enables optimized search result loading (syntax highlighting / file contents fetching)
 	EnableFastResultLoading *bool `json:"enableFastResultLoading,omitempty"`
-	// EnableSearchStack description: Enables search stack
+	// EnableSearchStack description: REMOVED: This feature can now be enabled/disabled via the notepad button on the notebooks list page.
 	EnableSearchStack *bool `json:"enableSearchStack,omitempty"`
 	// EnableSmartQuery description: REMOVED. Previously, added more syntax highlighting and hovers for queries in the web app. This behavior is active by default now.
 	EnableSmartQuery *bool `json:"enableSmartQuery,omitempty"`
@@ -1579,14 +1715,22 @@ type SettingsExperimentalFeatures struct {
 	FuzzyFinder *bool `json:"fuzzyFinder,omitempty"`
 	// FuzzyFinderCaseInsensitiveFileCountThreshold description: The maximum number of files a repo can have to use case-insensitive fuzzy finding
 	FuzzyFinderCaseInsensitiveFileCountThreshold *float64 `json:"fuzzyFinderCaseInsensitiveFileCountThreshold,omitempty"`
-	// SearchContextsQuery description: Enables query based search contexts
+	// GoCodeCheckerTemplates description: Shows a panel with code insights templates for go code checker results.
+	GoCodeCheckerTemplates *bool `json:"goCodeCheckerTemplates,omitempty"`
+	// HomepageUserInvitation description: Shows a panel to invite collaborators to Sourcegraph on home page.
+	HomepageUserInvitation *bool `json:"homepageUserInvitation,omitempty"`
+	// SearchContextsQuery description: DEPRECATED: This feature is now permanently enabled. Enables query based search contexts
 	SearchContextsQuery *bool `json:"searchContextsQuery,omitempty"`
 	// SearchStats description: Enables a button on the search results page that shows language statistics about the results for a search query.
 	SearchStats *bool `json:"searchStats,omitempty"`
 	// SearchStreaming description: DEPRECATED: This feature is now permanently enabled. Enables streaming search support.
 	SearchStreaming *bool `json:"searchStreaming,omitempty"`
+	// ShowCodeMonitoringLogs description: Shows code monitoring logs tab.
+	ShowCodeMonitoringLogs *bool `json:"showCodeMonitoringLogs,omitempty"`
 	// ShowCodeMonitoringTestEmailButton description: REMOVED. Previously, enabled the 'Send test email' button in the code monitoring list.
 	ShowCodeMonitoringTestEmailButton *bool `json:"showCodeMonitoringTestEmailButton,omitempty"`
+	// ShowComputeComponent description: Enables display of compute components (currently Notebook blocks)
+	ShowComputeComponent *bool `json:"showComputeComponent,omitempty"`
 	// ShowEnterpriseHomePanels description: Enabled the homepage panels in the Enterprise homepage
 	ShowEnterpriseHomePanels *bool `json:"showEnterpriseHomePanels,omitempty"`
 	// ShowMultilineSearchConsole description: Enables the multiline search console at search/console
@@ -1603,18 +1747,22 @@ type SettingsExperimentalFeatures struct {
 	ShowSearchContextManagement *bool `json:"showSearchContextManagement,omitempty"`
 	// ShowSearchNotebook description: Enables the search notebook at search/notebook
 	ShowSearchNotebook *bool `json:"showSearchNotebook,omitempty"`
+	// TreeSitterEnabled description: DEPRECATED: Enables tree sitter for enabled filetypes.
+	TreeSitterEnabled *bool `json:"treeSitterEnabled,omitempty"`
 }
 
 // SiteConfiguration description: Configuration for a Sourcegraph site.
 type SiteConfiguration struct {
 	// ApiRatelimit description: Configuration for API rate limiting
 	ApiRatelimit *ApiRatelimit `json:"api.ratelimit,omitempty"`
-	// ApidocsSearchIndexSizeLimitFactor description: Limit factor for API docs search index size. A multiple of 250 million symbols. 1.0 indicates 250 million symbols (approx 12.5k repos) can be indexed. 2.0 indicates double that, and so on. See https://docs.sourcegraph.com/code_intelligence/apidocs
+	// ApidocsSearchIndexSizeLimitFactor description: Deprecated.
 	ApidocsSearchIndexSizeLimitFactor float64 `json:"apidocs.search.index-size-limit-factor,omitempty"`
 	// AuthAccessTokens description: Settings for access tokens, which enable external tools to access the Sourcegraph API with the privileges of the user.
 	AuthAccessTokens *AuthAccessTokens `json:"auth.accessTokens,omitempty"`
 	// AuthEnableUsernameChanges description: Enables users to change their username after account creation. Warning: setting this to be true has security implications if you have enabled (or will at any point in the future enable) repository permissions with an option that relies on username equivalency between Sourcegraph and an external service or authentication provider. Do NOT set this to true if you are using non-built-in authentication OR rely on username equivalency for repository permissions.
 	AuthEnableUsernameChanges bool `json:"auth.enableUsernameChanges,omitempty"`
+	// AuthLockout description: The config options for account lockout
+	AuthLockout *AuthLockout `json:"auth.lockout,omitempty"`
 	// AuthMinPasswordLength description: The minimum number of Unicode code points that a password must contain.
 	AuthMinPasswordLength int `json:"auth.minPasswordLength,omitempty"`
 	// AuthPasswordResetLinkExpiry description: The duration (in seconds) that a password reset link is considered valid.
@@ -1637,10 +1785,16 @@ type SiteConfiguration struct {
 	//   ```
 	//
 	AuthSessionExpiry string `json:"auth.sessionExpiry,omitempty"`
+	// AuthUnlockAccountLinkExpiry description: Validity expressed in minutes of the unlock account token
+	AuthUnlockAccountLinkExpiry int `json:"auth.unlockAccountLinkExpiry,omitempty"`
+	// AuthUnlockAccountLinkSigningKey description: Base64-encoded HMAC signing key to sign the JWT token for account unlock URLs
+	AuthUnlockAccountLinkSigningKey string `json:"auth.unlockAccountLinkSigningKey,omitempty"`
 	// AuthUserOrgMap description: Ensure that matching users are members of the specified orgs (auto-joining users to the orgs if they are not already a member). Provide a JSON object of the form `{"*": ["org1", "org2"]}`, where org1 and org2 are orgs that all users are automatically joined to. Currently the only supported key is `"*"`.
 	AuthUserOrgMap map[string][]string `json:"auth.userOrgMap,omitempty"`
 	// AuthzEnforceForSiteAdmins description: When true, site admins will only be able to see private code they have access to via our authz system.
 	AuthzEnforceForSiteAdmins bool `json:"authz.enforceForSiteAdmins,omitempty"`
+	// AuthzRefreshInterval description: Time interval (in seconds) of how often each component picks up authorization changes in external services.
+	AuthzRefreshInterval int `json:"authz.refreshInterval,omitempty"`
 	// BatchChangesDisableWebhooksWarning description: Hides Batch Changes warnings about webhooks not being configured.
 	BatchChangesDisableWebhooksWarning bool `json:"batchChanges.disableWebhooksWarning,omitempty"`
 	// BatchChangesEnabled description: Enables/disables the Batch Changes feature.
@@ -1671,6 +1825,8 @@ type SiteConfiguration struct {
 	CorsOrigin string `json:"corsOrigin,omitempty"`
 	// DebugSearchSymbolsParallelism description: (debug) controls the amount of symbol search parallelism. Defaults to 20. It is not recommended to change this outside of debugging scenarios. This option will be removed in a future version.
 	DebugSearchSymbolsParallelism int `json:"debug.search.symbolsParallelism,omitempty"`
+	// DefaultRateLimit description: The rate limit (in requests per hour) for the default rate limiter in the rate limiters registry. By default this is disabled and the default rate limit is infinity.
+	DefaultRateLimit float64 `json:"defaultRateLimit,omitempty"`
 	// DisableAutoCodeHostSyncs description: Disable periodic syncs of configured code host connections (repository metadata, permissions, batch changes changesets, etc)
 	DisableAutoCodeHostSyncs bool `json:"disableAutoCodeHostSyncs,omitempty"`
 	// DisableAutoGitUpdates description: Disable periodically fetching git contents for existing repositories.
@@ -1686,8 +1842,10 @@ type SiteConfiguration struct {
 	// Dotcom description: Configuration options for Sourcegraph.com only.
 	Dotcom *Dotcom `json:"dotcom,omitempty"`
 	// EmailAddress description: The "from" address for emails sent by this server.
+	// Please see https://docs.sourcegraph.com/admin/config/email
 	EmailAddress string `json:"email.address,omitempty"`
-	// EmailSmtp description: The SMTP server used to send transactional emails (such as email verifications, reset-password emails, and notifications).
+	// EmailSmtp description: The SMTP server used to send transactional emails.
+	// Please see https://docs.sourcegraph.com/admin/config/email
 	EmailSmtp *SMTPServerConfig `json:"email.smtp,omitempty"`
 	// EncryptionKeys description: Configuration for encryption keys used to encrypt data at rest in the database.
 	EncryptionKeys *EncryptionKeys `json:"encryption.keys,omitempty"`
@@ -1725,6 +1883,10 @@ type SiteConfiguration struct {
 	HtmlHeadTop string `json:"htmlHeadTop,omitempty"`
 	// InsightsCommitIndexerInterval description: The interval (in minutes) at which the insights commit indexer will check for new commits.
 	InsightsCommitIndexerInterval int `json:"insights.commit.indexer.interval,omitempty"`
+	// InsightsCommitIndexerWindowDuration description: The number of days of commits the insights commit indexer will pull during each request (0 is no limit).
+	InsightsCommitIndexerWindowDuration int `json:"insights.commit.indexer.windowDuration,omitempty"`
+	// InsightsComputeGraphql description: Force GraphQL mode for insights compute searches. This will overwrite the default streaming behavior and force search clients to use the GraphQL API
+	InsightsComputeGraphql *bool `json:"insights.compute.graphql,omitempty"`
 	// InsightsHistoricalFrameLength description: (debug) duration of historical insights timeframes, one point per repository will be recorded in each timeframe.
 	InsightsHistoricalFrameLength string `json:"insights.historical.frameLength,omitempty"`
 	// InsightsHistoricalFrames description: (debug) number of historical insights timeframes to populate
@@ -1737,6 +1899,8 @@ type SiteConfiguration struct {
 	InsightsQueryWorkerConcurrency int `json:"insights.query.worker.concurrency,omitempty"`
 	// InsightsQueryWorkerRateLimit description: Maximum number of Code Insights queries initiated per second on a worker node.
 	InsightsQueryWorkerRateLimit *float64 `json:"insights.query.worker.rateLimit,omitempty"`
+	// InsightsSearchGraphql description: Force GraphQL mode for insights searches. This will overwrite the default streaming behavior and force search clients to use the GraphQL API
+	InsightsSearchGraphql *bool `json:"insights.search.graphql,omitempty"`
 	// LicenseKey description: The license key associated with a Sourcegraph product subscription, which is necessary to activate Sourcegraph Enterprise functionality. To obtain this value, contact Sourcegraph to purchase a subscription. To escape the value into a JSON string, you may want to use a tool like https://json-escape-text.now.sh.
 	LicenseKey string `json:"licenseKey,omitempty"`
 	// Log description: Configuration for logging and alerting, including to external services.
@@ -1751,6 +1915,8 @@ type SiteConfiguration struct {
 	ObservabilityLogSlowGraphQLRequests int `json:"observability.logSlowGraphQLRequests,omitempty"`
 	// ObservabilityLogSlowSearches description: (debug) logs all search queries (issued by users, code intelligence, or API requests) slower than the specified number of milliseconds.
 	ObservabilityLogSlowSearches int `json:"observability.logSlowSearches,omitempty"`
+	// ObservabilityLogging description: Configuration for logging to external services.
+	ObservabilityLogging *ObservabilityLogging `json:"observability.logging,omitempty"`
 	// ObservabilitySilenceAlerts description: Silence individual Sourcegraph alerts by identifier.
 	ObservabilitySilenceAlerts []string `json:"observability.silenceAlerts,omitempty"`
 	// ObservabilityTracing description: Controls the settings for distributed tracing.
@@ -1759,6 +1925,16 @@ type SiteConfiguration struct {
 	OrganizationInvitations *OrganizationInvitations `json:"organizationInvitations,omitempty"`
 	// ParentSourcegraph description: URL to fetch unreachable repository details from. Defaults to "https://sourcegraph.com"
 	ParentSourcegraph *ParentSourcegraph `json:"parentSourcegraph,omitempty"`
+	// PermissionsSyncOldestRepos description: Number of repo permissions to schedule for syncing in single scheduler iteration
+	PermissionsSyncOldestRepos int `json:"permissions.syncOldestRepos,omitempty"`
+	// PermissionsSyncOldestUsers description: Number of user permissions to schedule for syncing in single scheduler iteration
+	PermissionsSyncOldestUsers int `json:"permissions.syncOldestUsers,omitempty"`
+	// PermissionsSyncReposBackoffSeconds description: Don't sync a repo's permissions if it has synced within the last n seconds
+	PermissionsSyncReposBackoffSeconds int `json:"permissions.syncReposBackoffSeconds,omitempty"`
+	// PermissionsSyncScheduleInterval description: Time interval (in seconds) of how often each component picks up authorization changes in external services.
+	PermissionsSyncScheduleInterval int `json:"permissions.syncScheduleInterval,omitempty"`
+	// PermissionsSyncUsersBackoffSeconds description: Don't sync a user's permissions if they have synced within the last n seconds
+	PermissionsSyncUsersBackoffSeconds int `json:"permissions.syncUsersBackoffSeconds,omitempty"`
 	// PermissionsUserMapping description: Settings for Sourcegraph permissions, which allow the site admin to explicitly manage repository permissions via the GraphQL API. This setting cannot be enabled if repository permissions for any specific external service are enabled (i.e., when the external service's `authorization` field is set).
 	PermissionsUserMapping *PermissionsUserMapping `json:"permissions.userMapping,omitempty"`
 	// ProductResearchPageEnabled description: Enables users access to the product research page in their settings.
@@ -1771,14 +1947,14 @@ type SiteConfiguration struct {
 	SearchIndexEnabled *bool `json:"search.index.enabled,omitempty"`
 	// SearchIndexSymbolsEnabled description: Whether indexed symbol search is enabled. This is contingent on the indexed search configuration, and is true by default for instances with indexed search enabled. Enabling this will cause every repository to re-index, which is a time consuming (several hours) operation. Additionally, it requires more storage and ram to accommodate the added symbols information in the search index.
 	SearchIndexSymbolsEnabled *bool `json:"search.index.symbols.enabled,omitempty"`
-	// SearchLargeFiles description: A list of file glob patterns where matching files will be indexed and searched regardless of their size. Files still need to be valid utf-8 to be indexed. The glob pattern syntax can be found here: https://golang.org/pkg/path/filepath/#Match.
+	// SearchLargeFiles description: A list of file glob patterns where matching files will be indexed and searched regardless of their size. Files still need to be valid utf-8 to be indexed. The glob pattern syntax can be found here: https://github.com/bmatcuk/doublestar#patterns.
 	SearchLargeFiles []string `json:"search.largeFiles,omitempty"`
 	// SearchLimits description: Limits that search applies for number of repositories searched and timeouts.
 	SearchLimits *SearchLimits `json:"search.limits,omitempty"`
+	// SyntaxHighlighting description: Syntax highlighting configuration
+	SyntaxHighlighting *SyntaxHighlighting `json:"syntaxHighlighting,omitempty"`
 	// UpdateChannel description: The channel on which to automatically check for Sourcegraph updates.
 	UpdateChannel string `json:"update.channel,omitempty"`
-	// UseJaeger description: DEPRECATED. Use `"observability.tracing": { "sampling": "all" }`, instead. Enables Jaeger tracing.
-	UseJaeger bool `json:"useJaeger,omitempty"`
 	// UserReposMaxPerSite description: The site wide maximum number of repos that can be added by non site admins
 	UserReposMaxPerSite int `json:"userRepos.maxPerSite,omitempty"`
 	// UserReposMaxPerUser description: The per user maximum number of repos that can be added by non site admins
@@ -1809,6 +1985,30 @@ type SubRepoPermissions struct {
 	UserCacheSize int `json:"userCacheSize,omitempty"`
 	// UserCacheTTLSeconds description: The TTL in seconds for cached user permissions
 	UserCacheTTLSeconds int `json:"userCacheTTLSeconds,omitempty"`
+}
+
+// SyntaxHighlighting description: Syntax highlighting configuration
+type SyntaxHighlighting struct {
+	Engine    SyntaxHighlightingEngine   `json:"engine"`
+	Languages SyntaxHighlightingLanguage `json:"languages"`
+}
+type SyntaxHighlightingEngine struct {
+	// Default description: The default syntax highlighting engine to use
+	Default string `json:"default"`
+	// Overrides description: Manually specify overrides for syntax highlighting engine per language
+	Overrides map[string]string `json:"overrides,omitempty"`
+}
+type SyntaxHighlightingLanguage struct {
+	// Extensions description: Map of extension to language
+	Extensions map[string]string `json:"extensions"`
+	// Patterns description: Map of patterns to language. Will return after first match, if any.
+	Patterns []*SyntaxHighlightingLanguagePatterns `json:"patterns"`
+}
+type SyntaxHighlightingLanguagePatterns struct {
+	// Language description: Name of the language if pattern matches
+	Language string `json:"language"`
+	// Pattern description: Regular expression which matches the filepath
+	Pattern string `json:"pattern"`
 }
 
 // TlsExternal description: Global TLS/SSL settings for Sourcegraph to use when communicating with code hosts.

@@ -1,13 +1,15 @@
 import React, { useMemo } from 'react'
+
 import { NavLink } from 'react-router-dom'
 
-import { PageHeader } from '@sourcegraph/wildcard'
+import { Icon, PageHeader } from '@sourcegraph/wildcard'
 
 import { BatchChangesProps } from '../../batches'
 import { NavItemWithIconDescriptor } from '../../util/contributions'
 import { UserAvatar } from '../UserAvatar'
 
 import { UserAreaRouteContext } from './UserArea'
+
 import styles from './UserAreaHeader.module.scss'
 
 interface Props extends UserAreaRouteContext {
@@ -24,7 +26,12 @@ export interface UserAreaHeaderNavItem extends NavItemWithIconDescriptor<UserAre
 /**
  * Header for the user area.
  */
-export const UserAreaHeader: React.FunctionComponent<Props> = ({ url, navItems, className = '', ...props }) => {
+export const UserAreaHeader: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
+    url,
+    navItems,
+    className = '',
+    ...props
+}) => {
     /*
      * The path segment would always be recreated on rerenders, thus invalidating the loop over it in PageHeader.
      * As a result, the UserAvatar was always reinstanciated and rendered again, whenever the header rerenders
@@ -57,7 +64,7 @@ export const UserAreaHeader: React.FunctionComponent<Props> = ({ url, navItems, 
                 <div className="d-flex align-items-end justify-content-between">
                     <ul className="nav nav-tabs w-100">
                         {navItems.map(
-                            ({ to, label, exact, icon: Icon, condition = () => true }) =>
+                            ({ to, label, exact, icon: ItemIcon, condition = () => true }) =>
                                 condition(props) && (
                                     <li key={label} className="nav-item">
                                         <NavLink
@@ -67,7 +74,7 @@ export const UserAreaHeader: React.FunctionComponent<Props> = ({ url, navItems, 
                                             exact={exact}
                                         >
                                             <span>
-                                                {Icon && <Icon className="icon-inline" />}{' '}
+                                                {ItemIcon && <Icon as={ItemIcon} />}{' '}
                                                 <span className="text-content" data-tab-content={label}>
                                                     {label}
                                                 </span>

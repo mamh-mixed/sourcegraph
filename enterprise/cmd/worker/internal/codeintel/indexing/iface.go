@@ -2,12 +2,13 @@ package indexing
 
 import (
 	"context"
-	"regexp"
 	"time"
 
-	"github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/policies"
-	"github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/stores/dbstore"
+	"github.com/grafana/regexp"
+
 	"github.com/sourcegraph/sourcegraph/internal/api"
+	policies "github.com/sourcegraph/sourcegraph/internal/codeintel/policies/enterprise"
+	"github.com/sourcegraph/sourcegraph/internal/codeintel/stores/dbstore"
 	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/database/basestore"
 	gprotocol "github.com/sourcegraph/sourcegraph/internal/gitserver/protocol"
@@ -69,5 +70,5 @@ type IndexEnqueuer interface {
 }
 
 type PolicyMatcher interface {
-	CommitsDescribedByPolicy(ctx context.Context, repositoryID int, policies []dbstore.ConfigurationPolicy, now time.Time) (map[string][]policies.PolicyMatch, error)
+	CommitsDescribedByPolicy(ctx context.Context, repositoryID int, policies []dbstore.ConfigurationPolicy, now time.Time, filterCommits ...string) (map[string][]policies.PolicyMatch, error)
 }

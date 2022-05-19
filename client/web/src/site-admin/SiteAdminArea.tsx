@@ -1,5 +1,6 @@
-import MapSearchIcon from 'mdi-react/MapSearchIcon'
 import React, { useLayoutEffect, useRef } from 'react'
+
+import MapSearchIcon from 'mdi-react/MapSearchIcon'
 import { Route, RouteComponentProps, Switch, useLocation } from 'react-router'
 
 import { ActivationProps } from '@sourcegraph/shared/src/components/activation/Activation'
@@ -19,7 +20,7 @@ import { RouteDescriptor } from '../util/contributions'
 
 import { SiteAdminSidebar, SiteAdminSideBarGroups } from './SiteAdminSidebar'
 
-const NotFoundPage: React.ComponentType<{}> = () => (
+const NotFoundPage: React.ComponentType<React.PropsWithChildren<{}>> = () => (
     <HeroPage
         icon={MapSearchIcon}
         title="404: Not Found"
@@ -27,7 +28,7 @@ const NotFoundPage: React.ComponentType<{}> = () => (
     />
 )
 
-const NotSiteAdminPage: React.ComponentType<{}> = () => (
+const NotSiteAdminPage: React.ComponentType<React.PropsWithChildren<{}>> = () => (
     <HeroPage icon={MapSearchIcon} title="403: Forbidden" subtitle="Only site admins are allowed here." />
 )
 
@@ -43,7 +44,7 @@ export interface SiteAdminAreaRouteContext
     isSourcegraphDotCom: boolean
 
     /** This property is only used by {@link SiteAdminOverviewPage}. */
-    overviewComponents: readonly React.ComponentType[]
+    overviewComponents: readonly React.ComponentType<React.PropsWithChildren<unknown>>[]
 }
 
 export interface SiteAdminAreaRoute extends RouteDescriptor<SiteAdminAreaRouteContext> {}
@@ -57,13 +58,13 @@ interface SiteAdminAreaProps
         TelemetryProps {
     routes: readonly SiteAdminAreaRoute[]
     sideBarGroups: SiteAdminSideBarGroups
-    overviewComponents: readonly React.ComponentType[]
+    overviewComponents: readonly React.ComponentType<React.PropsWithChildren<unknown>>[]
     authenticatedUser: AuthenticatedUser
     isLightTheme: boolean
     isSourcegraphDotCom: boolean
 }
 
-const AuthenticatedSiteAdminArea: React.FunctionComponent<SiteAdminAreaProps> = props => {
+const AuthenticatedSiteAdminArea: React.FunctionComponent<React.PropsWithChildren<SiteAdminAreaProps>> = props => {
     const { pathname } = useLocation()
 
     const reference = useRef<HTMLDivElement>(null)

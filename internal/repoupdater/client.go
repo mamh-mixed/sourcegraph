@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/cockroachdb/errors"
 	"github.com/opentracing-contrib/go-stdlib/nethttp"
 	"github.com/opentracing/opentracing-go/ext"
 
@@ -17,6 +16,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/httpcli"
 	"github.com/sourcegraph/sourcegraph/internal/repoupdater/protocol"
 	"github.com/sourcegraph/sourcegraph/internal/trace/ot"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 // DefaultClient is the default Client. Unless overwritten, it is
@@ -295,7 +295,7 @@ func (c *Client) RepoExternalServices(ctx context.Context, id api.RepoID) ([]api
 	return res.ExternalServices, nil
 }
 
-func (c *Client) httpPost(ctx context.Context, method string, payload interface{}) (resp *http.Response, err error) {
+func (c *Client) httpPost(ctx context.Context, method string, payload any) (resp *http.Response, err error) {
 	reqBody, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err

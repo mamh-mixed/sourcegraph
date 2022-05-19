@@ -1,5 +1,6 @@
-import classNames from 'classnames'
 import React, { useCallback } from 'react'
+
+import classNames from 'classnames'
 
 import * as GQL from '@sourcegraph/shared/src/schema'
 
@@ -18,7 +19,7 @@ interface Props {
     disabled?: boolean
 }
 
-export const UserProfileFormFields: React.FunctionComponent<Props> = ({
+export const UserProfileFormFields: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
     value,
     onChange,
     usernameFieldDisabled,

@@ -1,13 +1,14 @@
+import React from 'react'
+
 import classNames from 'classnames'
 import { identity } from 'lodash'
 import FileDocumentOutlineIcon from 'mdi-react/FileDocumentOutlineIcon'
 import FolderOutlineIcon from 'mdi-react/FolderOutlineIcon'
-import React from 'react'
 
 import { FileDecorationsByPath } from '@sourcegraph/shared/src/api/extension/extensionHostApi'
 import * as GQL from '@sourcegraph/shared/src/schema'
 import { ThemeProps } from '@sourcegraph/shared/src/theme'
-import { Link } from '@sourcegraph/wildcard'
+import { Link, Icon } from '@sourcegraph/wildcard'
 
 import { FileDecorator } from '../../tree/FileDecorator'
 
@@ -19,15 +20,17 @@ import styles from './TreeEntriesSection.module.scss'
  */
 const MIN_ENTRIES_FOR_COLUMN_LAYOUT = 6
 
-const TreeEntry: React.FunctionComponent<{
-    isDirectory: boolean
-    name: string
-    parentPath: string
-    url: string
-    isColumnLayout: boolean
-    renderedFileDecorations: React.ReactNode
-    path: string
-}> = ({ isDirectory, name, url, isColumnLayout, renderedFileDecorations, path }) => (
+const TreeEntry: React.FunctionComponent<
+    React.PropsWithChildren<{
+        isDirectory: boolean
+        name: string
+        parentPath: string
+        url: string
+        isColumnLayout: boolean
+        renderedFileDecorations: React.ReactNode
+        path: string
+    }>
+> = ({ isDirectory, name, url, isColumnLayout, renderedFileDecorations, path }) => (
     <Link
         to={url}
         className={classNames(
@@ -46,8 +49,7 @@ const TreeEntry: React.FunctionComponent<{
             )}
         >
             <span>
-                {isDirectory && <FolderOutlineIcon className="icon-inline mr-1" />}
-                {!isDirectory && <FileDocumentOutlineIcon className="icon-inline mr-1" />}
+                <Icon className="mr-1" as={isDirectory ? FolderOutlineIcon : FileDocumentOutlineIcon} />
                 {name}
                 {isDirectory && '/'}
             </span>
@@ -62,7 +64,7 @@ interface TreeEntriesSectionProps extends ThemeProps {
     fileDecorationsByPath: FileDecorationsByPath
 }
 
-export const TreeEntriesSection: React.FunctionComponent<TreeEntriesSectionProps> = ({
+export const TreeEntriesSection: React.FunctionComponent<React.PropsWithChildren<TreeEntriesSectionProps>> = ({
     parentPath,
     entries,
     fileDecorationsByPath,

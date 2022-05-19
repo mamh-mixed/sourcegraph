@@ -1,4 +1,5 @@
 import * as React from 'react'
+
 import { RouteComponentProps } from 'react-router-dom'
 
 import { SidebarGroupHeader, SidebarGroup, SidebarNavItem } from '../../../components/Sidebar'
@@ -15,7 +16,7 @@ interface Props extends RouteComponentProps<{}> {
 }
 
 /** Sidebar for code intelligence pages. */
-export const CodeIntelSidebar: React.FunctionComponent<Props> = ({
+export const CodeIntelSidebar: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
     codeIntelSidebarGroups,
     className,
     repo,

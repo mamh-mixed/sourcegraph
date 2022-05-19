@@ -1,11 +1,12 @@
-import classNames from 'classnames'
 import React, { useEffect, useRef } from 'react'
+
+import classNames from 'classnames'
 
 import styles from './DashboardHeader.module.scss'
 
 interface DashboardHeaderProps extends React.HTMLAttributes<HTMLElement> {}
 
-export const DashboardHeader: React.FunctionComponent<DashboardHeaderProps> = props => {
+export const DashboardHeader: React.FunctionComponent<React.PropsWithChildren<DashboardHeaderProps>> = props => {
     const { children } = props
     const reference = useRef(null)
 

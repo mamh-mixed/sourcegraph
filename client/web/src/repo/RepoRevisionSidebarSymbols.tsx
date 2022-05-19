@@ -1,14 +1,17 @@
+import * as React from 'react'
+import { useState } from 'react'
+
 import classNames from 'classnames'
 import * as H from 'history'
 import { escapeRegExp, isEqual } from 'lodash'
-import * as React from 'react'
-import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 
 import { gql, dataOrThrowErrors } from '@sourcegraph/http-client'
 import { SymbolIcon } from '@sourcegraph/shared/src/symbols/SymbolIcon'
 import { RevisionSpec } from '@sourcegraph/shared/src/util/url'
-import { useConnection } from '@sourcegraph/web/src/components/FilteredConnection/hooks/useConnection'
+import { useDebounce } from '@sourcegraph/wildcard'
+
+import { useConnection } from '../components/FilteredConnection/hooks/useConnection'
 import {
     ConnectionForm,
     ConnectionList,
@@ -18,9 +21,7 @@ import {
     ConnectionError,
     SummaryContainer,
     ShowMoreButton,
-} from '@sourcegraph/web/src/components/FilteredConnection/ui'
-import { useDebounce } from '@sourcegraph/wildcard'
-
+} from '../components/FilteredConnection/ui'
 import { Scalars, SymbolNodeFields, SymbolsResult, SymbolsVariables } from '../graphql-operations'
 import { parseBrowserRepoURL } from '../util/url'
 
@@ -32,7 +33,11 @@ interface SymbolNodeProps {
     isActive: boolean
 }
 
-const SymbolNode: React.FunctionComponent<SymbolNodeProps> = ({ node, onHandleClick, isActive }) => {
+const SymbolNode: React.FunctionComponent<React.PropsWithChildren<SymbolNodeProps>> = ({
+    node,
+    onHandleClick,
+    isActive,
+}) => {
     const isActiveFunc = (): boolean => isActive
     return (
         <li className={styles.repoRevisionSidebarSymbolsNode}>
@@ -43,7 +48,7 @@ const SymbolNode: React.FunctionComponent<SymbolNodeProps> = ({ node, onHandleCl
                 activeClassName={styles.linkActive}
                 onClick={onHandleClick}
             >
-                <SymbolIcon kind={node.kind} className="icon-inline mr-1 test-symbol-icon" />
+                <SymbolIcon kind={node.kind} className="mr-1 test-symbol-icon" />
                 <span className={classNames('test-symbol-name', styles.name)}>{node.name}</span>
                 {node.containerName && (
                     <span className={styles.containerName}>
@@ -113,12 +118,9 @@ export interface RepoRevisionSidebarSymbolsProps extends Partial<RevisionSpec> {
     onHandleSymbolClick: () => void
 }
 
-export const RepoRevisionSidebarSymbols: React.FunctionComponent<RepoRevisionSidebarSymbolsProps> = ({
-    repoID,
-    revision = '',
-    activePath,
-    onHandleSymbolClick,
-}) => {
+export const RepoRevisionSidebarSymbols: React.FunctionComponent<
+    React.PropsWithChildren<RepoRevisionSidebarSymbolsProps>
+> = ({ repoID, revision = '', activePath, onHandleSymbolClick }) => {
     const location = useLocation()
     const [searchValue, setSearchValue] = useState('')
     const query = useDebounce(searchValue, 200)
@@ -135,7 +137,7 @@ export const RepoRevisionSidebarSymbols: React.FunctionComponent<RepoRevisionSid
             repo: repoID,
             revision,
             // `includePatterns` expects regexes, so first escape the path.
-            includePatterns: [escapeRegExp(activePath)],
+            includePatterns: ['^' + escapeRegExp(activePath)],
         },
         getConnection: result => {
             const { node } = dataOrThrowErrors(result)

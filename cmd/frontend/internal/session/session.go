@@ -10,8 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/errors"
-
 	"github.com/sourcegraph/sourcegraph/internal/actor"
 	"github.com/sourcegraph/sourcegraph/internal/conf"
 	"github.com/sourcegraph/sourcegraph/internal/conf/conftypes"
@@ -19,6 +17,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/env"
 	"github.com/sourcegraph/sourcegraph/internal/errcode"
 	"github.com/sourcegraph/sourcegraph/internal/redispool"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 
 	"github.com/inconshreveable/log15"
 
@@ -189,7 +188,7 @@ func waitForRedis(s *redistore.RediStore) {
 // session exists, a new session is created.
 //
 // The value is JSON-encoded before being stored.
-func SetData(w http.ResponseWriter, r *http.Request, key string, value interface{}) error {
+func SetData(w http.ResponseWriter, r *http.Request, key string, value any) error {
 	session, err := sessionStore.Get(r, cookieName)
 	if err != nil {
 		return errors.WithMessage(err, "getting session")
@@ -209,7 +208,7 @@ func SetData(w http.ResponseWriter, r *http.Request, key string, value interface
 // be a pointer).
 //
 // The value is JSON-decoded from the raw bytes stored by the call to SetData.
-func GetData(r *http.Request, key string, value interface{}) error {
+func GetData(r *http.Request, key string, value any) error {
 	session, err := sessionStore.Get(r, cookieName)
 	if err != nil {
 		return errors.WithMessage(err, "getting session")

@@ -9,12 +9,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/cockroachdb/errors"
 	"github.com/coreos/go-oidc"
 
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/auth"
@@ -24,6 +22,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/actor"
 	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/types"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 	"github.com/sourcegraph/sourcegraph/schema"
 )
 
@@ -118,14 +117,7 @@ func newOIDCIDServer(t *testing.T, code string, oidcProvider *schema.OpenIDConne
 func TestMiddleware(t *testing.T) {
 	cleanup := session.ResetMockSessionStore(t)
 	defer cleanup()
-
 	defer licensing.TestingSkipFeatureChecks()()
-
-	tempdir, err := os.MkdirTemp("", "sourcegraph-oidc-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tempdir)
 
 	mockGetProviderValue = &provider{
 		config: schema.OpenIDConnectAuthProvider{
@@ -305,12 +297,6 @@ func TestMiddleware_NoOpenRedirect(t *testing.T) {
 	defer cleanup()
 
 	defer licensing.TestingSkipFeatureChecks()()
-
-	tempdir, err := os.MkdirTemp("", "sourcegraph-oidc-test-no-open-redirect")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tempdir)
 
 	mockGetProviderValue = &provider{
 		config: schema.OpenIDConnectAuthProvider{

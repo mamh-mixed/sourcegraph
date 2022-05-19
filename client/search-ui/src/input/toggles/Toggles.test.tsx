@@ -1,7 +1,7 @@
-import { render, screen } from '@testing-library/react'
-import React from 'react'
+import { screen } from '@testing-library/react'
 
 import { SearchPatternType } from '@sourcegraph/shared/src/schema'
+import { renderWithBrandedContext } from '@sourcegraph/shared/src/testing'
 
 import { getFullQuery, Toggles } from './Toggles'
 
@@ -34,7 +34,7 @@ describe('Toggles', () => {
 
     describe('Query input toggle state', () => {
         test('case toggle for case subexpressions', () => {
-            render(
+            renderWithBrandedContext(
                 <Toggles
                     navbarSearchQuery="(case:yes foo) or (case:no bar)"
                     patternType={SearchPatternType.literal}
@@ -50,7 +50,7 @@ describe('Toggles', () => {
         })
 
         test('case toggle for patterntype subexpressions', () => {
-            render(
+            renderWithBrandedContext(
                 <Toggles
                     navbarSearchQuery="(foo patterntype:literal) or (bar patterntype:structural)"
                     patternType={SearchPatternType.literal}
@@ -65,7 +65,7 @@ describe('Toggles', () => {
         })
 
         test('regexp toggle for patterntype subexpressions', () => {
-            render(
+            renderWithBrandedContext(
                 <Toggles
                     navbarSearchQuery="(foo patterntype:literal) or (bar patterntype:structural)"
                     patternType={SearchPatternType.literal}

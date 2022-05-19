@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/errors"
 	"github.com/graph-gophers/graphql-go"
 	gqlerrors "github.com/graph-gophers/graphql-go/errors"
 	"github.com/graph-gophers/graphql-go/introspection"
@@ -29,6 +28,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/repoupdater"
 	sgtrace "github.com/sourcegraph/sourcegraph/internal/trace"
 	"github.com/sourcegraph/sourcegraph/internal/trace/ot"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 var (
@@ -49,7 +49,7 @@ type prometheusTracer struct {
 	tracer trace.OpenTracingTracer
 }
 
-func (t *prometheusTracer) TraceQuery(ctx context.Context, queryString string, operationName string, variables map[string]interface{}, varTypes map[string]*introspection.Type) (context.Context, trace.TraceQueryFinishFunc) {
+func (t *prometheusTracer) TraceQuery(ctx context.Context, queryString string, operationName string, variables map[string]any, varTypes map[string]*introspection.Type) (context.Context, trace.TraceQueryFinishFunc) {
 	start := time.Now()
 	var finish trace.TraceQueryFinishFunc
 	if ot.ShouldTrace(ctx) {
@@ -120,7 +120,7 @@ VARIABLES
 	}
 }
 
-func (prometheusTracer) TraceField(ctx context.Context, label, typeName, fieldName string, trivial bool, args map[string]interface{}) (context.Context, trace.TraceFieldFinishFunc) {
+func (prometheusTracer) TraceField(ctx context.Context, label, typeName, fieldName string, trivial bool, args map[string]any) (context.Context, trace.TraceFieldFinishFunc) {
 	// We don't call into t.OpenTracingTracer.TraceField since it generates too many spans which is really hard to read.
 	start := time.Now()
 	return ctx, func(err *gqlerrors.QueryError) {
@@ -644,7 +644,7 @@ func (r *schemaResolver) RepositoryRedirect(ctx context.Context, args *repositor
 		return nil, errors.New("neither name nor cloneURL given")
 	}
 
-	repo, err := backend.NewRepos(r.db.Repos()).GetByName(ctx, name)
+	repo, err := backend.NewRepos(r.db).GetByName(ctx, name)
 	if err != nil {
 		var e backend.ErrRepoSeeOther
 		if errors.As(err, &e) {
@@ -738,5 +738,5 @@ func (r *schemaResolver) CodeHostSyncDue(ctx context.Context, args *struct {
 		}
 		ids[i] = id
 	}
-	return database.ExternalServices(r.db).SyncDue(ctx, ids, time.Duration(args.Seconds)*time.Second)
+	return r.db.ExternalServices().SyncDue(ctx, ids, time.Duration(args.Seconds)*time.Second)
 }

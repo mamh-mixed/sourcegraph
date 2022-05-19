@@ -7,15 +7,13 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/opentracing/opentracing-go/log"
-
 	"github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/log"
 
 	"github.com/sourcegraph/sourcegraph/internal/api"
 	"github.com/sourcegraph/sourcegraph/internal/api/internalapi"
 	"github.com/sourcegraph/sourcegraph/internal/httpcli"
-
-	"github.com/cockroachdb/errors"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 // This file contains all the methods required to execute Sourcegraph searches using our GraphQL
@@ -23,8 +21,8 @@ import (
 
 // graphQLQuery describes a general GraphQL query and its variables.
 type graphQLQuery struct {
-	Query     string      `json:"query"`
-	Variables interface{} `json:"variables"`
+	Query     string `json:"query"`
+	Variables any    `json:"variables"`
 }
 
 const gqlSearchQuery = `query Search(
@@ -98,7 +96,7 @@ type GqlSearchResponse struct {
 			}
 		}
 	}
-	Errors []interface{}
+	Errors []any
 }
 
 // search executes the given search query.

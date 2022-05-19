@@ -72,14 +72,9 @@ func (s *LimitStream) Send(event SearchEvent) {
 // Stream are complete.
 func WithLimit(ctx context.Context, parent Sender, limit int) (context.Context, Sender, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(ctx)
-	mutCtx := WithMutableValue(ctx)
-	cancelWithReason := func() {
-		mutCtx.Set(CanceledLimitHit, true)
-		cancel()
-	}
-	stream := &LimitStream{cancel: cancelWithReason, s: parent}
+	stream := &LimitStream{cancel: cancel, s: parent}
 	stream.remaining.Store(int64(limit))
-	return mutCtx, stream, cancel
+	return ctx, stream, cancel
 }
 
 // WithSelect returns a child Stream of parent that runs the select operation
@@ -101,11 +96,16 @@ func WithSelect(parent Sender, s filter.SelectPath) Sender {
 				continue
 			}
 
-			// If the selected file is a file match, send it unconditionally
-			// to ensure we get all line matches for a file.
-			_, isFileMatch := current.(*result.FileMatch)
+			// If the selected file is a file match send it unconditionally
+			// to ensure we get all line matches for a file. One exception:
+			// if we are only interested in the path (via `select:file`),
+			// we only send the result once.
 			seen := dedup.Seen(current)
+			fm, isFileMatch := current.(*result.FileMatch)
 			if seen && !isFileMatch {
+				continue
+			}
+			if seen && isFileMatch && fm.IsPathMatch() {
 				continue
 			}
 

@@ -1,9 +1,10 @@
-import AlertCircleIcon from 'mdi-react/AlertCircleIcon'
-import DownloadIcon from 'mdi-react/DownloadIcon'
 import React, { useCallback, useState } from 'react'
 
+import AlertCircleIcon from 'mdi-react/AlertCircleIcon'
+import DownloadIcon from 'mdi-react/DownloadIcon'
+
 import { asError, isErrorLike } from '@sourcegraph/common'
-import { Button, LoadingSpinner } from '@sourcegraph/wildcard'
+import { Button, LoadingSpinner, Icon } from '@sourcegraph/wildcard'
 
 import { getChangesetDiff } from '../backend'
 
@@ -18,7 +19,9 @@ enum DownloadState {
 
 type State = DownloadState | Error
 
-export const DownloadDiffButton: React.FunctionComponent<DownloadDiffButtonProps> = ({ changesetID }) => {
+export const DownloadDiffButton: React.FunctionComponent<React.PropsWithChildren<DownloadDiffButtonProps>> = ({
+    changesetID,
+}) => {
     const [state, setState] = useState<State>(DownloadState.READY)
 
     const loadDiff = useCallback<React.MouseEventHandler<HTMLButtonElement>>(
@@ -60,11 +63,11 @@ export const DownloadDiffButton: React.FunctionComponent<DownloadDiffButtonProps
 
     let icon: JSX.Element
     if (isErrorLike(state)) {
-        icon = <AlertCircleIcon className="icon icon-inline" data-tooltip={state?.message} />
+        icon = <Icon className="icon" data-tooltip={state?.message} as={AlertCircleIcon} />
     } else if (state === DownloadState.LOADING) {
         icon = <LoadingSpinner />
     } else {
-        icon = <DownloadIcon className="icon-inline" />
+        icon = <Icon as={DownloadIcon} />
     }
 
     return (

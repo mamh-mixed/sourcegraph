@@ -3,31 +3,29 @@ package codeintel
 import (
 	"time"
 
-	"github.com/hashicorp/go-multierror"
-
 	"github.com/sourcegraph/sourcegraph/enterprise/cmd/worker/internal/executorqueue"
 	"github.com/sourcegraph/sourcegraph/internal/env"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 type janitorConfig struct {
 	env.BaseConfig
 
-	UploadTimeout                                       time.Duration
-	CleanupTaskInterval                                 time.Duration
-	CommitResolverTaskInterval                          time.Duration
-	CommitResolverMinimumTimeSinceLastCheck             time.Duration
-	CommitResolverBatchSize                             int
-	CommitResolverMaximumCommitLag                      time.Duration
-	RepositoryProcessDelay                              time.Duration
-	RepositoryBatchSize                                 int
-	UploadProcessDelay                                  time.Duration
-	UploadBatchSize                                     int
-	PolicyBatchSize                                     int
-	CommitBatchSize                                     int
-	BranchesCacheMaxKeys                                int
-	ConfigurationPolicyMembershipBatchSize              int
-	DocumentationSearchCurrentMinimumTimeSinceLastCheck time.Duration
-	DocumentationSearchCurrentBatchSize                 int
+	UploadTimeout                           time.Duration
+	CleanupTaskInterval                     time.Duration
+	CommitResolverTaskInterval              time.Duration
+	CommitResolverMinimumTimeSinceLastCheck time.Duration
+	CommitResolverBatchSize                 int
+	CommitResolverMaximumCommitLag          time.Duration
+	RepositoryProcessDelay                  time.Duration
+	RepositoryBatchSize                     int
+	UploadProcessDelay                      time.Duration
+	UploadBatchSize                         int
+	PolicyBatchSize                         int
+	CommitBatchSize                         int
+	BranchesCacheMaxKeys                    int
+	ConfigurationPolicyMembershipBatchSize  int
+	AuditLogMaxAge                          time.Duration
 
 	MetricsConfig *executorqueue.Config
 }
@@ -53,13 +51,12 @@ func (c *janitorConfig) Load() {
 	c.CommitBatchSize = c.GetInt("PRECISE_CODE_INTEL_RETENTION_COMMIT_BATCH_SIZE", "100", "The number of commits to process per upload at a time.")
 	c.BranchesCacheMaxKeys = c.GetInt("PRECISE_CODE_INTEL_RETENTION_BRANCHES_CACHE_MAX_KEYS", "10000", "The number of maximum keys used to cache the set of branches visible from a commit.")
 	c.ConfigurationPolicyMembershipBatchSize = c.GetInt("PRECISE_CODE_INTEL_CONFIGURATION_POLICY_MEMBERSHIP_BATCH_SIZE", "100", "The maximum number of policy configurations to update repository membership for at a time.")
-	c.DocumentationSearchCurrentMinimumTimeSinceLastCheck = c.GetInterval("PRECISE_CODE_INTEL_DOCUMENTATION_SEARCH_CURRENT_MINIMUM_TIME_SINCE_LAST_CHECK", "24h", "The minimum time the documentation search current janitor will re-check records for a unique search key.")
-	c.DocumentationSearchCurrentBatchSize = c.GetInt("PRECISE_CODE_INTEL_DOCUMENTATION_SEARCH_CURRENT_BATCH_SIZE", "100", "The maximum number of unique search keys to clean up at a time.")
+	c.AuditLogMaxAge = c.GetInterval("PRECISE_CODE_INTEL_AUDIT_LOG_MAX_AGE", "720h", "The maximum time a code intel audit log record can remain on the database.")
 }
 
 func (c *janitorConfig) Validate() error {
-	var errs *multierror.Error
-	errs = multierror.Append(errs, c.BaseConfig.Validate())
-	errs = multierror.Append(errs, c.MetricsConfig.Validate())
-	return errs.ErrorOrNil()
+	var errs error
+	errs = errors.Append(errs, c.BaseConfig.Validate())
+	errs = errors.Append(errs, c.MetricsConfig.Validate())
+	return errs
 }

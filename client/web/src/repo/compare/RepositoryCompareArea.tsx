@@ -1,26 +1,27 @@
+import * as React from 'react'
+
 import classNames from 'classnames'
 import * as H from 'history'
 import { isEqual } from 'lodash'
 import AlertCircleIcon from 'mdi-react/AlertCircleIcon'
 import MapSearchIcon from 'mdi-react/MapSearchIcon'
-import * as React from 'react'
 import { Route, RouteComponentProps, Switch } from 'react-router'
 import { Subject, Subscription } from 'rxjs'
 import { filter, map, withLatestFrom } from 'rxjs/operators'
 
 import { ErrorMessage } from '@sourcegraph/branded/src/components/alerts'
+import { HoverMerged } from '@sourcegraph/client-api'
 import { HoveredToken, createHoverifier, Hoverifier, HoverState } from '@sourcegraph/codeintellify'
-import { isDefined } from '@sourcegraph/common'
+import { isDefined, property } from '@sourcegraph/common'
 import { ActionItemAction } from '@sourcegraph/shared/src/actions/ActionItem'
-import { HoverMerged } from '@sourcegraph/shared/src/api/client/types/hover'
 import { ExtensionsControllerProps } from '@sourcegraph/shared/src/extensions/controller'
 import { getHoverActions } from '@sourcegraph/shared/src/hover/actions'
 import { HoverContext } from '@sourcegraph/shared/src/hover/HoverOverlay'
 import { getModeFromPath } from '@sourcegraph/shared/src/languages'
 import { PlatformContextProps } from '@sourcegraph/shared/src/platform/context'
+import { SettingsCascadeProps } from '@sourcegraph/shared/src/settings/settings'
 import { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryService'
 import { ThemeProps } from '@sourcegraph/shared/src/theme'
-import { property } from '@sourcegraph/shared/src/util/types'
 import {
     FileSpec,
     ModeSpec,
@@ -38,11 +39,12 @@ import { WebHoverOverlay } from '../../components/shared'
 import { RepositoryFields, Scalars } from '../../graphql-operations'
 import { RepoHeaderContributionsLifecycleProps } from '../RepoHeader'
 
-import styles from './RepositoryCompareArea.module.scss'
 import { RepositoryCompareHeader } from './RepositoryCompareHeader'
 import { RepositoryCompareOverviewPage } from './RepositoryCompareOverviewPage'
 
-const NotFoundPage: React.FunctionComponent = () => (
+import styles from './RepositoryCompareArea.module.scss'
+
+const NotFoundPage: React.FunctionComponent<React.PropsWithChildren<unknown>> = () => (
     <HeroPage
         icon={MapSearchIcon}
         title="404: Not Found"
@@ -57,6 +59,7 @@ interface RepositoryCompareAreaProps
         TelemetryProps,
         ExtensionsControllerProps,
         ThemeProps,
+        SettingsCascadeProps,
         BreadcrumbSetters {
     repo: RepositoryFields
     history: H.History

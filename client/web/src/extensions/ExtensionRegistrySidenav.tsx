@@ -1,15 +1,28 @@
+import React from 'react'
+
 import classNames from 'classnames'
-import React, { useState } from 'react'
-import { ButtonDropdown, DropdownItem, DropdownMenu, DropdownToggle } from 'reactstrap'
+import MenuDownIcon from 'mdi-react/MenuDownIcon'
 
 import { EXTENSION_CATEGORIES } from '@sourcegraph/shared/src/schema/extensionSchema'
-import { Button, Link } from '@sourcegraph/wildcard'
+import {
+    Button,
+    Link,
+    Menu,
+    MenuButton,
+    MenuDivider,
+    MenuItem,
+    MenuList,
+    Icon,
+    Typography,
+    Checkbox,
+} from '@sourcegraph/wildcard'
 
 import { SidebarGroup, SidebarGroupHeader } from '../components/Sidebar'
 
 import { ExtensionCategoryOrAll, ExtensionsEnablement } from './ExtensionRegistry'
-import styles from './ExtensionRegistrySidenav.module.scss'
 import { extensionBannerIconURL } from './icons'
+
+import styles from './ExtensionRegistrySidenav.module.scss'
 
 const enablementFilterToLabel: Record<ExtensionsEnablement, string> = {
     all: 'Show all',
@@ -34,7 +47,7 @@ interface ExtensionsEnablementDropdownProps {
  * Includes category filter buttons and enablement filter dropdown.
  */
 export const ExtensionRegistrySidenav: React.FunctionComponent<
-    ExtensionsCategoryFiltersProps & ExtensionsEnablementDropdownProps
+    React.PropsWithChildren<ExtensionsCategoryFiltersProps & ExtensionsEnablementDropdownProps>
 > = ({
     selectedCategory,
     onSelectCategory,
@@ -43,9 +56,6 @@ export const ExtensionRegistrySidenav: React.FunctionComponent<
     showExperimentalExtensions,
     toggleExperimentalExtensions,
 }) => {
-    const [isOpen, setIsOpen] = useState(false)
-    const toggleIsOpen = (): void => setIsOpen(open => !open)
-
     const showAll = (): void => setEnablementFilter('all')
     const showEnabled = (): void => setEnablementFilter('enabled')
     const showDisabled = (): void => setEnablementFilter('disabled')
@@ -69,31 +79,30 @@ export const ExtensionRegistrySidenav: React.FunctionComponent<
 
             <hr className={classNames('my-3', styles.divider)} />
 
-            <ButtonDropdown isOpen={isOpen} toggle={toggleIsOpen} className="ml-2">
-                <Button caret={true} color="outline-secondary" size="sm" as={DropdownToggle}>
-                    {enablementFilterToLabel[enablementFilter]}
-                </Button>
-                <DropdownMenu>
-                    <DropdownItem onClick={showAll} disabled={enablementFilter === 'all'}>
+            <Menu>
+                <MenuButton size="sm" variant="secondary" outline={true}>
+                    {enablementFilterToLabel[enablementFilter]} <Icon as={MenuDownIcon} />
+                </MenuButton>
+                <MenuList>
+                    <MenuItem onSelect={showAll} disabled={enablementFilter === 'all'}>
                         Show all
-                    </DropdownItem>
-                    <DropdownItem onClick={showEnabled} disabled={enablementFilter === 'enabled'}>
+                    </MenuItem>
+                    <MenuItem onSelect={showEnabled} disabled={enablementFilter === 'enabled'}>
                         Show enabled extensions
-                    </DropdownItem>
-                    <DropdownItem onClick={showDisabled} disabled={enablementFilter === 'disabled'}>
+                    </MenuItem>
+                    <MenuItem onSelect={showDisabled} disabled={enablementFilter === 'disabled'}>
                         Show disabled extensions
-                    </DropdownItem>
+                    </MenuItem>
 
-                    <DropdownItem divider={true} />
+                    <MenuDivider />
 
-                    <DropdownItem
-                        // Hack: clicking <label> inside <DropdownItem> doesn't affect checked state,
-                        // so use a <span> for which click events are handled by <DropdownItem>.
-                        onClick={toggleExperimentalExtensions}
+                    <MenuItem
+                        // Hack: clicking <label> inside <MenuItem> doesn't affect checked state,
+                        // so use a <span> for which click events are handled by <MenuItem>.
+                        onSelect={toggleExperimentalExtensions}
                     >
                         <div className="d-flex align-items-center">
-                            <input
-                                type="checkbox"
+                            <Checkbox
                                 checked={showExperimentalExtensions}
                                 onChange={toggleExperimentalExtensions}
                                 className=""
@@ -103,20 +112,22 @@ export const ExtensionRegistrySidenav: React.FunctionComponent<
                                 Show experimental extensions
                             </span>
                         </div>
-                    </DropdownItem>
-                </DropdownMenu>
-            </ButtonDropdown>
+                    </MenuItem>
+                </MenuList>
+            </Menu>
 
             <ExtensionSidenavBanner />
         </div>
     )
 }
 
-const ExtensionSidenavBanner: React.FunctionComponent = () => (
+const ExtensionSidenavBanner: React.FunctionComponent<React.PropsWithChildren<unknown>> = () => (
     <div className={classNames(styles.banner, 'mx-2')}>
         <img className={classNames(styles.bannerIcon, 'mb-2')} src={extensionBannerIconURL} alt="" />
         {/* Override h4 font-weight */}
-        <h4 className="mt-2 font-weight-bold">Create custom extensions!</h4>
+        <Typography.H4 as={Typography.H3} className="mt-2 font-weight-bold">
+            Create custom extensions!
+        </Typography.H4>
         <small>
             You can improve your workflow by creating custom extensions. See{' '}
             <Link

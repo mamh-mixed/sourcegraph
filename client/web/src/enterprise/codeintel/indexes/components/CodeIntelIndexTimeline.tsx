@@ -1,9 +1,9 @@
-import { isArray } from 'lodash'
+import { FunctionComponent, useMemo } from 'react'
+
 import AlertCircleIcon from 'mdi-react/AlertCircleIcon'
 import CheckIcon from 'mdi-react/CheckIcon'
 import ProgressClockIcon from 'mdi-react/ProgressClockIcon'
 import TimerSandIcon from 'mdi-react/TimerSandIcon'
-import React, { FunctionComponent, useMemo } from 'react'
 
 import { isDefined } from '@sourcegraph/common'
 import { LSIFIndexState } from '@sourcegraph/shared/src/graphql-operations'
@@ -20,7 +20,11 @@ export interface CodeIntelIndexTimelineProps {
     className?: string
 }
 
-export const CodeIntelIndexTimeline: FunctionComponent<CodeIntelIndexTimelineProps> = ({ index, now, className }) => {
+export const CodeIntelIndexTimeline: FunctionComponent<React.PropsWithChildren<CodeIntelIndexTimelineProps>> = ({
+    index,
+    now,
+    className,
+}) => {
     const stages = useMemo(
         () => [
             { icon: <TimerSandIcon />, text: 'Queued', date: index.queuedAt, className: 'bg-success' },
@@ -124,12 +128,14 @@ const indexTeardownStage = (index: LsifIndexFields, now?: () => Date): TimelineS
 const genericStage = <E extends { startTime: string; exitCode: number | null }>(
     value: E | E[]
 ): Pick<TimelineStage, 'icon' | 'date' | 'className' | 'expanded'> => {
-    const finished = isArray(value) ? value.every(logEntry => logEntry.exitCode !== null) : value.exitCode !== null
-    const success = isArray(value) ? value.every(logEntry => logEntry.exitCode === 0) : value.exitCode === 0
+    const finished = Array.isArray(value)
+        ? value.every(logEntry => logEntry.exitCode !== null)
+        : value.exitCode !== null
+    const success = Array.isArray(value) ? value.every(logEntry => logEntry.exitCode === 0) : value.exitCode === 0
 
     return {
         icon: !finished ? <ProgressClockIcon /> : success ? <CheckIcon /> : <AlertCircleIcon />,
-        date: isArray(value) ? value[0].startTime : value.startTime,
+        date: Array.isArray(value) ? value[0].startTime : value.startTime,
         className: success || !finished ? 'bg-success' : 'bg-danger',
         expanded: !(success || !finished),
     }

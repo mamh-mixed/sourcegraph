@@ -8,11 +8,11 @@ exports[`CommunitySearchContextPanel renders correctly 1`] = `
     <div
       class="d-flex border-bottom header"
     >
-      <h4
-        class="headerText"
+      <h2
+        class="h2 h4 headerText"
       >
         Community search contexts
-      </h4>
+      </h2>
     </div>
     <div
       class="h-100 content"
@@ -32,7 +32,7 @@ exports[`CommunitySearchContextPanel renders correctly 1`] = `
             class="d-flex flex-column"
           >
             <a
-              class="mb-1"
+              class="anchorLink mb-1"
               href="/cncf"
             >
               Cloud Native Computing Foundation (CNCF)
@@ -51,7 +51,7 @@ exports[`CommunitySearchContextPanel renders correctly 1`] = `
             class="d-flex flex-column"
           >
             <a
-              class="mb-1"
+              class="anchorLink mb-1"
               href="/temporal"
             >
               Temporal
@@ -70,7 +70,7 @@ exports[`CommunitySearchContextPanel renders correctly 1`] = `
             class="d-flex flex-column"
           >
             <a
-              class="mb-1"
+              class="anchorLink mb-1"
               href="/o3de"
             >
               O3DE
@@ -89,7 +89,7 @@ exports[`CommunitySearchContextPanel renders correctly 1`] = `
             class="d-flex flex-column"
           >
             <a
-              class="mb-1"
+              class="anchorLink mb-1"
               href="/stackstorm"
             >
               StackStorm
@@ -108,7 +108,7 @@ exports[`CommunitySearchContextPanel renders correctly 1`] = `
             class="d-flex flex-column"
           >
             <a
-              class="mb-1"
+              class="anchorLink mb-1"
               href="/kubernetes"
             >
               Kubernetes
@@ -127,10 +127,29 @@ exports[`CommunitySearchContextPanel renders correctly 1`] = `
             class="d-flex flex-column"
           >
             <a
-              class="mb-1"
+              class="anchorLink mb-1"
               href="/stanford"
             >
               Stanford University
+            </a>
+          </div>
+        </div>
+        <div
+          class="d-flex align-items-center mb-4 col-xl-6 col-lg-12 col-sm-6"
+        >
+          <img
+            alt=""
+            class="mr-4 icon"
+            src="https://raw.githubusercontent.com/sourcegraph-community/julia-context/main/julia.svg"
+          />
+          <div
+            class="d-flex flex-column"
+          >
+            <a
+              class="anchorLink mb-1"
+              href="/julia"
+            >
+              Julia
             </a>
           </div>
         </div>

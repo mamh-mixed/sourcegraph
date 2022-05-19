@@ -1,10 +1,11 @@
+import React from 'react'
+
 import classNames from 'classnames'
 import CheckCircleIcon from 'mdi-react/CheckCircleIcon'
 import CommentOutlineIcon from 'mdi-react/CommentOutlineIcon'
 import DeltaIcon from 'mdi-react/DeltaIcon'
 import GateArrowRightIcon from 'mdi-react/GateArrowRightIcon'
 import TimerSandIcon from 'mdi-react/TimerSandIcon'
-import React from 'react'
 
 import { ExternalChangesetFields, ChangesetReviewState } from '../../../../graphql-operations'
 
@@ -13,10 +14,9 @@ export interface ChangesetReviewStatusCellProps {
     reviewState: NonNullable<ExternalChangesetFields['reviewState']>
 }
 
-export const ChangesetReviewStatusCell: React.FunctionComponent<ChangesetReviewStatusCellProps> = ({
-    className,
-    reviewState,
-}) => {
+export const ChangesetReviewStatusCell: React.FunctionComponent<
+    React.PropsWithChildren<ChangesetReviewStatusCellProps>
+> = ({ className, reviewState }) => {
     switch (reviewState) {
         case ChangesetReviewState.APPROVED:
             return <ChangesetReviewStatusApproved className={className} />
@@ -31,7 +31,9 @@ export const ChangesetReviewStatusCell: React.FunctionComponent<ChangesetReviewS
     }
 }
 
-export const ChangesetReviewStatusPending: React.FunctionComponent<{ className?: string }> = ({ className }) => (
+export const ChangesetReviewStatusPending: React.FunctionComponent<React.PropsWithChildren<{ className?: string }>> = ({
+    className,
+}) => (
     <div
         className={classNames(
             'text-warning m-0 text-nowrap d-flex flex-column align-items-center justify-content-center',
@@ -42,7 +44,9 @@ export const ChangesetReviewStatusPending: React.FunctionComponent<{ className?:
         <span className="text-muted">Pending</span>
     </div>
 )
-export const ChangesetReviewStatusDismissed: React.FunctionComponent<{ className?: string }> = ({ className }) => (
+export const ChangesetReviewStatusDismissed: React.FunctionComponent<
+    React.PropsWithChildren<{ className?: string }>
+> = ({ className }) => (
     <div
         className={classNames(
             'text-muted m-0 text-nowrap d-flex flex-column align-items-center justify-content-center',
@@ -53,7 +57,9 @@ export const ChangesetReviewStatusDismissed: React.FunctionComponent<{ className
         <span className="text-muted">Dismissed</span>
     </div>
 )
-export const ChangesetReviewStatusCommented: React.FunctionComponent<{ className?: string }> = ({ className }) => (
+export const ChangesetReviewStatusCommented: React.FunctionComponent<
+    React.PropsWithChildren<{ className?: string }>
+> = ({ className }) => (
     <div
         className={classNames(
             'text-muted m-0 text-nowrap d-flex flex-column align-items-center justify-content-center',
@@ -64,9 +70,9 @@ export const ChangesetReviewStatusCommented: React.FunctionComponent<{ className
         <span className="text-muted">Commented</span>
     </div>
 )
-export const ChangesetReviewStatusChangesRequested: React.FunctionComponent<{ className?: string }> = ({
-    className,
-}) => (
+export const ChangesetReviewStatusChangesRequested: React.FunctionComponent<
+    React.PropsWithChildren<{ className?: string }>
+> = ({ className }) => (
     <div
         className={classNames(
             'text-warning m-0 text-nowrap d-flex flex-column align-items-center justify-content-center',
@@ -77,7 +83,9 @@ export const ChangesetReviewStatusChangesRequested: React.FunctionComponent<{ cl
         <span className="text-muted">Changes requested</span>
     </div>
 )
-export const ChangesetReviewStatusApproved: React.FunctionComponent<{ className?: string }> = ({ className }) => (
+export const ChangesetReviewStatusApproved: React.FunctionComponent<
+    React.PropsWithChildren<{ className?: string }>
+> = ({ className }) => (
     <div
         className={classNames(
             'text-success m-0 text-nowrap d-flex flex-column align-items-center justify-content-center',

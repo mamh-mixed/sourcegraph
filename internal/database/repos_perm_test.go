@@ -17,7 +17,6 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/authz"
 	"github.com/sourcegraph/sourcegraph/internal/conf"
 	"github.com/sourcegraph/sourcegraph/internal/database/dbtest"
-	"github.com/sourcegraph/sourcegraph/internal/database/dbutil"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc"
 	"github.com/sourcegraph/sourcegraph/internal/types"
 	"github.com/sourcegraph/sourcegraph/schema"
@@ -32,10 +31,11 @@ func (p *fakeProvider) FetchAccount(context.Context, *types.User, []*extsvc.Acco
 	return p.extAcct, nil
 }
 
-func (p *fakeProvider) ServiceType() string           { return p.codeHost.ServiceType }
-func (p *fakeProvider) ServiceID() string             { return p.codeHost.ServiceID }
-func (p *fakeProvider) URN() string                   { return extsvc.URN(p.codeHost.ServiceType, 0) }
-func (p *fakeProvider) Validate() (problems []string) { return nil }
+func (p *fakeProvider) ServiceType() string { return p.codeHost.ServiceType }
+func (p *fakeProvider) ServiceID() string   { return p.codeHost.ServiceID }
+func (p *fakeProvider) URN() string         { return extsvc.URN(p.codeHost.ServiceType, 0) }
+
+func (p *fakeProvider) ValidateConnection(context.Context) (problems []string) { return nil }
 
 func (p *fakeProvider) FetchUserPerms(context.Context, *extsvc.Account, authz.FetchPermsOptions) (*authz.ExternalUserPermissions, error) {
 	return nil, nil
@@ -114,7 +114,7 @@ func TestAuthzQueryConds(t *testing.T) {
 		},
 		{
 			name: "authenticated user is a site admin",
-			setup: func(t *testing.T) (context.Context, DB) {
+			setup: func(_ *testing.T) (context.Context, DB) {
 				users := NewMockUserStoreFrom(db.Users())
 				users.GetByCurrentAuthUserFunc.SetDefaultReturn(&types.User{ID: 1, SiteAdmin: true}, nil)
 				mockDB := NewMockDBFrom(db)
@@ -140,7 +140,7 @@ func TestAuthzQueryConds(t *testing.T) {
 		},
 		{
 			name: "authenticated user is not a site admin",
-			setup: func(t *testing.T) (context.Context, DB) {
+			setup: func(_ *testing.T) (context.Context, DB) {
 				users := NewMockUserStoreFrom(db.Users())
 				users.GetByCurrentAuthUserFunc.SetDefaultReturn(&types.User{ID: 1}, nil)
 				mockDB := NewMockDBFrom(db)
@@ -170,7 +170,7 @@ func TestAuthzQueryConds(t *testing.T) {
 }
 
 func TestRepoStore_nonSiteAdminCanViewOwnPrivateCode(t *testing.T) {
-	db := dbtest.NewDB(t)
+	db := NewDB(dbtest.NewDB(t))
 	ctx := context.Background()
 
 	// Add a single user who is NOT a site admin
@@ -220,7 +220,7 @@ func TestRepoStore_nonSiteAdminCanViewOwnPrivateCode(t *testing.T) {
 		DisplayName: "GITHUB #1",
 		Config:      `{"url": "https://github.com", "repositoryQuery": ["none"], "token": "abc", "authorization": {}}`,
 	}
-	err = ExternalServices(db).Create(ctx, confGet, aliceExternalService)
+	err = db.ExternalServices().Create(ctx, confGet, aliceExternalService)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,12 +262,120 @@ VALUES
 	}
 }
 
+func TestRepoStore_userCanSeeUnrestricedRepo(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
+	db := NewDB(dbtest.NewDB(t))
+	ctx := context.Background()
+
+	// Add a single user who is NOT a site admin
+	alice, err := Users(db).Create(ctx,
+		NewUser{
+			Email:                 "alice@example.com",
+			Username:              "alice",
+			Password:              "alice",
+			EmailVerificationCode: "alice",
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = Users(db).SetIsSiteAdmin(ctx, alice.ID, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Set up a private repo that the user does not have access to
+	internalCtx := actor.WithInternalActor(ctx)
+	privateRepo1 := mustCreate(internalCtx, t, db,
+		&types.Repo{
+			Name:    "private_repo_1",
+			Private: true,
+			ExternalRepo: api.ExternalRepoSpec{
+				ID:          "private_repo_1",
+				ServiceType: extsvc.TypeGitHub,
+				ServiceID:   "https://github.com/",
+			},
+		},
+	)[0]
+
+	confGet := func() *conf.Unified {
+		return &conf.Unified{}
+	}
+	extsvc := &types.ExternalService{
+		Kind:        extsvc.KindGitHub,
+		DisplayName: "GITHUB #1",
+		Config:      `{"url": "https://github.com", "repositoryQuery": ["none"], "token": "abc", "authorization": {}}`,
+	}
+	err = db.ExternalServices().Create(ctx, confGet, extsvc)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	q := sqlf.Sprintf(`
+INSERT INTO external_service_repos (external_service_id, repo_id, clone_url)
+VALUES (%s, %s, '')
+`, extsvc.ID, privateRepo1.ID)
+
+	_, err = db.ExecContext(ctx, q.Query(sqlf.PostgresBindVar), q.Args()...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	q = sqlf.Sprintf(`
+INSERT INTO repo_permissions (repo_id, permission, updated_at)
+VALUES (%s, 'read', %s)
+`, privateRepo1.ID, time.Now())
+
+	_, err = db.ExecContext(ctx, q.Query(sqlf.PostgresBindVar), q.Args()...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	authz.SetProviders(false, []authz.Provider{&fakeProvider{}})
+	defer authz.SetProviders(true, nil)
+
+	// Alice should NOT be able to see the private repo
+	aliceCtx := actor.WithActor(ctx, &actor.Actor{UID: alice.ID})
+	repos, err := Repos(db).List(aliceCtx, ReposListOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var wantRepos []*types.Repo
+	if diff := cmp.Diff(wantRepos, repos, cmpopts.IgnoreFields(types.Repo{}, "Sources")); diff != "" {
+		t.Fatalf("Mismatch (-want +got):\n%s", diff)
+	}
+
+	// Mark is unrestricted
+	q = sqlf.Sprintf(`
+UPDATE repo_permissions SET unrestricted = true
+`)
+
+	_, err = db.ExecContext(ctx, q.Query(sqlf.PostgresBindVar), q.Args()...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Alice should now be able to see the repo
+	aliceCtx = actor.WithActor(ctx, &actor.Actor{UID: alice.ID})
+	repos, err = Repos(db).List(aliceCtx, ReposListOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantRepos = []*types.Repo{privateRepo1}
+	if diff := cmp.Diff(wantRepos, repos, cmpopts.IgnoreFields(types.Repo{}, "Sources")); diff != "" {
+		t.Fatalf("Mismatch (-want +got):\n%s", diff)
+	}
+}
+
 func TestRepoStore_nonSiteAdminCanViewOrgPrivateCode(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
 	}
 
-	db := dbtest.NewDB(t)
+	db := NewDB(dbtest.NewDB(t))
 	ctx := context.Background()
 
 	// Add a single user who is NOT a site admin
@@ -319,7 +427,7 @@ func TestRepoStore_nonSiteAdminCanViewOrgPrivateCode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = OrgMembers(db).Create(ctx, org.ID, alice.ID)
+	_, err = db.OrgMembers().Create(ctx, org.ID, alice.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -333,7 +441,7 @@ func TestRepoStore_nonSiteAdminCanViewOrgPrivateCode(t *testing.T) {
 		Config:         `{"url": "https://github.com", "repositoryQuery": ["none"], "token": "abc", "authorization": {}}`,
 		NamespaceOrgID: org.ID,
 	}
-	err = ExternalServices(db).Create(ctx, confGet, extsvc)
+	err = db.ExternalServices().Create(ctx, confGet, extsvc)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -374,7 +482,7 @@ VALUES
 	}
 }
 
-func createGitHubExternalService(t *testing.T, db dbutil.DB, userID int32) *types.ExternalService {
+func createGitHubExternalService(t *testing.T, db DB, userID int32) *types.ExternalService {
 	now := time.Now()
 	svc := &types.ExternalService{
 		Kind:            extsvc.KindGitHub,
@@ -385,7 +493,7 @@ func createGitHubExternalService(t *testing.T, db dbutil.DB, userID int32) *type
 		UpdatedAt:       now,
 	}
 
-	if err := ExternalServices(db).Upsert(context.Background(), svc); err != nil {
+	if err := db.ExternalServices().Upsert(context.Background(), svc); err != nil {
 		t.Fatal(err)
 	}
 
@@ -398,7 +506,7 @@ func TestRepoStore_List_checkPermissions(t *testing.T) {
 		t.Skip()
 	}
 
-	db := dbtest.NewDB(t)
+	db := NewDB(dbtest.NewDB(t))
 	ctx := context.Background()
 
 	// Set up three users: alice, bob and admin
@@ -541,7 +649,7 @@ VALUES (%s, %s, '')
 		Config:       `{"url": "https://github.com", "repositoryQuery": ["none"], "token": "abc"}`,
 		Unrestricted: true,
 	}
-	err = ExternalServices(db).Create(ctx, confGet, cindyExternalService)
+	err = db.ExternalServices().Create(ctx, confGet, cindyExternalService)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -659,7 +767,7 @@ func TestRepoStore_List_permissionsUserMapping(t *testing.T) {
 		t.Skip()
 	}
 
-	db := dbtest.NewDB(t)
+	db := NewDB(dbtest.NewDB(t))
 	ctx := context.Background()
 
 	// Set up three users: alice, bob and admin

@@ -1,6 +1,7 @@
+import React, { useState } from 'react'
+
 import classNames from 'classnames'
 import { range } from 'lodash'
-import React, { useState } from 'react'
 import { useHistory } from 'react-router'
 
 import { Button } from '@sourcegraph/wildcard'
@@ -16,7 +17,7 @@ interface SurveyRatingRadio {
     openSurveyInNewTab?: boolean
 }
 
-export const SurveyRatingRadio: React.FunctionComponent<SurveyRatingRadio> = props => {
+export const SurveyRatingRadio: React.FunctionComponent<React.PropsWithChildren<SurveyRatingRadio>> = props => {
     const history = useHistory()
     const [focusedIndex, setFocusedIndex] = useState<number | null>(null)
 

@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cockroachdb/errors"
 	"github.com/dineshappavoo/basex"
 	"github.com/jackc/pgconn"
 	"github.com/keegancsmith/sqlf"
@@ -23,6 +22,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/metrics"
 	"github.com/sourcegraph/sourcegraph/internal/observation"
 	"github.com/sourcegraph/sourcegraph/internal/timeutil"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 // SQLColumns is a slice of column names, that can be converted to a slice of
@@ -424,7 +424,7 @@ func scanAll(rows *sql.Rows, scan scanFunc) (err error) {
 	return rows.Err()
 }
 
-func jsonbColumn(metadata interface{}) (msg json.RawMessage, err error) {
+func jsonbColumn(metadata any) (msg json.RawMessage, err error) {
 	switch m := metadata.(type) {
 	case nil:
 		msg = json.RawMessage("{}")

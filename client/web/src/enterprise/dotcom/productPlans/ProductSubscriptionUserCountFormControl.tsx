@@ -1,5 +1,6 @@
-import classNames from 'classnames'
 import React, { useCallback } from 'react'
+
+import classNames from 'classnames'
 
 interface Props {
     /** The user count input by the user. */
@@ -25,7 +26,7 @@ const USER_COUNT_STEP = 25
 /**
  * Displays a form control for inputting the user count for a product subscription.
  */
-export const ProductSubscriptionUserCountFormControl: React.FunctionComponent<Props> = ({
+export const ProductSubscriptionUserCountFormControl: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
     value,
     onChange,
     disabled,

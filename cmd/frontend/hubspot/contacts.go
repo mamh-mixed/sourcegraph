@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"reflect"
 
-	"github.com/cockroachdb/errors"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 // CreateOrUpdateContact creates or updates a HubSpot contact (with email as primary key)
@@ -94,7 +94,7 @@ type apiProperty struct {
 	Value    string `json:"value"`
 }
 
-func (h *apiProperties) set(property string, value interface{}) {
+func (h *apiProperties) set(property string, value any) {
 	if h.Properties == nil {
 		h.Properties = make([]*apiProperty, 0)
 	}

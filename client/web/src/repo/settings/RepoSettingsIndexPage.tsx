@@ -1,18 +1,18 @@
+import * as React from 'react'
+
 import classNames from 'classnames'
 import CheckCircleIcon from 'mdi-react/CheckCircleIcon'
 import prettyBytes from 'pretty-bytes'
-import * as React from 'react'
 import { RouteComponentProps } from 'react-router'
 import { Observable, Subject, Subscription } from 'rxjs'
 import { map, switchMap, tap } from 'rxjs/operators'
 
 import { ErrorAlert } from '@sourcegraph/branded/src/components/alerts'
-import { createAggregateError } from '@sourcegraph/common'
+import { createAggregateError, pluralize } from '@sourcegraph/common'
 import { gql } from '@sourcegraph/http-client'
 import { LinkOrSpan } from '@sourcegraph/shared/src/components/LinkOrSpan'
 import * as GQL from '@sourcegraph/shared/src/schema'
-import { pluralize } from '@sourcegraph/shared/src/util/strings'
-import { Container, PageHeader, LoadingSpinner, Link, Alert } from '@sourcegraph/wildcard'
+import { Container, PageHeader, LoadingSpinner, Link, Alert, Icon, Typography } from '@sourcegraph/wildcard'
 
 import { queryGraphQL } from '../../backend/graphql'
 import { PageTitle } from '../../components/PageTitle'
@@ -73,16 +73,20 @@ function fetchRepositoryTextSearchIndex(id: Scalars['ID']): Observable<GQL.IRepo
     )
 }
 
-const TextSearchIndexedReference: React.FunctionComponent<{
-    repo: SettingsAreaRepositoryFields
-    indexedRef: GQL.IRepositoryTextSearchIndexedRef
-}> = ({ repo, indexedRef }) => {
+const TextSearchIndexedReference: React.FunctionComponent<
+    React.PropsWithChildren<{
+        repo: SettingsAreaRepositoryFields
+        indexedRef: GQL.IRepositoryTextSearchIndexedRef
+    }>
+> = ({ repo, indexedRef }) => {
     const isCurrent = indexedRef.indexed && indexedRef.current
-    const Icon = isCurrent ? CheckCircleIcon : LoadingSpinner
 
     return (
         <li className={styles.ref}>
-            <Icon className={classNames('icon-inline', styles.refIcon, isCurrent && styles.refIconCurrent)} />
+            <Icon
+                className={classNames(styles.refIcon, isCurrent && styles.refIconCurrent)}
+                as={isCurrent ? CheckCircleIcon : LoadingSpinner}
+            />
             <LinkOrSpan to={indexedRef.ref.url}>
                 <strong>
                     <code>{indexedRef.ref.displayName}</code>
@@ -196,7 +200,7 @@ export class RepoSettingsIndexPage extends React.PureComponent<Props, State> {
                                 )}
                                 {this.state.textSearchIndex.status && (
                                     <>
-                                        <h3>Statistics</h3>
+                                        <Typography.H3>Statistics</Typography.H3>
                                         <table className={classNames('table mb-0', styles.stats)}>
                                             <tbody>
                                                 <tr>

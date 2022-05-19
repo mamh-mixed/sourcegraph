@@ -1,9 +1,10 @@
+import { FunctionComponent } from 'react'
+
 import classNames from 'classnames'
 import AlertCircleIcon from 'mdi-react/AlertCircleIcon'
 import CheckCircleIcon from 'mdi-react/CheckCircleIcon'
 import FileUploadIcon from 'mdi-react/FileUploadIcon'
 import TimerSandIcon from 'mdi-react/TimerSandIcon'
-import React, { FunctionComponent } from 'react'
 
 import { LoadingSpinner } from '@sourcegraph/wildcard'
 
@@ -14,7 +15,10 @@ export interface CodeIntelStateIconProps {
     className?: string
 }
 
-export const CodeIntelStateIcon: FunctionComponent<CodeIntelStateIconProps> = ({ state, className }) =>
+export const CodeIntelStateIcon: FunctionComponent<React.PropsWithChildren<CodeIntelStateIconProps>> = ({
+    state,
+    className,
+}) =>
     state === LSIFUploadState.UPLOADING ? (
         <FileUploadIcon className={className} />
     ) : state === LSIFUploadState.DELETING ? (

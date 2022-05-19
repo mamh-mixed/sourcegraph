@@ -1,5 +1,6 @@
+import { FunctionComponent, useCallback, useEffect, useMemo, useState } from 'react'
+
 import { useApolloClient } from '@apollo/client'
-import React, { FunctionComponent, useCallback, useEffect, useMemo, useState } from 'react'
 import { Redirect, RouteComponentProps } from 'react-router'
 import { takeWhile } from 'rxjs/operators'
 
@@ -7,7 +8,7 @@ import { ErrorAlert } from '@sourcegraph/branded/src/components/alerts'
 import { ErrorLike, isErrorLike } from '@sourcegraph/common'
 import { LSIFIndexState } from '@sourcegraph/shared/src/graphql-operations'
 import { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryService'
-import { Container, PageHeader, LoadingSpinner, useObservable } from '@sourcegraph/wildcard'
+import { Container, PageHeader, LoadingSpinner, useObservable, Typography } from '@sourcegraph/wildcard'
 
 import { AuthenticatedUser } from '../../../../auth'
 import { PageTitle } from '../../../../components/PageTitle'
@@ -31,7 +32,7 @@ const variantByState = new Map<LSIFIndexState, CodeIntelStateBannerProps['varian
     [LSIFIndexState.ERRORED, 'danger'],
 ])
 
-export const CodeIntelIndexPage: FunctionComponent<CodeIntelIndexPageProps> = ({
+export const CodeIntelIndexPage: FunctionComponent<React.PropsWithChildren<CodeIntelIndexPageProps>> = ({
     match: {
         params: { id },
     },
@@ -145,7 +146,7 @@ export const CodeIntelIndexPage: FunctionComponent<CodeIntelIndexPageProps> = ({
                     )}
 
                     <Container className="mt-2">
-                        <h3>Timeline</h3>
+                        <Typography.H3>Timeline</Typography.H3>
                         <CodeIntelIndexTimeline index={indexOrError} now={now} className="mb-3" />
                         <CodeIntelAssociatedUpload node={indexOrError} now={now} />
                     </Container>

@@ -5,11 +5,12 @@ import { KEYBOARD_SHORTCUTS } from '@sourcegraph/shared/src/keyboardShortcuts/ke
 
 import { SourcegraphWebApp } from '../SourcegraphWebApp'
 
+import { CodeIntelligenceBadgeContent } from './codeintel/badge/components/CodeIntelligenceBadgeContent'
+import { CodeIntelligenceBadgeMenu } from './codeintel/badge/components/CodeIntelligenceBadgeMenu'
 import { enterpriseExtensionAreaHeaderNavItems } from './extensions/extension/extensionAreaHeaderNavItems'
 import { enterpriseExtensionAreaRoutes } from './extensions/extension/routes'
 import { enterpriseExtensionsAreaHeaderActionButtons } from './extensions/extensionsAreaHeaderActionButtons'
 import { enterpriseExtensionsAreaRoutes } from './extensions/routes'
-import { LazyExtensionViewsSection } from './insights/sections/LazyExtensionViewsSection'
 import { enterpriseOrgAreaHeaderNavItems } from './organizations/navitems'
 import { enterpriseOrganizationAreaRoutes } from './organizations/routes'
 import { enterpriseRepoHeaderActionButtons } from './repo/repoHeaderActionButtons'
@@ -25,7 +26,7 @@ import { enterpriseUserAreaRoutes } from './user/routes'
 import { enterpriseUserSettingsAreaRoutes } from './user/settings/routes'
 import { enterpriseUserSettingsSideBarItems } from './user/settings/sidebaritems'
 
-export const EnterpriseWebApp: React.FunctionComponent = () => (
+export const EnterpriseWebApp: React.FunctionComponent<React.PropsWithChildren<unknown>> = () => (
     <SourcegraphWebApp
         extensionAreaRoutes={enterpriseExtensionAreaRoutes}
         extensionAreaHeaderNavItems={enterpriseExtensionAreaHeaderNavItems}
@@ -46,9 +47,10 @@ export const EnterpriseWebApp: React.FunctionComponent = () => (
         repoSettingsAreaRoutes={enterpriseRepoSettingsAreaRoutes}
         repoSettingsSidebarGroups={enterpriseRepoSettingsSidebarGroups}
         routes={enterpriseRoutes}
-        extensionViews={LazyExtensionViewsSection}
         keyboardShortcuts={KEYBOARD_SHORTCUTS}
         codeIntelligenceEnabled={true}
+        codeIntelligenceBadgeMenu={CodeIntelligenceBadgeMenu}
+        codeIntelligenceBadgeContent={CodeIntelligenceBadgeContent}
         codeInsightsEnabled={true}
         batchChangesEnabled={window.context.batchChangesEnabled}
         searchContextsEnabled={true}

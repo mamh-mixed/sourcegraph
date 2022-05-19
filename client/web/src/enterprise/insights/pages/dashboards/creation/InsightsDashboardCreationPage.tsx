@@ -1,5 +1,6 @@
-import classNames from 'classnames'
 import React, { useContext, useMemo } from 'react'
+
+import classNames from 'classnames'
 import { useHistory } from 'react-router-dom'
 
 import { asError } from '@sourcegraph/common'
@@ -7,31 +8,42 @@ import { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryServi
 import { PageHeader, Container, Button, LoadingSpinner, useObservable, Link } from '@sourcegraph/wildcard'
 
 import { LoaderButton } from '../../../../../components/LoaderButton'
-import { Page } from '../../../../../components/Page'
 import { PageTitle } from '../../../../../components/PageTitle'
 import { CodeInsightsIcon } from '../../../components'
+import { CodeInsightsPage } from '../../../components/code-insights-page/CodeInsightsPage'
 import { FORM_ERROR, SubmissionErrors } from '../../../components/form/hooks/useForm'
-import { CodeInsightsBackendContext } from '../../../core/backend/code-insights-backend-context'
+import { CodeInsightsBackendContext } from '../../../core'
+import { useUiFeatures } from '../../../hooks/use-ui-features'
 
 import {
     DashboardCreationFields,
     InsightsDashboardCreationContent,
-} from './components/insights-dashboard-creation-content/InsightsDashboardCreationContent'
+} from './components/InsightsDashboardCreationContent'
+
 import styles from './InsightsDashboardCreationPage.module.scss'
 
 interface InsightsDashboardCreationPageProps extends TelemetryProps {}
 
-export const InsightsDashboardCreationPage: React.FunctionComponent<InsightsDashboardCreationPageProps> = props => {
+export const InsightsDashboardCreationPage: React.FunctionComponent<
+    React.PropsWithChildren<InsightsDashboardCreationPageProps>
+> = props => {
     const { telemetryService } = props
-
     const history = useHistory()
-    const { createDashboard, getDashboardSubjects } = useContext(CodeInsightsBackendContext)
+    const { dashboard } = useUiFeatures()
 
-    const subjects = useObservable(useMemo(() => getDashboardSubjects(), [getDashboardSubjects]))
+    const { createDashboard, getDashboardOwners } = useContext(CodeInsightsBackendContext)
+
+    const owners = useObservable(useMemo(() => getDashboardOwners(), [getDashboardOwners]))
 
     const handleSubmit = async (values: DashboardCreationFields): Promise<SubmissionErrors> => {
         try {
-            const createdDashboard = await createDashboard(values).toPromise()
+            const { name, owner } = values
+
+            if (!owner) {
+                throw new Error('You have to specify a dashboard visibility')
+            }
+
+            const createdDashboard = await createDashboard({ name, owners: [owner] }).toPromise()
 
             telemetryService.log('CodeInsightsDashboardCreationPageSubmitClick')
 
@@ -47,13 +59,13 @@ export const InsightsDashboardCreationPage: React.FunctionComponent<InsightsDash
     const handleCancel = (): void => history.goBack()
 
     // Loading state
-    if (subjects === undefined) {
+    if (owners === undefined) {
         return <LoadingSpinner />
     }
 
     return (
-        <Page className={classNames('col-8', styles.page)}>
-            <PageTitle title="Add new dashboard" />
+        <CodeInsightsPage className={classNames('col-8', styles.page)}>
+            <PageTitle title="Add dashboard - Code Insights" />
 
             <PageHeader path={[{ icon: CodeInsightsIcon }, { text: 'Add new dashboard' }]} />
 
@@ -65,7 +77,7 @@ export const InsightsDashboardCreationPage: React.FunctionComponent<InsightsDash
             </span>
 
             <Container className="mt-4">
-                <InsightsDashboardCreationContent subjects={subjects} onSubmit={handleSubmit}>
+                <InsightsDashboardCreationContent owners={owners} onSubmit={handleSubmit}>
                     {formAPI => (
                         <>
                             <Button
@@ -82,9 +94,10 @@ export const InsightsDashboardCreationPage: React.FunctionComponent<InsightsDash
                                 alwaysShowLabel={true}
                                 data-testid="insight-save-button"
                                 loading={formAPI.submitting}
-                                label={formAPI.submitting ? 'Creating' : 'Create dashboard'}
+                                label={formAPI.submitting ? 'Adding' : 'Add dashboard'}
                                 type="submit"
-                                disabled={formAPI.submitting}
+                                disabled={dashboard.createPermissions.submit.disabled || formAPI.submitting}
+                                data-tooltip={dashboard.createPermissions.submit.tooltip}
                                 className="ml-2 mb-2"
                                 variant="primary"
                             />
@@ -92,6 +105,6 @@ export const InsightsDashboardCreationPage: React.FunctionComponent<InsightsDash
                     )}
                 </InsightsDashboardCreationContent>
             </Container>
-        </Page>
+        </CodeInsightsPage>
     )
 }

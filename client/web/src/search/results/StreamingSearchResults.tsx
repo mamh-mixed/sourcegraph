@@ -1,6 +1,7 @@
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+
 import classNames from 'classnames'
 import * as H from 'history'
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { Observable } from 'rxjs'
 
 import { asError } from '@sourcegraph/common'
@@ -14,33 +15,35 @@ import { SearchPatternType } from '@sourcegraph/shared/src/graphql-operations'
 import { PlatformContextProps } from '@sourcegraph/shared/src/platform/context'
 import { collectMetrics } from '@sourcegraph/shared/src/search/query/metrics'
 import { sanitizeQueryForTelemetry, updateFilters } from '@sourcegraph/shared/src/search/query/transformer'
-import { StreamSearchOptions } from '@sourcegraph/shared/src/search/stream'
+import { LATEST_VERSION, StreamSearchOptions } from '@sourcegraph/shared/src/search/stream'
 import { SettingsCascadeProps } from '@sourcegraph/shared/src/settings/settings'
+import { useTemporarySetting } from '@sourcegraph/shared/src/settings/temporary/useTemporarySetting'
 import { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryService'
 import { ThemeProps } from '@sourcegraph/shared/src/theme'
 import { buildGetStartedURL } from '@sourcegraph/shared/src/util/url'
-import { useLocalStorage, useObservable } from '@sourcegraph/wildcard'
+import { useLocalStorage } from '@sourcegraph/wildcard'
 
 import { SearchStreamingProps } from '..'
 import { AuthenticatedUser } from '../../auth'
+import { SearchBetaIcon } from '../../components/CtaIcons'
 import { PageTitle } from '../../components/PageTitle'
-import { FeatureFlagProps } from '../../featureFlags/featureFlags'
 import { usePersistentCadence } from '../../hooks'
+import { useIsActiveIdeIntegrationUser } from '../../IdeExtensionTracker'
 import { CodeInsightsProps } from '../../insights/types'
 import { isCodeInsightsEnabled } from '../../insights/utils/is-code-insights-enabled'
-import { OnboardingTour } from '../../onboarding-tour/OnboardingTour'
-import { OnboardingTourInfo } from '../../onboarding-tour/OnboardingTourInfo'
 import { BrowserExtensionAlert } from '../../repo/actions/BrowserExtensionAlert'
+import { IDEExtensionAlert } from '../../repo/actions/IdeExtensionAlert'
 import { SavedSearchModal } from '../../savedSearches/SavedSearchModal'
 import {
     useExperimentalFeatures,
     useNavbarQueryState,
-    useSearchStack,
+    useNotepad,
     buildSearchURLQueryFromQueryState,
 } from '../../stores'
-import { browserExtensionInstalled } from '../../tracking/analyticsUtils'
+import { useTourQueryParameters } from '../../tour/components/Tour/TourAgent'
+import { GettingStartedTour } from '../../tour/GettingStartedTour'
+import { useIsBrowserExtensionActiveUser } from '../../tracking/BrowserExtensionTracker'
 import { SearchUserNeedsCodeHost } from '../../user/settings/codeHosts/OrgUserNeedsCodeHost'
-import { SearchBetaIcon } from '../CtaIcons'
 import { submitSearch } from '../helpers'
 
 import { DidYouMean } from './DidYouMean'
@@ -48,6 +51,7 @@ import { SearchAlert } from './SearchAlert'
 import { useCachedSearchResults } from './SearchResultsCacheProvider'
 import { SearchResultsInfoBar } from './SearchResultsInfoBar'
 import { getRevisions } from './sidebar/Revisions'
+
 import styles from './StreamingSearchResults.module.scss'
 
 export interface StreamingSearchResultsProps
@@ -59,8 +63,7 @@ export interface StreamingSearchResultsProps
         PlatformContextProps<'forceUpdateTooltip' | 'settings' | 'requestGraphQL'>,
         TelemetryProps,
         ThemeProps,
-        CodeInsightsProps,
-        FeatureFlagProps {
+        CodeInsightsProps {
     authenticatedUser: AuthenticatedUser | null
     location: H.Location
     history: H.History
@@ -69,51 +72,113 @@ export interface StreamingSearchResultsProps
     fetchHighlightedFileLineRanges: (parameters: FetchFileParameters, force?: boolean) => Observable<string[][]>
 }
 
-// The latest supported version of our search syntax. Users should never be able to determine the search version.
-// The version is set based on the release tag of the instance. Anything before 3.9.0 will not pass a version parameter,
-// and will therefore default to V1.
-export const LATEST_VERSION = 'V2'
-
 const CTA_ALERTS_CADENCE_KEY = 'SearchResultCtaAlerts.pageViews'
-const CTA_ALERT_DISPLAY_CADENCE = 5
+const CTA_ALERT_DISPLAY_CADENCE = 6
+const IDE_CTA_CADENCE_SHIFT = 3
 
-function useCtaAlert(): {
-    hasDismissedSignupAlert: boolean
-    hasDismissedBrowserExtensionAlert: boolean
-    isBrowserExtensionInstalled: boolean | undefined
-    displayCTAsBasedOnCadence: boolean
-    onSignupCtaAlertDismissed: () => void
-    onBrowserExtensionCtaAlertDismissed: () => void
+type CtaToDisplay = 'signup' | 'browser' | 'ide'
+
+function useCtaAlert(
+    isAuthenticated: boolean,
+    areResultsFound: boolean
+): {
+    ctaToDisplay?: CtaToDisplay
+    onCtaAlertDismissed: () => void
 } {
     const [hasDismissedSignupAlert, setHasDismissedSignupAlert] = useLocalStorage<boolean>(
         'StreamingSearchResults.hasDismissedSignupAlert',
         false
     )
-    const [hasDismissedBrowserExtensionAlert, setHasDismissedBrowserExtensionAlert] = useLocalStorage<boolean>(
-        'StreamingSearchResults.hasDismissedBrowserExtensionAlert',
+    const [hasDismissedBrowserExtensionAlert, setHasDismissedBrowserExtensionAlert] = useTemporarySetting(
+        'cta.browserExtensionAlertDismissed',
         false
     )
-    const isBrowserExtensionInstalled = useObservable<boolean>(browserExtensionInstalled)
-    const displayCTAsBasedOnCadence = usePersistentCadence(CTA_ALERTS_CADENCE_KEY, CTA_ALERT_DISPLAY_CADENCE)
+    const [hasDismissedIDEExtensionAlert, setHasDismissedIDEExtensionAlert] = useTemporarySetting(
+        'cta.ideExtensionAlertDismissed',
+        false
+    )
+    const isBrowserExtensionActiveUser = useIsBrowserExtensionActiveUser()
+    const isUsingIdeIntegration = useIsActiveIdeIntegrationUser()
 
-    const onSignupCtaAlertDismissed = useCallback(() => {
-        setHasDismissedSignupAlert(true)
-    }, [setHasDismissedSignupAlert])
+    const displaySignupAndBrowserExtensionCTAsBasedOnCadence = usePersistentCadence(
+        CTA_ALERTS_CADENCE_KEY,
+        CTA_ALERT_DISPLAY_CADENCE
+    )
+    const displayIDEExtensionCTABasedOnCadence = usePersistentCadence(
+        CTA_ALERTS_CADENCE_KEY,
+        CTA_ALERT_DISPLAY_CADENCE,
+        IDE_CTA_CADENCE_SHIFT
+    )
 
-    const onBrowserExtensionCtaAlertDismissed = useCallback(() => {
-        setHasDismissedBrowserExtensionAlert(true)
-    }, [setHasDismissedBrowserExtensionAlert])
-    return {
+    const tourQueryParameters = useTourQueryParameters()
+
+    const ctaToDisplay = useMemo<CtaToDisplay | undefined>((): CtaToDisplay | undefined => {
+        if (!areResultsFound) {
+            return
+        }
+        if (tourQueryParameters?.isTour) {
+            return
+        }
+
+        if (!hasDismissedSignupAlert && !isAuthenticated && displaySignupAndBrowserExtensionCTAsBasedOnCadence) {
+            return 'signup'
+        }
+
+        if (
+            hasDismissedBrowserExtensionAlert === false &&
+            isAuthenticated &&
+            isBrowserExtensionActiveUser === false &&
+            displaySignupAndBrowserExtensionCTAsBasedOnCadence
+        ) {
+            return 'browser'
+        }
+
+        if (
+            isUsingIdeIntegration === false &&
+            displayIDEExtensionCTABasedOnCadence &&
+            hasDismissedIDEExtensionAlert === false
+        ) {
+            return 'ide'
+        }
+
+        return
+    }, [
+        areResultsFound,
+        tourQueryParameters?.isTour,
         hasDismissedSignupAlert,
+        isAuthenticated,
+        displaySignupAndBrowserExtensionCTAsBasedOnCadence,
         hasDismissedBrowserExtensionAlert,
-        isBrowserExtensionInstalled,
-        displayCTAsBasedOnCadence,
-        onSignupCtaAlertDismissed,
-        onBrowserExtensionCtaAlertDismissed,
+        isBrowserExtensionActiveUser,
+        isUsingIdeIntegration,
+        displayIDEExtensionCTABasedOnCadence,
+        hasDismissedIDEExtensionAlert,
+    ])
+
+    const onCtaAlertDismissed = useCallback((): void => {
+        if (ctaToDisplay === 'signup') {
+            setHasDismissedSignupAlert(true)
+        } else if (ctaToDisplay === 'browser') {
+            setHasDismissedBrowserExtensionAlert(true)
+        } else if (ctaToDisplay === 'ide') {
+            setHasDismissedIDEExtensionAlert(true)
+        }
+    }, [
+        ctaToDisplay,
+        setHasDismissedBrowserExtensionAlert,
+        setHasDismissedIDEExtensionAlert,
+        setHasDismissedSignupAlert,
+    ])
+
+    return {
+        ctaToDisplay,
+        onCtaAlertDismissed,
     }
 }
 
-export const StreamingSearchResults: React.FunctionComponent<StreamingSearchResultsProps> = props => {
+export const StreamingSearchResults: React.FunctionComponent<
+    React.PropsWithChildren<StreamingSearchResultsProps>
+> = props => {
     const {
         streamSearch,
         location,
@@ -129,14 +194,6 @@ export const StreamingSearchResults: React.FunctionComponent<StreamingSearchResu
     const caseSensitive = useNavbarQueryState(state => state.searchCaseSensitivity)
     const patternType = useNavbarQueryState(state => state.searchPatternType)
     const query = useNavbarQueryState(state => state.searchQueryFromURL)
-    const {
-        hasDismissedSignupAlert,
-        hasDismissedBrowserExtensionAlert,
-        isBrowserExtensionInstalled,
-        displayCTAsBasedOnCadence,
-        onSignupCtaAlertDismissed,
-        onBrowserExtensionCtaAlertDismissed,
-    } = useCtaAlert()
 
     // Log view event on first load
     useEffect(
@@ -219,7 +276,7 @@ export const StreamingSearchResults: React.FunctionComponent<StreamingSearchResu
         }
     }, [results, telemetryService])
 
-    useSearchStack(
+    useNotepad(
         useMemo(
             () =>
                 results?.state === 'complete'
@@ -268,40 +325,21 @@ export const StreamingSearchResults: React.FunctionComponent<StreamingSearchResu
     )
     const [showSidebar, setShowSidebar] = useState(false)
 
-    const onSignUpClick = (): void => {
-        telemetryService.log('SignUpPLGSearchCTA_1_Search')
-    }
+    const onSignUpClick = useCallback((): void => {
+        const args = { page: 'search' }
+        telemetryService.log('SignUpPLGSearchCTA_1_Search', args, args)
+    }, [telemetryService])
 
     const resultsFound = useMemo<boolean>(() => (results ? results.results.length > 0 : false), [results])
-    const showOnboardingTour =
-        props.isSourcegraphDotCom && !props.authenticatedUser && props.featureFlags.get('getting-started-tour')
-    const showSignUpCta = useMemo<boolean>(
-        () => !hasDismissedSignupAlert && !authenticatedUser && displayCTAsBasedOnCadence && resultsFound,
-        [authenticatedUser, displayCTAsBasedOnCadence, hasDismissedSignupAlert, resultsFound]
-    )
-    const showBrowserExtensionCta = useMemo<boolean>(
-        () =>
-            !hasDismissedBrowserExtensionAlert &&
-            !!authenticatedUser &&
-            isBrowserExtensionInstalled === false &&
-            displayCTAsBasedOnCadence &&
-            resultsFound,
-        [
-            authenticatedUser,
-            displayCTAsBasedOnCadence,
-            hasDismissedBrowserExtensionAlert,
-            isBrowserExtensionInstalled,
-            resultsFound,
-        ]
-    )
+    const { ctaToDisplay, onCtaAlertDismissed } = useCtaAlert(!!authenticatedUser, resultsFound)
 
     // Log view event when signup CTA is shown
     useEffect(() => {
-        if (showSignUpCta) {
+        if (ctaToDisplay === 'signup') {
             telemetryService.log('SearchResultResultsCTAShown')
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [showSignUpCta])
+    }, [ctaToDisplay])
 
     return (
         <div className={styles.streamingSearchResults}>
@@ -321,9 +359,12 @@ export const StreamingSearchResults: React.FunctionComponent<StreamingSearchResu
                 filters={results?.filters}
                 getRevisions={getRevisions}
                 prefixContent={
-                    showOnboardingTour ? (
-                        <OnboardingTour className="mb-1" telemetryService={props.telemetryService} />
-                    ) : undefined
+                    <GettingStartedTour
+                        className="mb-1"
+                        isSourcegraphDotCom={props.isSourcegraphDotCom}
+                        telemetryService={props.telemetryService}
+                        isAuthenticated={!!props.authenticatedUser}
+                    />
                 }
                 buildSearchURLQueryFromQueryState={buildSearchURLQueryFromQueryState}
             />
@@ -360,7 +401,7 @@ export const StreamingSearchResults: React.FunctionComponent<StreamingSearchResu
             />
 
             <div className={styles.streamingSearchResultsContainer}>
-                {showOnboardingTour && <OnboardingTourInfo className="mt-2 mr-3 mb-3" />}
+                <GettingStartedTour.Info className="mt-2 mr-3 mb-3" isSourcegraphDotCom={props.isSourcegraphDotCom} />
                 {showSavedSearchModal && (
                     <SavedSearchModal
                         {...props}
@@ -370,14 +411,12 @@ export const StreamingSearchResults: React.FunctionComponent<StreamingSearchResu
                         onDidCancel={onSaveQueryModalClose}
                     />
                 )}
-
                 {results?.alert && (
                     <div className={classNames(styles.streamingSearchResultsContentCentered, 'mt-4')}>
                         <SearchAlert alert={results.alert} caseSensitive={caseSensitive} patternType={patternType} />
                     </div>
                 )}
-
-                {showSignUpCta && (
+                {ctaToDisplay === 'signup' && (
                     <CtaAlert
                         title="Sign up to add your public and private repositories and unlock search flow"
                         description="Do all the things editors can’t: search multiple repos & commit history, monitor, save
@@ -388,15 +427,24 @@ export const StreamingSearchResults: React.FunctionComponent<StreamingSearchResu
                             onClick: onSignUpClick,
                         }}
                         icon={<SearchBetaIcon />}
-                        className="mr-3"
-                        onClose={onSignupCtaAlertDismissed}
+                        className="mr-3 percy-display-none"
+                        onClose={onCtaAlertDismissed}
                     />
                 )}
-
-                {showBrowserExtensionCta && (
-                    <BrowserExtensionAlert className="mr-3" onAlertDismissed={onBrowserExtensionCtaAlertDismissed} />
+                {ctaToDisplay === 'browser' && (
+                    <BrowserExtensionAlert
+                        className="mr-3 percy-display-none"
+                        onAlertDismissed={onCtaAlertDismissed}
+                        page="search"
+                    />
                 )}
-
+                {ctaToDisplay === 'ide' && (
+                    <IDEExtensionAlert
+                        className="mr-3 percy-display-none"
+                        onAlertDismissed={onCtaAlertDismissed}
+                        page="search"
+                    />
+                )}
                 <StreamingSearchResultsList
                     {...props}
                     results={results}
@@ -406,6 +454,7 @@ export const StreamingSearchResults: React.FunctionComponent<StreamingSearchResu
                     renderSearchUserNeedsCodeHost={user => (
                         <SearchUserNeedsCodeHost user={user} orgSearchContext={props.selectedSearchContextSpec} />
                     )}
+                    executedQuery={location.search}
                 />
             </div>
         </div>

@@ -1,11 +1,22 @@
-import { Tab, TabList, TabPanel, TabPanels, Tabs } from '@reach/tabs'
+import React, { useEffect } from 'react'
+
 import classNames from 'classnames'
-import React, { useCallback, useEffect } from 'react'
 import { RouteComponentProps } from 'react-router'
 import { Subscription } from 'rxjs'
 
-import { Badge, Button, useLocalStorage, Link } from '@sourcegraph/wildcard'
-import { BADGE_VARIANTS } from '@sourcegraph/wildcard/src/components/Badge/constants'
+import {
+    Badge,
+    BADGE_VARIANTS,
+    Button,
+    useLocalStorage,
+    Link,
+    Tab,
+    TabList,
+    TabPanel,
+    TabPanels,
+    Tabs,
+    Typography,
+} from '@sourcegraph/wildcard'
 
 import { FilteredConnection } from '../components/FilteredConnection'
 import { PageTitle } from '../components/PageTitle'
@@ -24,8 +35,9 @@ import {
 import { eventLogger } from '../tracking/eventLogger'
 import { userURL } from '../user'
 
-import styles from './SiteAdminSurveyResponsesPage.module.scss'
 import { USER_ACTIVITY_FILTERS } from './SiteAdminUsageStatisticsPage'
+
+import styles from './SiteAdminSurveyResponsesPage.module.scss'
 
 interface SurveyResponseNodeProps {
     /**
@@ -40,7 +52,7 @@ function scoreToClassSuffix(score: number): typeof BADGE_VARIANTS[number] {
     return score > 8 ? 'success' : score > 6 ? 'info' : 'danger'
 }
 
-const ScoreBadge: React.FunctionComponent<{ score: number }> = props => (
+const ScoreBadge: React.FunctionComponent<React.PropsWithChildren<{ score: number }>> = props => (
     <Badge className="ml-4" pill={true} variant={scoreToClassSuffix(props.score)} tooltip={`${props.score} out of 10`}>
         Score: {props.score}
     </Badge>
@@ -91,7 +103,9 @@ class SurveyResponseNode extends React.PureComponent<SurveyResponseNodeProps, Su
     }
 }
 
-const UserSurveyResponsesHeader: React.FunctionComponent<{ nodes: UserWithSurveyResponseFields[] }> = () => (
+const UserSurveyResponsesHeader: React.FunctionComponent<
+    React.PropsWithChildren<{ nodes: UserWithSurveyResponseFields[] }>
+> = () => (
     <thead>
         <tr>
             <th>User</th>
@@ -228,7 +242,7 @@ class SiteAdminSurveyResponsesSummary extends React.PureComponent<{}, SiteAdminS
         const roundAvg = Math.round(this.state.summary.averageScore * 10) / 10
         return (
             <div className="mb-2">
-                <h3>Summary</h3>
+                <Typography.H3>Summary</Typography.H3>
                 <div className={styles.container}>
                     <SingleValueCard
                         className={styles.item}
@@ -268,10 +282,8 @@ const LAST_TAB_STORAGE_KEY = 'site-admin-survey-responses-last-tab'
  * A page displaying the survey responses on this site.
  */
 
-export const SiteAdminSurveyResponsesPage: React.FunctionComponent<Props> = props => {
-    const [tabIndex, setTabIndex] = useLocalStorage(LAST_TAB_STORAGE_KEY, 0)
-
-    const handleTabsChange = useCallback((index: number) => setTabIndex(index), [setTabIndex])
+export const SiteAdminSurveyResponsesPage: React.FunctionComponent<React.PropsWithChildren<Props>> = props => {
+    const [persistedTabIndex, setPersistedTabIndex] = useLocalStorage(LAST_TAB_STORAGE_KEY, 0)
 
     useEffect(() => {
         eventLogger.logViewEvent('SiteAdminSurveyResponses')
@@ -280,7 +292,7 @@ export const SiteAdminSurveyResponsesPage: React.FunctionComponent<Props> = prop
     return (
         <div className="site-admin-survey-responses-page">
             <PageTitle title="User feedback survey - Admin" />
-            <h2>User feedback survey</h2>
+            <Typography.H2>User feedback survey</Typography.H2>
             <p>
                 After using Sourcegraph for a few days, users are presented with a request to answer "How likely is it
                 that you would recommend Sourcegraph to a friend?" on a scale from 0–10 and to provide some feedback.
@@ -289,12 +301,12 @@ export const SiteAdminSurveyResponsesPage: React.FunctionComponent<Props> = prop
 
             <SiteAdminSurveyResponsesSummary />
 
-            <h3>Responses</h3>
+            <Typography.H3>Responses</Typography.H3>
 
-            <Tabs defaultIndex={tabIndex} onChange={handleTabsChange}>
-                <TabList className="d-flex justify-content-around">
-                    <Tab className="flex-1">Chronological feed</Tab>
-                    <Tab className="flex-1">Sort by user</Tab>
+            <Tabs defaultIndex={persistedTabIndex} onChange={setPersistedTabIndex}>
+                <TabList>
+                    <Tab>Chronological feed</Tab>
+                    <Tab>Sort by user</Tab>
                 </TabList>
                 <TabPanels>
                     <TabPanel>

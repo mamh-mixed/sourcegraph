@@ -5,10 +5,9 @@ import (
 	"os"
 	"sync"
 
-	"github.com/cockroachdb/errors"
-
 	"github.com/sourcegraph/sourcegraph/cmd/worker/memo"
 	"github.com/sourcegraph/sourcegraph/internal/env"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 // InitMetricsConfig initializes and returns an instance of a metrics config.
@@ -16,10 +15,10 @@ import (
 // and Validate to forward errors produced in this config.
 func InitMetricsConfig() *Config {
 	res, _ := initMetricsConfig.Init()
-	return res.(*Config)
+	return res
 }
 
-var initMetricsConfig = memo.NewMemoizedConstructor(func() (interface{}, error) {
+var initMetricsConfig = memo.NewMemoizedConstructor(func() (*Config, error) {
 	return &Config{}, nil
 })
 

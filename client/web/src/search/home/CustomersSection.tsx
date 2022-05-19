@@ -1,12 +1,13 @@
-import classNames from 'classnames'
 import React, { useMemo } from 'react'
+
+import classNames from 'classnames'
 
 import { ThemeProps } from '@sourcegraph/shared/src/theme'
 import { Link } from '@sourcegraph/wildcard'
 
 import styles from './CustomersSection.module.scss'
 
-export const CustomersSection: React.FunctionComponent<ThemeProps> = props => {
+export const CustomersSection: React.FunctionComponent<React.PropsWithChildren<ThemeProps>> = props => {
     const logos = useMemo(
         () => [
             <DropboxLogo key="dropbox-logo" {...props} />,
@@ -41,7 +42,7 @@ export const CustomersSection: React.FunctionComponent<ThemeProps> = props => {
     )
 }
 
-const DropboxLogo: React.FunctionComponent<ThemeProps> = ({ isLightTheme }) =>
+const DropboxLogo: React.FunctionComponent<React.PropsWithChildren<ThemeProps>> = ({ isLightTheme }) =>
     isLightTheme ? (
         <svg width="94" height="18" fill="none" xmlns="http://www.w3.org/2000/svg">
             <g clipPath="url(#clip0)">
@@ -80,7 +81,7 @@ const DropboxLogo: React.FunctionComponent<ThemeProps> = ({ isLightTheme }) =>
         </svg>
     )
 
-const CloudflareLogo: React.FunctionComponent<ThemeProps> = ({ isLightTheme }) =>
+const CloudflareLogo: React.FunctionComponent<React.PropsWithChildren<ThemeProps>> = ({ isLightTheme }) =>
     isLightTheme ? (
         <svg width="87" height="40" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path
@@ -134,7 +135,7 @@ const GELogo = React.memo(() => (
     </svg>
 ))
 
-const PayPalLogo: React.FunctionComponent<ThemeProps> = ({ isLightTheme }) =>
+const PayPalLogo: React.FunctionComponent<React.PropsWithChildren<ThemeProps>> = ({ isLightTheme }) =>
     isLightTheme ? (
         <svg width="96" height="35" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path
@@ -155,7 +156,7 @@ const PayPalLogo: React.FunctionComponent<ThemeProps> = ({ isLightTheme }) =>
         </svg>
     )
 
-const AmazonLogo: React.FunctionComponent<ThemeProps> = ({ isLightTheme }) =>
+const AmazonLogo: React.FunctionComponent<React.PropsWithChildren<ThemeProps>> = ({ isLightTheme }) =>
     isLightTheme ? (
         <svg width="93" height="40" fill="none" xmlns="http://www.w3.org/2000/svg">
             <g clipPath="url(#clip3)" fillRule="evenodd" clipRule="evenodd">
@@ -202,7 +203,7 @@ const AmazonLogo: React.FunctionComponent<ThemeProps> = ({ isLightTheme }) =>
         </svg>
     )
 
-const UberLogo: React.FunctionComponent<ThemeProps> = ({ isLightTheme }) =>
+const UberLogo: React.FunctionComponent<React.PropsWithChildren<ThemeProps>> = ({ isLightTheme }) =>
     isLightTheme ? (
         <svg width="74" height="25" fill="none" xmlns="http://www.w3.org/2000/svg">
             <g clipPath="url(#clip2)" fill="#010202">
@@ -227,7 +228,7 @@ const UberLogo: React.FunctionComponent<ThemeProps> = ({ isLightTheme }) =>
         </svg>
     )
 
-const YelpLogo: React.FunctionComponent<ThemeProps> = ({ isLightTheme }) =>
+const YelpLogo: React.FunctionComponent<React.PropsWithChildren<ThemeProps>> = ({ isLightTheme }) =>
     isLightTheme ? (
         <svg width="98" height="39" fill="none" xmlns="http://www.w3.org/2000/svg">
             <g clipPath="url(#clip4)">

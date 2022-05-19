@@ -5,13 +5,13 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/cockroachdb/errors"
 	"github.com/keegancsmith/sqlf"
 	"github.com/sourcegraph/jsonx"
 
 	"github.com/sourcegraph/sourcegraph/internal/conf/confdefaults"
 	"github.com/sourcegraph/sourcegraph/internal/database/basestore"
 	"github.com/sourcegraph/sourcegraph/internal/database/dbutil"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 // ConfStore is a store that interacts with the config tables.
@@ -93,7 +93,7 @@ func (s *confStore) SiteCreateIfUpToDate(ctx context.Context, lastID *int32, con
 	return tx.createIfUpToDate(ctx, lastID, contents)
 }
 
-func (s *confStore) SiteGetLatest(ctx context.Context) (*SiteConfig, error) {
+func (s *confStore) SiteGetLatest(ctx context.Context) (_ *SiteConfig, err error) {
 	tx, err := s.transact(ctx)
 	if err != nil {
 		return nil, err

@@ -37,6 +37,7 @@ export enum FilterType {
 /* eslint-disable unicorn/prevent-abbreviations */
 export enum AliasedFilterType {
     f = 'file',
+    path = 'file',
     g = 'repogroup',
     l = 'lang',
     language = 'lang',
@@ -52,6 +53,7 @@ export enum AliasedFilterType {
 export const ALIASES: Record<string, string> = {
     r: 'repo',
     g: 'repogroup',
+    path: 'file',
     f: 'file',
     l: 'lang',
     language: 'language',
@@ -79,8 +81,10 @@ export enum NegatedFilters {
     content = '-content',
     f = '-f',
     file = '-file',
+    path = '-path',
     l = '-l',
     lang = '-lang',
+    language = '-language',
     message = '-message',
     r = '-r',
     repo = '-repo',
@@ -113,8 +117,10 @@ const negatedFilterToNegatableFilter: { [key: string]: NegatableFilter } = {
     '-content': FilterType.content,
     '-f': FilterType.file,
     '-file': FilterType.file,
+    '-path': FilterType.file,
     '-l': FilterType.lang,
     '-lang': FilterType.lang,
+    '-language': FilterType.lang,
     '-message': FilterType.message,
     '-r': FilterType.repo,
     '-repo': FilterType.repo,
@@ -222,7 +228,7 @@ export const FILTERS: Record<NegatableFilter, NegatableFilterDefinition> &
         alias: 'f',
         negatable: true,
         description: negated =>
-            `${negated ? 'Exclude' : 'Include only'} results from files matching the given search pattern.`,
+            `${negated ? 'Exclude' : 'Include only'} results from file paths matching the given search pattern.`,
         suggestions: 'path',
     },
     [FilterType.fork]: {
@@ -303,15 +309,15 @@ export const discreteValueAliases: { [key: string]: string[] } = {
     only: ['o', 'only', 'ONLY', 'Only'],
 }
 
+export type ResolvedFilter =
+    | { type: NegatableFilter; negated: boolean; definition: NegatableFilterDefinition }
+    | { type: Exclude<FilterType, NegatableFilter>; definition: BaseFilterDefinition }
+    | undefined
+
 /**
  * Returns the {@link FilterDefinition} for the given filterType if it exists, or `undefined` otherwise.
  */
-export const resolveFilter = (
-    filterType: string
-):
-    | { type: NegatableFilter; negated: boolean; definition: NegatableFilterDefinition }
-    | { type: Exclude<FilterType, NegatableFilter>; definition: BaseFilterDefinition }
-    | undefined => {
+export const resolveFilter = (filterType: string): ResolvedFilter => {
     filterType = filterType.toLowerCase()
 
     if (isAliasedFilterType(filterType)) {

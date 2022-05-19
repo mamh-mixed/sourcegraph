@@ -1,3 +1,5 @@
+import React from 'react'
+
 import { MdiReactIconComponentType } from 'mdi-react'
 import JsonIcon from 'mdi-react/CodeJsonIcon'
 import GraphqlIcon from 'mdi-react/GraphqlIcon'
@@ -21,7 +23,6 @@ import LanguageTypescriptIcon from 'mdi-react/LanguageTypescriptIcon'
 import PowershellIcon from 'mdi-react/PowershellIcon'
 import SassIcon from 'mdi-react/SassIcon'
 import WebIcon from 'mdi-react/WebIcon'
-import React from 'react'
 
 import { IconProps } from './icons'
 
@@ -73,7 +74,7 @@ export const languageIcons: Record<string, MdiReactIconComponentType | undefined
     webassembly: undefined,
 }
 
-export const LanguageIcon: React.FunctionComponent<Props> = ({ language, size }) => {
+export const LanguageIcon: React.FunctionComponent<React.PropsWithChildren<Props>> = ({ language, size }) => {
     const LanguageIconComponent = languageIcons[language] || WebIcon
     return <LanguageIconComponent size={size} />
 }

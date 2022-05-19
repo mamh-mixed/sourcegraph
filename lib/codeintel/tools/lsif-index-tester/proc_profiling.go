@@ -3,7 +3,7 @@ package main
 import (
 	"syscall"
 
-	"github.com/cockroachdb/errors"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 // This whole file probably needs work to handle things like being run on different OSes
@@ -11,7 +11,7 @@ import (
 // different results.
 // Something to consider for later. That's why the code lives in a separate place though.
 
-func MaxMemoryInKB(usage interface{}) (int64, error) {
+func MaxMemoryInKB(usage any) (int64, error) {
 	sysUsage, ok := usage.(*syscall.Rusage)
 
 	if !ok {

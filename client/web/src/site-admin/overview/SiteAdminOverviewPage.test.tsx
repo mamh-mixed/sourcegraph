@@ -1,21 +1,14 @@
 import { waitFor } from '@testing-library/react'
 import * as H from 'history'
-import React from 'react'
 import { of } from 'rxjs'
 import sinon from 'sinon'
 
 import { ISiteUsagePeriod } from '@sourcegraph/shared/src/schema'
-import { renderWithRouter } from '@sourcegraph/shared/src/testing/render-with-router'
-
-import { PageTitle } from '../../components/PageTitle'
+import { renderWithBrandedContext } from '@sourcegraph/shared/src/testing'
 
 import { SiteAdminOverviewPage } from './SiteAdminOverviewPage'
 
 describe('SiteAdminOverviewPage', () => {
-    afterEach(() => {
-        PageTitle.titleSet = false
-    })
-
     const baseProps = {
         history: H.createMemoryHistory(),
         isLightTheme: true,
@@ -23,7 +16,7 @@ describe('SiteAdminOverviewPage', () => {
     }
 
     test('activation in progress', async () => {
-        const component = renderWithRouter(
+        const component = renderWithBrandedContext(
             <SiteAdminOverviewPage
                 {...baseProps}
                 activation={{
@@ -70,7 +63,7 @@ describe('SiteAdminOverviewPage', () => {
     })
 
     test('< 2 users', async () => {
-        const component = renderWithRouter(
+        const component = renderWithBrandedContext(
             <SiteAdminOverviewPage
                 {...baseProps}
                 _fetchOverview={() =>
@@ -118,7 +111,7 @@ describe('SiteAdminOverviewPage', () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
         ;(window.SVGElement as any).prototype.getComputedTextLength = () => 500
 
-        const component = renderWithRouter(
+        const component = renderWithBrandedContext(
             <SiteAdminOverviewPage
                 {...baseProps}
                 _fetchOverview={() =>

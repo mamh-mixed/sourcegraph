@@ -129,7 +129,7 @@ Click reload for Sourcegraph at `about:debugging`
 
 > **Note**: Requires MacOS with Xcode installed
 
-1. `yarn --cwd client/browser dev:safari`
+1. `yarn workspace @sourcegraph/browser dev:safari`
 1. Open Safari then: `Develop > Allow Unsigned Extensions`
 1. Open `client/browser/build/Sourcegraph for Safari/Sourcegraph for Safari.xcodeproj` using Xcode
 1. Choose `Sourcegraph for Safari (macOS)` in the top toolbar and click Run icon
@@ -140,7 +140,14 @@ Click reload for Sourcegraph at `about:debugging`
 ## Testing
 
 - Unit tests: `sg test bext`
-- Integration tests: `sg test bext-build` & `sg test bext-integration`
+- Integration tests
+  - run
+    - build browser extension with `sg test bext-build`
+    - run tests with `sg test bext-integration`
+  - develop
+    - add/edit test case or at least its part with navigation to a certain page
+    - if there's no page snapshot for created test or page URL referenced in the existing test has been changed, test will fail with 'Page not found' error
+    - to generate or update page snapshots for tests run `yarn record-integration`
 - E2E tests: `sg test bext-build` & `sg test bext-e2e`
 
 ### E2E tests

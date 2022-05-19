@@ -1,5 +1,6 @@
-import classNames from 'classnames'
 import React from 'react'
+
+import classNames from 'classnames'
 import { FileDecoration } from 'sourcegraph'
 
 import { fileDecorationColorForTheme } from '@sourcegraph/shared/src/api/extension/api/decorations'
@@ -25,7 +26,7 @@ interface FileDecoratorProps {
 /**
  * Renders a list of file decorations from extensions
  */
-export const FileDecorator: React.FunctionComponent<FileDecoratorProps> = ({
+export const FileDecorator: React.FunctionComponent<React.PropsWithChildren<FileDecoratorProps>> = ({
     fileDecorations,
     isLightTheme,
     className,

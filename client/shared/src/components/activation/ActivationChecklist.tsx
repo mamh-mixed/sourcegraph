@@ -1,14 +1,16 @@
+import * as React from 'react'
+
 import { Accordion, AccordionItem, AccordionButton, AccordionPanel } from '@reach/accordion'
 import classNames from 'classnames'
 import CheckboxBlankCircleOutlineIcon from 'mdi-react/CheckboxBlankCircleOutlineIcon'
 import CheckCircleIcon from 'mdi-react/CheckCircleIcon'
 import ChevronDownIcon from 'mdi-react/ChevronDownIcon'
 import ChevronRightIcon from 'mdi-react/ChevronRightIcon'
-import * as React from 'react'
 
-import { Button, LoadingSpinner } from '@sourcegraph/wildcard'
+import { Button, LoadingSpinner, Icon } from '@sourcegraph/wildcard'
 
 import { ActivationCompletionStatus, ActivationStep } from './Activation'
+
 import styles from './ActivationChecklist.module.scss'
 
 interface ActivationChecklistItemProps extends ActivationStep {
@@ -19,25 +21,37 @@ interface ActivationChecklistItemProps extends ActivationStep {
 /**
  * A single item in the activation checklist.
  */
-export const ActivationChecklistItem: React.FunctionComponent<ActivationChecklistItemProps> = ({
-    className = '',
-    ...props
-}: ActivationChecklistItemProps) => (
+export const ActivationChecklistItem: React.FunctionComponent<
+    React.PropsWithChildren<ActivationChecklistItemProps>
+> = ({ className = '', ...props }: ActivationChecklistItemProps) => (
     <div className={classNames('d-flex justify-content-between', styles.activationChecklistItem, className)}>
         <div className="d-flex align-items-center">
-            <span className={classNames('icon-inline', styles.iconContainer, styles.iconDown)}>
-                <ChevronDownIcon className={styles.icon} />
-            </span>
-            <span className={classNames('icon-inline', styles.iconContainer, styles.iconRight)}>
-                <ChevronRightIcon className={styles.icon} />
+            <span className={styles.iconContainer}>
+                <Icon
+                    role="img"
+                    className={classNames(styles.icon, styles.iconDown)}
+                    as={ChevronDownIcon}
+                    aria-hidden={true}
+                />
+                <Icon
+                    role="img"
+                    className={classNames(styles.icon, styles.iconRight)}
+                    as={ChevronRightIcon}
+                    aria-hidden={true}
+                />
             </span>
             <span>{props.title}</span>
         </div>
         <div>
             {props.done ? (
-                <CheckCircleIcon className="icon-inline text-success" />
+                <Icon role="img" className="text-success" as={CheckCircleIcon} aria-label="Completed" />
             ) : (
-                <CheckboxBlankCircleOutlineIcon className="icon-inline text-muted" />
+                <Icon
+                    role="img"
+                    className="text-muted"
+                    as={CheckboxBlankCircleOutlineIcon}
+                    aria-label="Not completed"
+                />
             )}
         </div>
     </div>
@@ -53,7 +67,7 @@ export interface ActivationChecklistProps {
 /**
  * Renders an activation checklist.
  */
-export const ActivationChecklist: React.FunctionComponent<ActivationChecklistProps> = ({
+export const ActivationChecklist: React.FunctionComponent<React.PropsWithChildren<ActivationChecklistProps>> = ({
     className,
     steps,
     completed,

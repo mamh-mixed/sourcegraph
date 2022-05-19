@@ -1,16 +1,18 @@
-import classNames from 'classnames'
 import React from 'react'
+
+import classNames from 'classnames'
 
 import { CtaBanner } from '../components/CtaBanner'
 
-import styles from './ExtensionBanner.module.scss'
 import { extensionBannerIconURL } from './icons'
+
+import styles from './ExtensionBanner.module.scss'
 
 interface Props {
     className?: string
 }
 
-export const ExtensionBanner: React.FunctionComponent<Props> = ({ className }) => (
+export const ExtensionBanner: React.FunctionComponent<React.PropsWithChildren<Props>> = ({ className }) => (
     <CtaBanner
         className={classNames('border-0 shadow-none', styles.extensionBanner, className)}
         icon={<img className={styles.icon} src={extensionBannerIconURL} alt="" />}

@@ -1,7 +1,8 @@
+import * as React from 'react'
+
 import classNames from 'classnames'
 import AlertCircleIcon from 'mdi-react/AlertCircleIcon'
 import MapSearchIcon from 'mdi-react/MapSearchIcon'
-import * as React from 'react'
 import { Route, RouteComponentProps, Switch } from 'react-router'
 import { combineLatest, from, Observable, of, Subject, Subscription } from 'rxjs'
 import { catchError, distinctUntilChanged, map, startWith, switchMap } from 'rxjs/operators'
@@ -28,7 +29,9 @@ import { eventLogger } from '../tracking/eventLogger'
 import { mergeSettingsSchemas } from './configuration'
 import { SettingsPage } from './SettingsPage'
 
-const NotFoundPage: React.FunctionComponent = () => <HeroPage icon={MapSearchIcon} title="404: Not Found" />
+const NotFoundPage: React.FunctionComponent<React.PropsWithChildren<unknown>> = () => (
+    <HeroPage icon={MapSearchIcon} title="404: Not Found" />
+)
 
 /** Props shared by SettingsArea and its sub-pages. */
 interface SettingsAreaPageCommonProps extends PlatformContextProps, SettingsCascadeProps, ThemeProps, TelemetryProps {

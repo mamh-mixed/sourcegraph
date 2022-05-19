@@ -14,11 +14,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/errors"
 	"github.com/opentracing/opentracing-go/ext"
 	otelog "github.com/opentracing/opentracing-go/log"
 
 	"github.com/sourcegraph/sourcegraph/internal/observation"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 // Store is an on-disk cache, with items cached via calls to Open.
@@ -128,7 +128,7 @@ func (s *store) Open(ctx context.Context, key []string, fetcher Fetcher) (file *
 }
 
 func (s *store) OpenWithPath(ctx context.Context, key []string, fetcher FetcherWithPath) (file *File, err error) {
-	ctx, trace, endObservation := s.observe.cachedFetch.WithAndLogger(ctx, &err, observation.Args{LogFields: []otelog.Field{
+	ctx, trace, endObservation := s.observe.cachedFetch.With(ctx, &err, observation.Args{LogFields: []otelog.Field{
 		otelog.String(string(ext.Component), s.component),
 	}})
 	defer endObservation(1, observation.Args{})
@@ -172,7 +172,7 @@ func (s *store) OpenWithPath(ctx context.Context, key []string, fetcher FetcherW
 	go func(ctx context.Context) {
 		var err error
 		var f *File
-		ctx, trace, endObservation := s.observe.backgroundFetch.WithAndLogger(ctx, &err, observation.Args{LogFields: []otelog.Field{
+		ctx, trace, endObservation := s.observe.backgroundFetch.With(ctx, &err, observation.Args{LogFields: []otelog.Field{
 			otelog.Bool("withBackgroundTimeout", s.backgroundTimeout != 0),
 		}})
 		defer endObservation(1, observation.Args{})
@@ -199,17 +199,18 @@ func (s *store) OpenWithPath(ctx context.Context, key []string, fetcher FetcherW
 
 // path returns the path for key.
 func (s *store) path(key []string) string {
-	encoded := []string{s.dir}
-	for _, k := range key {
-		encoded = append(encoded, EncodeKeyComponent(k))
-	}
+	encoded := append([]string{s.dir}, EncodeKeyComponents(key)...)
 	return filepath.Join(encoded...) + ".zip"
 }
 
-// EncodeKeyComponent uses a sha256 hash of the key since we want to use it for the disk name.
-func EncodeKeyComponent(component string) string {
-	h := sha256.Sum256([]byte(component))
-	return hex.EncodeToString(h[:])
+// EncodeKeyComponents uses a sha256 hash of the key since we want to use it for the disk name.
+func EncodeKeyComponents(components []string) []string {
+	encoded := []string{}
+	for _, component := range components {
+		h := sha256.Sum256([]byte(component))
+		encoded = append(encoded, hex.EncodeToString(h[:]))
+	}
+	return encoded
 }
 
 func doFetch(ctx context.Context, path string, fetcher FetcherWithPath, trace observation.TraceLogger) (file *File, err error) {
@@ -295,7 +296,7 @@ type EvictStats struct {
 }
 
 func (s *store) Evict(maxCacheSizeBytes int64) (stats EvictStats, err error) {
-	_, trace, endObservation := s.observe.evict.WithAndLogger(context.Background(), &err, observation.Args{LogFields: []otelog.Field{
+	_, trace, endObservation := s.observe.evict.With(context.Background(), &err, observation.Args{LogFields: []otelog.Field{
 		otelog.Int64("maxCacheSizeBytes", maxCacheSizeBytes),
 	}})
 	endObservation(1, observation.Args{})

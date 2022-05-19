@@ -1,17 +1,17 @@
 import { Meta, Story } from '@storybook/react'
-import React from 'react'
 
 import { BrandedStory } from '@sourcegraph/branded/src/components/BrandedStory'
 
-import brandedStyles from '../../branded.scss'
-
 import { AfterInstallPageContent } from './AfterInstallPageContent'
+
+import brandedStyles from '../../branded.scss'
 
 const config: Meta = {
     title: 'browser/AfterInstallPage',
     parameters: {
         chromatic: {
             enableDarkMode: true,
+            disableSnapshot: false,
         },
     },
 }

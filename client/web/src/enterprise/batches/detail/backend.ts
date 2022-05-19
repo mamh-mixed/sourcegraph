@@ -44,6 +44,9 @@ import {
     CloseChangesetsVariables,
     PublishChangesetsResult,
     PublishChangesetsVariables,
+    AvailableBulkOperationsVariables,
+    AvailableBulkOperationsResult,
+    BulkOperationType,
 } from '../../../graphql-operations'
 
 const changesetsStatsFragment = gql`
@@ -100,6 +103,7 @@ const batchChangeFragment = gql`
         url
         name
         namespace {
+            id
             namespaceName
             url
         }
@@ -120,6 +124,8 @@ const batchChangeFragment = gql`
         diffStat {
             ...DiffStatFields
         }
+
+        state
 
         updatedAt
         closedAt
@@ -154,6 +160,18 @@ const batchChangeFragment = gql`
                     hasNextPage
                 }
                 totalCount
+            }
+        }
+
+        # TODO: We ought to be able to filter these by state, but because state is only computed
+        # in the resolver and not persisted to the DB, it's currently expensive and messy to do so,
+        # so for now we fetch the first 100 and count the active ones clientside.
+        batchSpecs(first: 100) {
+            nodes {
+                state
+            }
+            pageInfo {
+                hasNextPage
             }
         }
     }
@@ -309,6 +327,7 @@ export const CHANGESETS = gql`
         $onlyPublishedByThisBatchChange: Boolean
         $search: String
         $onlyArchived: Boolean
+        $onlyClosable: Boolean
     ) {
         node(id: $batchChange) {
             __typename
@@ -322,6 +341,7 @@ export const CHANGESETS = gql`
                     onlyPublishedByThisBatchChange: $onlyPublishedByThisBatchChange
                     search: $search
                     onlyArchived: $onlyArchived
+                    onlyClosable: $onlyClosable
                 ) {
                     __typename
                     totalCount
@@ -349,7 +369,7 @@ export const CHANGESETS = gql`
     ${externalChangesetFieldsFragment}
 `
 
-// TODO: This has been superseded by CHANGESETS below, but the "Close" page still uses
+// TODO: This has been superseded by CHANGESETS above, but the "Close" page still uses
 // this older `requestGraphQL` one. The variables and result types are the same, so
 // eventually this can just go away when we refactor the requests from the "Close" page.
 export const queryChangesets = ({
@@ -357,6 +377,7 @@ export const queryChangesets = ({
     first,
     after,
     state,
+    onlyClosable,
     reviewState,
     checkState,
     onlyPublishedByThisBatchChange,
@@ -370,6 +391,7 @@ export const queryChangesets = ({
         first,
         after,
         state,
+        onlyClosable,
         reviewState,
         checkState,
         onlyPublishedByThisBatchChange,
@@ -877,3 +899,22 @@ export const queryAllChangesetIDs = ({
         )
     )
 }
+
+export const queryAvailableBulkOperations = ({
+    batchChange,
+    changesets,
+}: {
+    batchChange: Scalars['ID']
+    changesets: Scalars['ID'][]
+}): Observable<BulkOperationType[]> =>
+    requestGraphQL<AvailableBulkOperationsResult, AvailableBulkOperationsVariables>(
+        gql`
+            query AvailableBulkOperations($batchChange: ID!, $changesets: [ID!]!) {
+                availableBulkOperations(batchChange: $batchChange, changesets: $changesets)
+            }
+        `,
+        { batchChange, changesets }
+    ).pipe(
+        map(dataOrThrowErrors),
+        map(item => item.availableBulkOperations)
+    )

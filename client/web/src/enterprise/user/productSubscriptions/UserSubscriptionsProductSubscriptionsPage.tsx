@@ -1,4 +1,5 @@
 import React, { useEffect, useCallback } from 'react'
+
 import { RouteComponentProps } from 'react-router'
 import { Observable } from 'rxjs'
 import { map } from 'rxjs/operators'
@@ -32,7 +33,9 @@ class FilteredProductSubscriptionConnection extends FilteredConnection<
 /**
  * Displays the product subscriptions associated with this account.
  */
-export const UserSubscriptionsProductSubscriptionsPage: React.FunctionComponent<Props> = props => {
+export const UserSubscriptionsProductSubscriptionsPage: React.FunctionComponent<
+    React.PropsWithChildren<Props>
+> = props => {
     useEffect(() => {
         eventLogger.logViewEvent('UserSubscriptionsProductSubscriptions')
     }, [])

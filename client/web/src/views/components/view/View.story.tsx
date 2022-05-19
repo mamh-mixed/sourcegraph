@@ -1,13 +1,10 @@
-import { Menu, MenuButton, MenuItem, MenuItems, MenuPopover } from '@reach/menu-button'
 import { Meta, Story } from '@storybook/react'
 import { noop } from 'lodash'
 import DotsVerticalIcon from 'mdi-react/DotsVerticalIcon'
 import FilterOutlineIcon from 'mdi-react/FilterOutlineIcon'
-import React from 'react'
 import { LineChartContent } from 'sourcegraph'
 
-import { NOOP_TELEMETRY_SERVICE } from '@sourcegraph/shared/src/telemetry/telemetryService'
-import { Button } from '@sourcegraph/wildcard'
+import { Button, Menu, MenuButton, MenuItem, MenuList, Typography } from '@sourcegraph/wildcard'
 
 import { WebStory } from '../../../components/WebStory'
 
@@ -62,18 +59,16 @@ const LINE_CHART_DATA: LineChartContent<any, string> = {
 function ContextMenu() {
     return (
         <Menu>
-            <MenuButton as={Button} variant="icon" className="p-1">
+            <MenuButton variant="icon" className="p-1">
                 <DotsVerticalIcon size={16} />
             </MenuButton>
-            <MenuPopover>
-                <MenuItems className="d-block position-static dropdown-menu">
-                    <MenuItem onSelect={noop}>Create</MenuItem>
+            <MenuList>
+                <MenuItem onSelect={noop}>Create</MenuItem>
 
-                    <MenuItem onSelect={noop}>Update</MenuItem>
+                <MenuItem onSelect={noop}>Update</MenuItem>
 
-                    <MenuItem onSelect={noop}>Delete</MenuItem>
-                </MenuItems>
-            </MenuPopover>
+                <MenuItem onSelect={noop}>Delete</MenuItem>
+            </MenuList>
         </Menu>
     )
 }
@@ -81,19 +76,19 @@ function ContextMenu() {
 export const ViewsShowcase: Story = () => (
     <main style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
         <section>
-            <h2>Empty view</h2>
+            <Typography.H2>Empty view</Typography.H2>
             <View.Root {...standardViewProps} title="Empty view" />
         </section>
 
         <section>
-            <h2>View with loading content</h2>
+            <Typography.H2>View with loading content</Typography.H2>
             <View.Root {...standardViewProps} title="Loading view">
                 <View.LoadingContent text="Loading insight" />
             </View.Root>
         </section>
 
         <section>
-            <h2>View with error-like content</h2>
+            <Typography.H2>View with error-like content</Typography.H2>
             <View.Root
                 style={{ width: '400px', height: '400px' }}
                 title="Error view"
@@ -107,14 +102,14 @@ export const ViewsShowcase: Story = () => (
         </section>
 
         <section>
-            <h2>View with chart content</h2>
+            <Typography.H2>View with chart content</Typography.H2>
             <View.Root {...standardViewProps} title="Chart view" subtitle="Subtitle chart description">
-                <View.Content content={[LINE_CHART_DATA]} telemetryService={NOOP_TELEMETRY_SERVICE} />
+                <View.Content content={[LINE_CHART_DATA]} />
             </View.Root>
         </section>
 
         <section>
-            <h2>View with context action item</h2>
+            <Typography.H2>View with context action item</Typography.H2>
             <View.Root
                 {...standardViewProps}
                 title="Chart view and looooooong loooooooooooooooong name of insight card block"
@@ -128,7 +123,7 @@ export const ViewsShowcase: Story = () => (
                     </>
                 }
             >
-                <View.Content content={[LINE_CHART_DATA]} telemetryService={NOOP_TELEMETRY_SERVICE} />
+                <View.Content content={[LINE_CHART_DATA]} />
             </View.Root>
         </section>
     </main>

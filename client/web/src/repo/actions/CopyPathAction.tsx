@@ -1,10 +1,10 @@
-import classNames from 'classnames'
+import React, { useState, useLayoutEffect } from 'react'
+
 import copy from 'copy-to-clipboard'
 import ContentCopyIcon from 'mdi-react/ContentCopyIcon'
-import React, { useState, useLayoutEffect } from 'react'
 import { useLocation } from 'react-router'
 
-import { Button, TooltipController } from '@sourcegraph/wildcard'
+import { Button, TooltipController, Icon } from '@sourcegraph/wildcard'
 
 import { eventLogger } from '../../tracking/eventLogger'
 import { parseBrowserRepoURL } from '../../util/url'
@@ -14,7 +14,7 @@ import styles from './CopyPathAction.module.scss'
 /**
  * A repository header action that copies the current page's repository or file path to the clipboard.
  */
-export const CopyPathAction: React.FunctionComponent = () => {
+export const CopyPathAction: React.FunctionComponent<React.PropsWithChildren<unknown>> = () => {
     const location = useLocation()
     const [copied, setCopied] = useState(false)
 
@@ -43,7 +43,7 @@ export const CopyPathAction: React.FunctionComponent = () => {
             onClick={onClick}
             size="sm"
         >
-            <ContentCopyIcon className={classNames('icon-inline', styles.copyIcon)} />
+            <Icon className={styles.copyIcon} as={ContentCopyIcon} />
         </Button>
     )
 }

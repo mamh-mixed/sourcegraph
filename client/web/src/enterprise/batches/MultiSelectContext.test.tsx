@@ -1,5 +1,6 @@
-import { render } from '@testing-library/react'
 import React, { useContext, useEffect } from 'react'
+
+import { render } from '@testing-library/react'
 import { act } from 'react-dom/test-utils'
 
 import { MultiSelectContext, MultiSelectContextProvider, MultiSelectContextState } from './MultiSelectContext'
@@ -259,7 +260,9 @@ const repeat = (times: number, test: () => void) => {
     }
 }
 
-const Reflektor: React.FunctionComponent<{ onContext: (inner: MultiSelectContextState) => void }> = ({ onContext }) => {
+const Reflektor: React.FunctionComponent<
+    React.PropsWithChildren<{ onContext: (inner: MultiSelectContextState) => void }>
+> = ({ onContext }) => {
     const context = useContext(MultiSelectContext)
     useEffect(() => {
         onContext(context)

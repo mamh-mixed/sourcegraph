@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cockroachdb/errors"
 	mockrequire "github.com/derision-test/go-mockgen/testutil/require"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -20,6 +19,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/database/dbtest"
 	"github.com/sourcegraph/sourcegraph/internal/types"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 func TestResolvingValidSearchContextSpecs(t *testing.T) {
@@ -289,7 +289,7 @@ func TestSearchContextWriteAccessValidation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expected no error, got %s", err)
 	}
-	database.OrgMembers(db).Create(internalCtx, org.ID, user2.ID)
+	db.OrgMembers().Create(internalCtx, org.ID, user2.ID)
 	// Third user is not a site-admin and is not a member of the org
 	user3, err := u.Create(internalCtx, database.NewUser{Username: "u3", Password: "p"})
 	if err != nil {

@@ -4,15 +4,14 @@ import (
 	"context"
 	"time"
 
-	"github.com/cockroachdb/errors"
-	"github.com/hashicorp/go-multierror"
 	"github.com/inconshreveable/log15"
 	"github.com/opentracing/opentracing-go/log"
 
+	"github.com/sourcegraph/sourcegraph/internal/gitserver"
 	"github.com/sourcegraph/sourcegraph/internal/gitserver/gitdomain"
 	"github.com/sourcegraph/sourcegraph/internal/goroutine"
 	"github.com/sourcegraph/sourcegraph/internal/observation"
-	"github.com/sourcegraph/sourcegraph/internal/vcs/git"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 // Updater periodically re-calculates the commit and upload visibility graph for repositories
@@ -68,7 +67,7 @@ func (u *Updater) Handle(ctx context.Context) error {
 			if updateErr == nil {
 				updateErr = err
 			} else {
-				updateErr = multierror.Append(updateErr, err)
+				updateErr = errors.Append(updateErr, err)
 			}
 		}
 	}
@@ -103,7 +102,7 @@ func (u *Updater) tryUpdate(ctx context.Context, repositoryID, dirtyToken int) (
 // the repository can be unmarked as long as the repository is not marked as dirty again before
 // the update completes.
 func (u *Updater) update(ctx context.Context, repositoryID, dirtyToken int) (err error) {
-	ctx, trace, endObservation := u.operations.commitUpdate.WithAndLogger(ctx, &err, observation.Args{
+	ctx, trace, endObservation := u.operations.commitUpdate.With(ctx, &err, observation.Args{
 		LogFields: []log.Field{
 			log.Int("repositoryID", repositoryID),
 			log.Int("dirtyToken", dirtyToken),
@@ -127,7 +126,7 @@ func (u *Updater) update(ctx context.Context, repositoryID, dirtyToken int) (err
 	// Decorate the commit graph with the set of processed uploads are visible from each commit,
 	// then bulk update the denormalized view in Postgres. We call this with an empty graph as well
 	// so that we end up clearing the stale data and bulk inserting nothing.
-	if err := u.dbStore.CalculateVisibleUploads(ctx, repositoryID, commitGraph, refDescriptions, u.maxAgeForNonStaleBranches, u.maxAgeForNonStaleTags, dirtyToken, time.Now()); err != nil {
+	if err := u.dbStore.CalculateVisibleUploads(ctx, repositoryID, commitGraph, refDescriptions, u.maxAgeForNonStaleBranches, u.maxAgeForNonStaleTags, dirtyToken); err != nil {
 		return errors.Wrap(err, "dbstore.CalculateVisibleUploads")
 	}
 
@@ -164,7 +163,7 @@ func (u *Updater) getCommitGraph(ctx context.Context, repositoryID int) (*gitdom
 	// back any more data than we wanted.
 	commitDate = commitDate.Add(-time.Second)
 
-	commitGraph, err := u.gitserverClient.CommitGraph(ctx, repositoryID, git.CommitGraphOptions{
+	commitGraph, err := u.gitserverClient.CommitGraph(ctx, repositoryID, gitserver.CommitGraphOptions{
 		AllRefs: true,
 		Since:   &commitDate,
 	})

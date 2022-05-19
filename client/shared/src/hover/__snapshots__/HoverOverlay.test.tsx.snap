@@ -3,7 +3,7 @@
 exports[`HoverOverlay actions and hover empty 1`] = `
 <DocumentFragment>
   <div
-    class="hoverOverlay"
+    class="card hoverOverlay"
     data-testid="hover-overlay"
     style="opacity: 1; visibility: visible; left: 0px; top: 0px;"
   >
@@ -24,7 +24,7 @@ exports[`HoverOverlay actions and hover empty 1`] = `
 exports[`HoverOverlay actions and hover error 1`] = `
 <DocumentFragment>
   <div
-    class="hoverOverlay"
+    class="card hoverOverlay"
     data-testid="hover-overlay"
     style="opacity: 1; visibility: visible; left: 0px; top: 0px;"
   >
@@ -33,7 +33,9 @@ exports[`HoverOverlay actions and hover error 1`] = `
       data-testid="hover-overlay-contents"
     >
       <div
+        aria-live="polite"
         class="hoverError"
+        role="alert"
       >
         M2
       </div>
@@ -45,7 +47,7 @@ exports[`HoverOverlay actions and hover error 1`] = `
 exports[`HoverOverlay actions and hover loading 1`] = `
 <DocumentFragment>
   <div
-    class="hoverOverlay"
+    class="card hoverOverlay"
     data-testid="hover-overlay"
     style="opacity: 1; visibility: visible; left: 0px; top: 0px;"
   >
@@ -68,7 +70,7 @@ exports[`HoverOverlay actions and hover loading 1`] = `
 exports[`HoverOverlay actions and hover present 1`] = `
 <DocumentFragment>
   <div
-    class="hoverOverlay"
+    class="card hoverOverlay"
     data-testid="hover-overlay"
     style="opacity: 1; visibility: visible; left: 0px; top: 0px;"
   >
@@ -112,7 +114,7 @@ exports[`HoverOverlay actions and hover undefined 1`] = `<DocumentFragment />`;
 exports[`HoverOverlay actions empty 1`] = `
 <DocumentFragment>
   <div
-    class="hoverOverlay"
+    class="card hoverOverlay"
     data-testid="hover-overlay"
     style="opacity: 1; visibility: visible; left: 0px; top: 0px;"
   >
@@ -129,7 +131,7 @@ exports[`HoverOverlay actions error 1`] = `<DocumentFragment />`;
 exports[`HoverOverlay actions error, hover present 1`] = `
 <DocumentFragment>
   <div
-    class="hoverOverlay"
+    class="card hoverOverlay"
     data-testid="hover-overlay"
     style="opacity: 1; visibility: visible; left: 0px; top: 0px;"
   >
@@ -155,7 +157,7 @@ exports[`HoverOverlay actions error, hover present 1`] = `
 exports[`HoverOverlay actions loading 1`] = `
 <DocumentFragment>
   <div
-    class="hoverOverlay"
+    class="card hoverOverlay"
     data-testid="hover-overlay"
     style="opacity: 1; visibility: visible; left: 0px; top: 0px;"
   >
@@ -170,7 +172,7 @@ exports[`HoverOverlay actions loading 1`] = `
 exports[`HoverOverlay actions present 1`] = `
 <DocumentFragment>
   <div
-    class="hoverOverlay"
+    class="card hoverOverlay"
     data-testid="hover-overlay"
     style="opacity: 1; visibility: visible; left: 0px; top: 0px;"
   >
@@ -201,7 +203,7 @@ exports[`HoverOverlay actions present 1`] = `
 exports[`HoverOverlay actions present, hover loading 1`] = `
 <DocumentFragment>
   <div
-    class="hoverOverlay"
+    class="card hoverOverlay"
     data-testid="hover-overlay"
     style="opacity: 1; visibility: visible; left: 0px; top: 0px;"
   >
@@ -240,7 +242,7 @@ exports[`HoverOverlay actions present, hover loading 1`] = `
 exports[`HoverOverlay actions, hover and alert present 1`] = `
 <DocumentFragment>
   <div
-    class="hoverOverlay"
+    class="card hoverOverlay"
     data-testid="hover-overlay"
     style="opacity: 1; visibility: visible; left: 0px; top: 0px;"
   >
@@ -263,7 +265,9 @@ exports[`HoverOverlay actions, hover and alert present 1`] = `
       class="hoverOverlayAlerts"
     >
       <div
+        aria-live="polite"
         class="alert"
+        role="alert"
       >
         <span
           class="hoverOverlayContent hoverOverlayContent"
@@ -319,7 +323,7 @@ exports[`HoverOverlay hover empty 1`] = `<DocumentFragment />`;
 exports[`HoverOverlay hover error 1`] = `
 <DocumentFragment>
   <div
-    class="hoverOverlay"
+    class="card hoverOverlay"
     data-testid="hover-overlay"
     style="opacity: 1; visibility: visible; left: 0px; top: 0px;"
   >
@@ -328,7 +332,9 @@ exports[`HoverOverlay hover error 1`] = `
       data-testid="hover-overlay-contents"
     >
       <div
+        aria-live="polite"
         class="hoverError"
+        role="alert"
       >
         M
       </div>
@@ -340,7 +346,7 @@ exports[`HoverOverlay hover error 1`] = `
 exports[`HoverOverlay hover error, actions present 1`] = `
 <DocumentFragment>
   <div
-    class="hoverOverlay"
+    class="card hoverOverlay"
     data-testid="hover-overlay"
     style="opacity: 1; visibility: visible; left: 0px; top: 0px;"
   >
@@ -349,7 +355,9 @@ exports[`HoverOverlay hover error, actions present 1`] = `
       data-testid="hover-overlay-contents"
     >
       <div
+        aria-live="polite"
         class="hoverError"
+        role="alert"
       >
         M
       </div>
@@ -377,7 +385,7 @@ exports[`HoverOverlay hover error, actions present 1`] = `
 exports[`HoverOverlay hover loading 1`] = `
 <DocumentFragment>
   <div
-    class="hoverOverlay"
+    class="card hoverOverlay"
     data-testid="hover-overlay"
     style="opacity: 1; visibility: visible; left: 0px; top: 0px;"
   >
@@ -400,7 +408,7 @@ exports[`HoverOverlay hover loading 1`] = `
 exports[`HoverOverlay hover present 1`] = `
 <DocumentFragment>
   <div
-    class="hoverOverlay"
+    class="card hoverOverlay"
     data-testid="hover-overlay"
     style="opacity: 1; visibility: visible; left: 0px; top: 0px;"
   >
@@ -426,7 +434,7 @@ exports[`HoverOverlay hover present 1`] = `
 exports[`HoverOverlay hover present, actions loading 1`] = `
 <DocumentFragment>
   <div
-    class="hoverOverlay"
+    class="card hoverOverlay"
     data-testid="hover-overlay"
     style="opacity: 1; visibility: visible; left: 0px; top: 0px;"
   >
@@ -452,7 +460,7 @@ exports[`HoverOverlay hover present, actions loading 1`] = `
 exports[`HoverOverlay multiple hovers present 1`] = `
 <DocumentFragment>
   <div
-    class="hoverOverlay"
+    class="card hoverOverlay"
     data-testid="hover-overlay"
     style="opacity: 1; visibility: visible; left: 0px; top: 0px;"
   >

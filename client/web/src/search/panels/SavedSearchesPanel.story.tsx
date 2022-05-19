@@ -1,14 +1,13 @@
 import { storiesOf } from '@storybook/react'
-import React from 'react'
-import { NEVER, of } from 'rxjs'
 
 import { SearchPatternType } from '@sourcegraph/shared/src/schema'
 import { NOOP_TELEMETRY_SERVICE } from '@sourcegraph/shared/src/telemetry/telemetryService'
+import { Typography } from '@sourcegraph/wildcard'
 
 import { WebStory } from '../../components/WebStory'
 
 import { SavedSearchesPanel } from './SavedSearchesPanel'
-import { _fetchSavedSearches, authUser } from './utils'
+import { savedSearchesPayload, authUser } from './utils'
 
 const { add } = storiesOf('web/search/panels/SavedSearchesPanel', module).addParameters({
     design: {
@@ -21,7 +20,7 @@ const { add } = storiesOf('web/search/panels/SavedSearchesPanel', module).addPar
 const props = {
     authenticatedUser: authUser,
     patternType: SearchPatternType.literal,
-    fetchSavedSearches: _fetchSavedSearches,
+    savedSearchesFragment: { savedSearches: savedSearchesPayload() },
     telemetryService: NOOP_TELEMETRY_SERVICE,
 }
 
@@ -29,14 +28,14 @@ add('SavedSearchesPanel', () => (
     <WebStory>
         {() => (
             <div style={{ maxWidth: '32rem' }}>
-                <h2>Populated</h2>
+                <Typography.H2>Populated</Typography.H2>
                 <SavedSearchesPanel {...props} />
 
-                <h2>Loading</h2>
-                <SavedSearchesPanel {...props} fetchSavedSearches={() => NEVER} />
+                <Typography.H2>Loading</Typography.H2>
+                <SavedSearchesPanel {...props} savedSearchesFragment={null} />
 
-                <h2>Empty</h2>
-                <SavedSearchesPanel {...props} fetchSavedSearches={() => of([])} />
+                <Typography.H2>Empty</Typography.H2>
+                <SavedSearchesPanel {...props} savedSearchesFragment={{ savedSearches: [] }} />
             </div>
         )}
     </WebStory>

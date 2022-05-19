@@ -6,10 +6,12 @@ env:
   PGDATABASE: sourcegraph
   PGSSLMODE: disable
   SG_DEV_MIGRATE_ON_APPLICATION_STARTUP: 'true'
+  INSECURE_DEV: true
 
   SRC_REPOS_DIR: $HOME/.sourcegraph/repos
   SRC_LOG_LEVEL: info
   SRC_LOG_FORMAT: condensed
+  SRC_TRACE_LOG: false
   # Set this to true to show an iTerm link to the file:line where the log message came from
   SRC_LOG_SOURCE_LINK: false
   SRC_GIT_SERVER_1: 127.0.0.1:3178
@@ -37,6 +39,7 @@ env:
   JAEGER_SERVER_URL: http://localhost:16686
   ZOEKT_HOST: localhost:3070
 
+  SRC_DEVELOPMENT: 'true'
   SRC_PROF_HTTP: ''
   SRC_PROF_SERVICES: |
     [
@@ -101,9 +104,8 @@ env:
   # This setting will be going away soon
   DISABLE_CNCF: notonmybox
 
-  # Code Insights uses a separate database, because it's easier to run TimescaleDB in
-  # Docker than install as a Postgres extension in dev environments.
-  CODEINSIGHTS_PGDATASOURCE: postgres://postgres:password@127.0.0.1:5435/postgres
+  # Code Insights uses a separate database to architecturally isolate the component from the rest of Sourcegraph.
+  CODEINSIGHTS_PGDATASOURCE: postgres://$PGUSER:$PGPASSWORD@$PGHOST:$PGPORT/$PGDATABASE
   DB_STARTUP_TIMEOUT: 120s # codeinsights-db needs more time to start in some instances.
   DISABLE_CODE_INSIGHTS_HISTORICAL: true
   DISABLE_CODE_INSIGHTS: true
@@ -198,7 +200,9 @@ commands:
       - cmd/worker
 
   enterprise-worker:
-    cmd: .bin/worker
+    cmd: |
+      export SOURCEGRAPH_LICENSE_GENERATION_KEY=$(cat ../dev-private/enterprise/dev/test-license-generation-key.pem)
+      .bin/worker
     install: |
       if [ -n "$DELVE" ]; then
         export GCFLAGS='all=-N -l'
@@ -245,11 +249,6 @@ commands:
   symbols:
     cmd: .bin/symbols
     install: |
-      # Remove old pcre libs that might still be lying around.
-      # TODO delete these two lines after 2021-10-24 (1 month after removal of pcre).
-      rm -f libsqlite3-pcre.dylib || true
-      rm -f libsqlite3-pcre.so || true
-
       if [ -n "$DELVE" ]; then
         export GCFLAGS='all=-N -l'
       fi
@@ -264,6 +263,27 @@ commands:
       - lib
       - internal
       - cmd/symbols
+
+  enterprise-symbols:
+    cmd: .bin/enterprise-symbols
+    install: |
+      if [ -n "$DELVE" ]; then
+        export GCFLAGS='all=-N -l'
+      fi
+
+      ./cmd/symbols/build-ctags.sh &&
+      go build -gcflags="$GCFLAGS" -o .bin/enterprise-symbols github.com/sourcegraph/sourcegraph/enterprise/cmd/symbols
+    checkBinary: .bin/enterprise-symbols
+    env:
+      CTAGS_COMMAND: cmd/symbols/universal-ctags-dev
+      CTAGS_PROCESSES: 2
+      USE_ROCKSKIP: 'false'
+    watch:
+      - lib
+      - internal
+      - cmd/symbols
+      - enterprise/cmd/symbols
+      - enterprise/internal/rockskip
 
   searcher:
     cmd: .bin/searcher
@@ -281,7 +301,7 @@ commands:
   caddy:
     ignoreStdout: true
     ignoreStderr: true
-    cmd: .bin/caddy_${CADDY_VERSION}_$([[ "$(go env GOOS)" = "darwin" ]] && echo "mac" || echo "$(go env GOOS)")_$(go env GOARCH) run --watch --config=dev/Caddyfile
+    cmd: .bin/caddy_${CADDY_VERSION} run --watch --config=dev/Caddyfile
     install: |
       case "$(go env GOOS)" in
         linux)
@@ -292,7 +312,7 @@ commands:
           ;;
       esac
       name="caddy_${CADDY_VERSION}_${os}_$(go env GOARCH)"
-      target="$PWD/.bin/$name"
+      target="$PWD/.bin/caddy_${CADDY_VERSION}"
       url="https://github.com/caddyserver/caddy/releases/download/v${CADDY_VERSION}/${name}.tar.gz"
 
       if [ ! -f "${target}" ]; then
@@ -338,7 +358,7 @@ commands:
         -o .bin/docsite_${DOCSITE_VERSION} && chmod +x .bin/docsite_${DOCSITE_VERSION}
       fi
     env:
-      DOCSITE_VERSION: v1.8.5 # Update DOCSITE_VERSION in all places (including outside this repo)
+      DOCSITE_VERSION: v1.8.6 # Update DOCSITE_VERSION in all places (including outside this repo)
 
   syntax-highlighter:
     ignoreStdout: true
@@ -346,11 +366,13 @@ commands:
     cmd: |
       docker run --name=syntax-highlighter --rm -p9238:9238 \
       -e WORKERS=1 -e ROCKET_ADDRESS=0.0.0.0 \
-      sourcegraph/syntax-highlighter@sha256:92a5c181dbf2d8aead5171c985139bf38c496bef2ac98afbd64c3612967fe5cc
+      sourcegraph/syntax-highlighter:insiders
     install: |
       # Remove containers by the old name, too.
       docker inspect syntect_server >/dev/null 2>&1 && docker rm -f syntect_server || true
       docker inspect syntax-highlighter >/dev/null 2>&1 && docker rm -f syntax-highlighter || true
+      # Pull syntax-highlighter latest insider image, only during install
+      docker pull -q sourcegraph/syntax-highlighter:insiders
     env:
       # This is not needed actually
       INSECURE_DEV: 1
@@ -362,7 +384,7 @@ commands:
         -index "$HOME/.sourcegraph/zoekt/index-$ZOEKT_NUM" \
         -hostname "localhost:$ZOEKT_HOSTNAME_PORT" \
         -interval 1m \
-        -listen ":$ZOEKT_LISTEN_PORT" \
+        -listen "127.0.0.1:$ZOEKT_LISTEN_PORT" \
         -cpu_fraction 0.25
     install: |
       mkdir -p .bin
@@ -402,11 +424,11 @@ commands:
 
   zoekt-webserver-0:
     <<: *zoekt_webserver_template
-    cmd: env PATH="${PWD}/.bin:$PATH" .bin/zoekt-webserver -index "$HOME/.sourcegraph/zoekt/index-0" -pprof -rpc -listen ":3070"
+    cmd: env PATH="${PWD}/.bin:$PATH" .bin/zoekt-webserver -index "$HOME/.sourcegraph/zoekt/index-0" -pprof -rpc -listen "127.0.0.1:3070"
 
   zoekt-webserver-1:
     <<: *zoekt_webserver_template
-    cmd: env PATH="${PWD}/.bin:$PATH" .bin/zoekt-webserver -index "$HOME/.sourcegraph/zoekt/index-1" -pprof -rpc -listen ":3071"
+    cmd: env PATH="${PWD}/.bin:$PATH" .bin/zoekt-webserver -index "$HOME/.sourcegraph/zoekt/index-1" -pprof -rpc -listen "127.0.0.1:3071"
 
   precise-code-intel-worker:
     cmd: .bin/precise-code-intel-worker
@@ -423,8 +445,8 @@ commands:
       - enterprise/internal
       - lib/codeintel
 
-  executor-template: &executor_template
-    # TMPDIR is set here so it's not set in the `install` process, which would trip up `go build`.
+  executor-template:
+    &executor_template # TMPDIR is set here so it's not set in the `install` process, which would trip up `go build`.
     cmd: |
       env TMPDIR="$HOME/.sourcegraph/executor-temp" .bin/executor
     install: |
@@ -448,7 +470,7 @@ commands:
       env TMPDIR="$HOME/.sourcegraph/indexer-temp" .bin/executor
     env:
       EXECUTOR_QUEUE_NAME: codeintel
-      SRC_PROF_HTTP: ":6092"
+      SRC_PROF_HTTP: ':6092'
 
   batches-executor:
     <<: *executor_template
@@ -457,7 +479,7 @@ commands:
     env:
       EXECUTOR_QUEUE_NAME: batches
       EXECUTOR_MAXIMUM_NUM_JOBS: 8
-      SRC_PROF_HTTP: ":6093"
+      SRC_PROF_HTTP: ':6093'
 
   # If you want to use this, either start it with `sg run batches-executor-firecracker` or
   # modify the `commandsets.batches` in your local `sg.config.overwrite.yaml`
@@ -470,7 +492,7 @@ commands:
     env:
       EXECUTOR_USE_FIRECRACKER: true
       EXECUTOR_QUEUE_NAME: batches
-      SRC_PROF_HTTP: ":6093"
+      SRC_PROF_HTTP: ':6093'
 
   minio:
     cmd: |
@@ -491,32 +513,9 @@ commands:
     env:
       MINIO_DISK: $HOME/.sourcegraph-dev/data/minio
       MINIO_LOGS: $HOME/.sourcegraph-dev/logs/minio
-      MINIO_LOG_FILE: $HOME/.sourcegraph-dev/logs/minio/minio.log"
+      MINIO_LOG_FILE: $HOME/.sourcegraph-dev/logs/minio/minio.log
       IMAGE: sourcegraph/minio
       CONTAINER: minio
-
-  codeinsights-db:
-    cmd: |
-      docker inspect $CONTAINER >/dev/null 2>&1 && docker rm -f $CONTAINER
-      docker run --rm \
-        --name=${CONTAINER} \
-        --cpus=1 \
-        --memory=1g \
-        -e POSTGRES_PASSWORD=password \
-        -p 0.0.0.0:$PORT:5432 \
-        -v $DISK:/var/lib/postgresql/data \
-        $IMAGE >$LOG_FILE 2>&1
-    install: |
-      mkdir -p $LOGS
-      mkdir -p $DISK
-      CACHE=true ./docker-images/codeinsights-db/build.sh >$LOG_FILE 2>&1
-    env:
-      LOGS: $HOME/.sourcegraph-dev/logs/codeinsights-db
-      LOG_FILE: $HOME/.sourcegraph-dev/logs/codeinsights-db/codeinsights-db.log
-      DISK: $HOME/.sourcegraph-dev/data/codeinsights-db
-      IMAGE: sourcegraph/codeinsights-db:dev
-      CONTAINER: codeinsights-db
-      PORT: 5435
 
   redis-postgres:
     # Add the following overwrites to your sg.config.overwrite.yaml to use the docker-compose
@@ -534,13 +533,12 @@ commands:
 
   jaeger:
     cmd: |
-      .bin/jaeger-all-in-one-${JAEGER_VERSION}-$(go env GOOS)-$(go env GOARCH) --log-level ${JAEGER_LOG_LEVEL}
+      .bin/jaeger-all-in-one-${JAEGER_VERSION} --log-level ${JAEGER_LOG_LEVEL}
     install: |
       set -e
       mkdir -p "${JAEGER_DISK}"
-
       suffix="${JAEGER_VERSION}-$(go env GOOS)-$(go env GOARCH)"
-      target="$PWD/.bin/jaeger-all-in-one-${suffix}"
+      target="$PWD/.bin/jaeger-all-in-one-${JAEGER_VERSION}"
       url="https://github.com/jaegertracing/jaeger/releases/download/v${JAEGER_VERSION}/jaeger-${suffix}.tar.gz"
 
       if [ ! -f "${target}" ]; then
@@ -602,8 +600,8 @@ commands:
       CONTAINER: grafana
       PORT: 3370
       # docker containers must access things via docker host on non-linux platforms
-      DOCKER_USER: ""
-      ADD_HOST_FLAG: ""
+      DOCKER_USER: ''
+      ADD_HOST_FLAG: ''
       CACHE: false
     watch:
       - monitoring
@@ -653,11 +651,11 @@ commands:
       CONTAINER: prometheus
       PORT: 9090
       CONFIG_DIR: docker-images/prometheus/config
-      DOCKER_USER: ""
-      DOCKER_NET: ""
+      DOCKER_USER: ''
+      DOCKER_NET: ''
       PROM_TARGETS: dev/prometheus/all/prometheus_targets.yml
       SRC_FRONTEND_INTERNAL: host.docker.internal:3090
-      ADD_HOST_FLAG: ""
+      ADD_HOST_FLAG: ''
       DISABLE_SOURCEGRAPH_CONFIG: false
 
   postgres_exporter:
@@ -684,7 +682,7 @@ commands:
       docker pull index.docker.io/grafana/loki:$LOKI_VERSION
     env:
       LOKI_DISK: $HOME/.sourcegraph-dev/data/loki
-      LOKI_VERSION: "2.3.0"
+      LOKI_VERSION: '2.3.0'
       LOKI_LOG_FILE: $HOME/.sourcegraph-dev/logs/loki/loki.log
 
   storybook:
@@ -697,33 +695,8 @@ commands:
     cmd: env
 
   bext:
-    cmd: yarn --cwd client/browser dev
+    cmd: yarn workspace @sourcegraph/browser dev
     install: yarn
-
-checks:
-  docker:
-    checkFunc: docker
-    failMessage: "Failed to run 'docker version'. Please make sure Docker is running."
-
-  docker-compose:
-    cmd: docker-compose version
-    failMessage: "Failed to run 'docker-compose version'. Please make sure Docker is running."
-
-  go:
-    checkFunc: go
-    failMessage: 'Failed to get correct Go version. Run "sg setup" to make sure you have the right version.'
-
-  redis:
-    checkFunc: redis
-    failMessage: 'Failed to connect to Redis on port 6379. Please make sure Redis is running.'
-
-  postgres:
-    checkFunc: postgres
-    failMessage: 'Failed to connect to Postgres database. Make sure environment variables are setup correctly so that psql can connect.'
-
-  git-version:
-    checkFunc: git
-    failMessage: 'Failed to get correct git version. Run "sg setup" to make sure you have the right version.'
 
 defaultCommandset: enterprise
 commandsets:
@@ -734,7 +707,7 @@ commandsets:
       - docker
       - redis
       - postgres
-      - git-version
+      - git
     commands:
       - frontend
       - worker
@@ -758,7 +731,7 @@ commandsets:
       - docker
       - redis
       - postgres
-      - git-version
+      - git
     commands:
       - enterprise-frontend
       - enterprise-worker
@@ -766,7 +739,7 @@ commandsets:
       - enterprise-web
       - gitserver
       - searcher
-      - symbols
+      - enterprise-symbols
       - caddy
       - docsite
       - syntax-highlighter
@@ -776,18 +749,25 @@ commandsets:
       - zoekt-webserver-0
       - zoekt-webserver-1
 
+  enterprise-e2e:
+    <<: *enterprise_set
+    env:
+      # EXTSVC_CONFIG_FILE being set prevents the e2e test suite to add
+      # additional connections.
+      EXTSVC_CONFIG_FILE: ""
+
   dotcom:
     <<: *enterprise_set
     env:
       SOURCEGRAPHDOTCOM_MODE: true
 
-  enterprise-codeintel:
+  codeintel: &codeintel_set
     requiresDevPrivate: true
     checks:
       - docker
       - redis
       - postgres
-      - git-version
+      - git
     commands:
       - enterprise-frontend
       - enterprise-worker
@@ -795,7 +775,7 @@ commandsets:
       - enterprise-web
       - gitserver
       - searcher
-      - symbols
+      - enterprise-symbols
       - caddy
       - docsite
       - syntax-highlighter
@@ -811,13 +791,16 @@ commandsets:
       - grafana
       - prometheus
 
+  enterprise-codeintel:
+    <<: *codeintel_set
+
   enterprise-codeinsights:
     requiresDevPrivate: true
     checks:
       - docker
       - redis
       - postgres
-      - git-version
+      - git
     commands:
       - enterprise-frontend
       - enterprise-worker
@@ -834,7 +817,6 @@ commandsets:
       - zoekt-indexserver-1
       - zoekt-webserver-0
       - zoekt-webserver-1
-      - codeinsights-db
     env:
       DISABLE_CODE_INSIGHTS_HISTORICAL: false
       DISABLE_CODE_INSIGHTS: false
@@ -845,7 +827,7 @@ commandsets:
       - docker
       - redis
       - postgres
-      - git-version
+      - git
     commands:
       - enterprise-frontend
       - enterprise-worker
@@ -865,7 +847,7 @@ commandsets:
       - docker
       - redis
       - postgres
-      - git-version
+      - git
     commands:
       - enterprise-frontend
       - enterprise-worker
@@ -873,7 +855,7 @@ commandsets:
       - enterprise-web
       - gitserver
       - searcher
-      - symbols
+      - enterprise-symbols
       - caddy
       - docsite
       - syntax-highlighter
@@ -890,7 +872,7 @@ commandsets:
       - docker
       - redis
       - postgres
-      - git-version
+      - git
     commands:
       - enterprise-frontend
       - enterprise-repo-updater
@@ -968,16 +950,16 @@ tests:
     install: ENTERPRISE=1 yarn build-web
 
   bext:
-    cmd: yarn --cwd client/browser test
+    cmd: yarn workspace @sourcegraph/browser test
 
   bext-build:
-    cmd: EXTENSION_PERMISSIONS_ALL_URLS=true yarn --cwd client/browser build
+    cmd: EXTENSION_PERMISSIONS_ALL_URLS=true yarn workspace @sourcegraph/browser build
 
   bext-integration:
-    cmd: yarn --cwd client/browser test-integration
+    cmd: yarn workspace @sourcegraph/browser test-integration
 
   bext-e2e:
-    cmd: yarn --cwd client/browser mocha ./src/end-to-end/github.test.ts ./src/end-to-end/gitlab.test.ts
+    cmd: yarn workspace @sourcegraph/browser mocha ./src/end-to-end/github.test.ts ./src/end-to-end/gitlab.test.ts
     env:
       SOURCEGRAPH_BASE_URL: https://sourcegraph.com
 
@@ -985,11 +967,30 @@ tests:
     cmd: yarn run jest --testPathIgnorePatterns end-to-end regression integration storybook
 
   frontend-e2e:
-    cmd: yarn run mocha ./client/web/src/end-to-end/end-to-end.test.ts
+    preamble: |
+      'sg start enterprise-e2e' must be already running for these tests to work.
+
+      If you run into authentication issues, you can run the following commands to fix them:
+
+        sg db reset-pg && sg db add-user --username 'test' --password 'supersecurepassword'
+
+      The above command resets the database and creates a user like so:
+
+        👉 User test (test@sourcegraph.com) has been created and its password is supersecurepassword .
+    cmd: |
+      yarn run test-e2e
     env:
-      TS_NODE_PROJECT: client/web/src/end-to-end/tsconfig.json
+      TEST_USER_EMAIL: test@sourcegraph.com
+      TEST_USER_PASSWORD: supersecurepassword
+      SOURCEGRAPH_BASE_URL: https://sourcegraph.test:3443
+      BROWSER: chrome
+    external_secrets:
+      GH_TOKEN:
+        provider: "gcloud"
+        project: "sourcegraph-ci"
+        name: "BUILDKITE_GITHUBDOTCOM_TOKEN"
 
   docsite:
     cmd: .bin/docsite_${DOCSITE_VERSION} check ./doc
     env:
-      DOCSITE_VERSION: v1.8.5 # Update DOCSITE_VERSION everywhere in all places (including outside this repo)
+      DOCSITE_VERSION: v1.8.6 # Update DOCSITE_VERSION everywhere in all places (including outside this repo)

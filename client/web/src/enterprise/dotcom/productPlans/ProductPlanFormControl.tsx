@@ -1,5 +1,6 @@
-import classNames from 'classnames'
 import React, { useCallback, useMemo } from 'react'
+
+import classNames from 'classnames'
 import { Observable } from 'rxjs'
 import { catchError, map, startWith, tap } from 'rxjs/operators'
 
@@ -32,7 +33,7 @@ const LOADING = 'loading' as const
 /**
  * Displays a form group for selecting a product plan.
  */
-export const ProductPlanFormControl: React.FunctionComponent<Props> = ({
+export const ProductPlanFormControl: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
     value,
     onChange,
     disabled,

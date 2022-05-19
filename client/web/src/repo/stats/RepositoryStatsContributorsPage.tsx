@@ -1,17 +1,16 @@
+import * as React from 'react'
+
 import classNames from 'classnames'
 import { escapeRegExp, isEqual } from 'lodash'
-import * as React from 'react'
 import { RouteComponentProps } from 'react-router-dom'
 import { Observable, Subject } from 'rxjs'
 import { map } from 'rxjs/operators'
 
 import { Form } from '@sourcegraph/branded/src/components/Form'
-import { createAggregateError } from '@sourcegraph/common'
+import { createAggregateError, numberWithCommas, pluralize, memoizeObservable } from '@sourcegraph/common'
 import { gql } from '@sourcegraph/http-client'
 import { Scalars, SearchPatternType } from '@sourcegraph/shared/src/graphql-operations'
 import * as GQL from '@sourcegraph/shared/src/schema'
-import { memoizeObservable } from '@sourcegraph/shared/src/util/memoizeObservable'
-import { numberWithCommas, pluralize } from '@sourcegraph/shared/src/util/strings'
 import { buildSearchURLQuery } from '@sourcegraph/shared/src/util/url'
 import { Button, ButtonGroup, Link, CardHeader, CardBody, Card } from '@sourcegraph/wildcard'
 
@@ -25,6 +24,7 @@ import { eventLogger } from '../../tracking/eventLogger'
 import { UserAvatar } from '../../user/UserAvatar'
 
 import { RepositoryStatsAreaPageProps } from './RepositoryStatsArea'
+
 import styles from './RepositoryStatsContributorsPage.module.scss'
 
 interface QuerySpec {
@@ -39,7 +39,7 @@ interface RepositoryContributorNodeProps extends QuerySpec {
     globbing: boolean
 }
 
-const RepositoryContributorNode: React.FunctionComponent<RepositoryContributorNodeProps> = ({
+const RepositoryContributorNode: React.FunctionComponent<React.PropsWithChildren<RepositoryContributorNodeProps>> = ({
     node,
     repoName,
     revisionRange,
@@ -60,9 +60,9 @@ const RepositoryContributorNode: React.FunctionComponent<RepositoryContributorNo
         .replace(/\s+/, ' ')
 
     return (
-        <div className={classNames('list-group-item py-2', styles.repositoryContributorNode)}>
+        <li className={classNames('list-group-item py-2', styles.repositoryContributorNode)}>
             <div className={styles.person}>
-                <UserAvatar className="icon-inline mr-2" user={node.person} />
+                <UserAvatar inline={true} className="mr-2" user={node.person} />
                 <PersonLink userClassName="font-weight-bold" person={node.person} />
             </div>
             <div className={styles.commits}>
@@ -93,7 +93,7 @@ const RepositoryContributorNode: React.FunctionComponent<RepositoryContributorNo
                     </Link>
                 </div>
             </div>
-        </div>
+        </li>
     )
 }
 
@@ -247,7 +247,7 @@ export class RepositoryStatsContributorsPage extends React.PureComponent<Props, 
                                         onChange={this.onChange}
                                     />
                                     <div className="input-group-append">
-                                        <ButtonGroup>
+                                        <ButtonGroup aria-label="Time period presets">
                                             <Button
                                                 className={classNames(
                                                     styles.btnNoLeftRoundedCorners,
@@ -352,7 +352,7 @@ export class RepositoryStatsContributorsPage extends React.PureComponent<Props, 
                     </CardBody>
                 </Card>
                 <FilteredContributorsConnection
-                    listClassName="list-group list-group-flush"
+                    listClassName="list-group list-group-flush test-filtered-contributors-connection"
                     noun="contributor"
                     pluralNoun="contributors"
                     queryConnection={this.queryRepositoryContributors}

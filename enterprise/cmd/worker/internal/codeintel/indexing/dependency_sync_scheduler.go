@@ -3,15 +3,13 @@ package indexing
 import (
 	"context"
 	"strconv"
+	"strings"
 	"time"
 
-	"github.com/cockroachdb/errors"
-	"github.com/hashicorp/go-multierror"
-	"github.com/inconshreveable/log15"
-
-	"github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/stores/dbstore"
 	"github.com/sourcegraph/sourcegraph/internal/actor"
-	dbstore2 "github.com/sourcegraph/sourcegraph/internal/codeintel/stores/dbstore"
+	"github.com/sourcegraph/sourcegraph/internal/codeintel/dependencies"
+	"github.com/sourcegraph/sourcegraph/internal/codeintel/stores/dbstore"
+	"github.com/sourcegraph/sourcegraph/internal/codeintel/stores/shared"
 	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc"
 	"github.com/sourcegraph/sourcegraph/internal/observation"
@@ -19,11 +17,13 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/workerutil/dbworker"
 	dbworkerstore "github.com/sourcegraph/sourcegraph/internal/workerutil/dbworker/store"
 	"github.com/sourcegraph/sourcegraph/lib/codeintel/precise"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
+	"github.com/sourcegraph/sourcegraph/lib/log"
 )
 
 var schemeToExternalService = map[string]string{
-	dbstore2.JVMPackagesScheme: extsvc.KindJVMPackages,
-	dbstore2.NPMPackagesScheme: extsvc.KindNPMPackages,
+	dependencies.JVMPackagesScheme: extsvc.KindJVMPackages,
+	dependencies.NpmPackagesScheme: extsvc.KindNpmPackages,
 }
 
 // NewDependencySyncScheduler returns a new worker instance that processes
@@ -57,7 +57,7 @@ type dependencySyncSchedulerHandler struct {
 	extsvcStore ExternalServiceStore
 }
 
-func (h *dependencySyncSchedulerHandler) Handle(ctx context.Context, record workerutil.Record) error {
+func (h *dependencySyncSchedulerHandler) Handle(ctx context.Context, logger log.Logger, record workerutil.Record) error {
 	if !autoIndexingEnabled() {
 		return nil
 	}
@@ -70,7 +70,7 @@ func (h *dependencySyncSchedulerHandler) Handle(ctx context.Context, record work
 	}
 	defer func() {
 		if closeErr := scanner.Close(); closeErr != nil {
-			err = multierror.Append(err, errors.Wrap(closeErr, "dbstore.ReferencesForUpload.Close"))
+			err = errors.Append(err, errors.Wrap(closeErr, "dbstore.ReferencesForUpload.Close"))
 		}
 	}()
 
@@ -90,13 +90,9 @@ func (h *dependencySyncSchedulerHandler) Handle(ctx context.Context, record work
 			break
 		}
 
-		pkg := precise.Package{
-			Scheme:  packageReference.Package.Scheme,
-			Name:    packageReference.Package.Name,
-			Version: packageReference.Package.Version,
-		}
+		pkg := newPackage(packageReference.Package)
 
-		extsvcKind, ok := schemeToExternalService[packageReference.Scheme]
+		extsvcKind, ok := schemeToExternalService[pkg.Scheme]
 		// add entry for empty string/kind here so dependencies such as lsif-go ones still get
 		// an associated dependency indexing job
 		kinds[extsvcKind] = struct{}{}
@@ -115,23 +111,27 @@ func (h *dependencySyncSchedulerHandler) Handle(ctx context.Context, record work
 	}
 
 	var nextSync time.Time
+	kindsArray := kindsToArray(kinds)
 	// If len == 0, it will return all external services, which we definitely don't want.
-	if len(kindsToArray(kinds)) > 0 {
+	if len(kindsArray) > 0 {
 		nextSync = time.Now()
 		externalServices, err := h.extsvcStore.List(ctx, database.ExternalServicesListOptions{
-			Kinds: kindsToArray(kinds),
+			Kinds: kindsArray,
 		})
 		if err != nil {
 			if len(errs) == 0 {
 				return errors.Wrap(err, "dbstore.List")
 			} else {
-				return multierror.Append(err, errs...)
+				return errors.Append(err, errs...)
 			}
 		}
 
-		log15.Info("syncing external services",
-			"upload", job.UploadID, "numExtSvc", len(externalServices), "job", job.ID, "schemaKinds", kinds,
-			"newRepos", newDependencyReposInserted, "existingInserts", oldDependencyReposInserted)
+		logger.Info("syncing external services",
+			log.Int("upload", job.UploadID),
+			log.Int("numExtSvc", len(externalServices)),
+			log.Strings("schemaKinds", kindsArray),
+			log.Int("newRepos", newDependencyReposInserted),
+			log.Int("existingInserts", oldDependencyReposInserted))
 
 		for _, externalService := range externalServices {
 			externalService.NextSyncAt = nextSync
@@ -141,7 +141,7 @@ func (h *dependencySyncSchedulerHandler) Handle(ctx context.Context, record work
 			}
 		}
 	} else {
-		log15.Info("no package schema kinds to sync external services for", "upload", job.UploadID, "job", job.ID)
+		logger.Info("no package schema kinds to sync external services for", log.Int("upload", job.UploadID), log.Int("job", job.ID))
 	}
 
 	shouldIndex, err := h.shouldIndexDependencies(ctx, h.dbStore, job.UploadID)
@@ -166,11 +166,30 @@ func (h *dependencySyncSchedulerHandler) Handle(ctx context.Context, record work
 		return errs[0]
 	}
 
-	return multierror.Append(nil, errs...)
+	return errors.Append(nil, errs...)
+}
+
+// newPackage constructs a precise.Package from the given shared.Package,
+// applying any normalization or necessary transformations that lsif uploads
+// require for internal consistency.
+func newPackage(pkg shared.Package) precise.Package {
+	p := precise.Package{
+		Scheme:  pkg.Scheme,
+		Name:    pkg.Name,
+		Version: pkg.Version,
+	}
+
+	switch pkg.Scheme {
+	case dependencies.JVMPackagesScheme:
+		p.Name = strings.TrimPrefix(p.Name, "maven/")
+		p.Name = strings.ReplaceAll(p.Name, "/", ":")
+	}
+
+	return p
 }
 
 func (h *dependencySyncSchedulerHandler) insertDependencyRepo(ctx context.Context, pkg precise.Package) (new bool, err error) {
-	ctx, endObservation := dependencyReposOps.InsertCloneableDependencyRepo.With(ctx, &err, observation.Args{
+	ctx, _, endObservation := dependencyReposOps.InsertCloneableDependencyRepo.With(ctx, &err, observation.Args{
 		MetricLabelValues: []string{pkg.Scheme},
 	})
 	defer func() {
@@ -186,14 +205,18 @@ func (h *dependencySyncSchedulerHandler) insertDependencyRepo(ctx context.Contex
 
 // shouldIndexDependencies returns true if the given upload should undergo dependency
 // indexing. Currently, we're only enabling dependency indexing for a repositories that
-// were indexed via lsif-go, lsif-java and lsif-tsc.
+// were indexed via lsif-go, scip-java and lsif-tsc.
 func (h *dependencySyncSchedulerHandler) shouldIndexDependencies(ctx context.Context, store DBStore, uploadID int) (bool, error) {
 	upload, _, err := store.GetUploadByID(ctx, uploadID)
 	if err != nil {
 		return false, errors.Wrap(err, "dbstore.GetUploadByID")
 	}
 
-	return upload.Indexer == "lsif-go" || upload.Indexer == "lsif-java" || upload.Indexer == "lsif-tsc", nil
+	return upload.Indexer == "lsif-go" ||
+		upload.Indexer == "scip-java" ||
+		upload.Indexer == "lsif-java" ||
+		upload.Indexer == "lsif-tsc" ||
+		upload.Indexer == "lsif-typescript", nil
 }
 
 func kindsToArray(k map[string]struct{}) (s []string) {

@@ -1,7 +1,8 @@
+import React, { useCallback, useState } from 'react'
+
 import classNames from 'classnames'
 import { formatDistanceToNow, isBefore, parseISO } from 'date-fns'
 import TimerOutlineIcon from 'mdi-react/TimerOutlineIcon'
-import React, { useCallback, useState } from 'react'
 
 import { Scalars } from '@sourcegraph/shared/src/graphql-operations'
 
@@ -42,7 +43,11 @@ interface Props {
     className?: string
 }
 
-const DynamicChangesetStatusScheduled: React.FunctionComponent<Props> = ({ id, label, className }) => {
+const DynamicChangesetStatusScheduled: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
+    id,
+    label,
+    className,
+}) => {
     // Calculating the estimate is just expensive enough that we don't want to
     // do it for every changeset. (If we did, we'd just request the field when
     // we make the initial GraphQL call to list the changesets.)
@@ -92,17 +97,16 @@ const DynamicChangesetStatusScheduled: React.FunctionComponent<Props> = ({ id, l
     )
 }
 
-const StaticChangesetStatusScheduled: React.FunctionComponent<Pick<Props, 'label' | 'className'>> = ({
-    label,
-    className,
-}) => (
+const StaticChangesetStatusScheduled: React.FunctionComponent<
+    React.PropsWithChildren<Pick<Props, 'label' | 'className'>>
+> = ({ label, className }) => (
     <div className={classNames(iconClassNames, className)}>
         <TimerOutlineIcon />
         {label}
     </div>
 )
 
-export const ChangesetStatusScheduled: React.FunctionComponent<Partial<Props>> = ({
+export const ChangesetStatusScheduled: React.FunctionComponent<React.PropsWithChildren<Partial<Props>>> = ({
     id,
     label = <span>Scheduled</span>,
     className,

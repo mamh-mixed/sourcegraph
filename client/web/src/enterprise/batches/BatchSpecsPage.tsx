@@ -1,14 +1,12 @@
-import MapSearchIcon from 'mdi-react/MapSearchIcon'
 import React, { useCallback, useMemo } from 'react'
+
+import MapSearchIcon from 'mdi-react/MapSearchIcon'
 import { RouteComponentProps } from 'react-router'
 
 import { ThemeProps } from '@sourcegraph/shared/src/theme'
-import {
-    FilteredConnection,
-    FilteredConnectionQueryArguments,
-} from '@sourcegraph/web/src/components/FilteredConnection'
-import { Container, PageHeader } from '@sourcegraph/wildcard'
+import { Container, PageHeader, Typography } from '@sourcegraph/wildcard'
 
+import { FilteredConnection, FilteredConnectionQueryArguments } from '../../components/FilteredConnection'
 import { PageTitle } from '../../components/PageTitle'
 import { BatchSpecListFields, Scalars } from '../../graphql-operations'
 
@@ -17,11 +15,12 @@ import {
     queryBatchChangeBatchSpecs as _queryBatchChangeBatchSpecs,
 } from './backend'
 import { BatchSpecNode, BatchSpecNodeProps } from './BatchSpecNode'
+
 import styles from './BatchSpecsPage.module.scss'
 
 export interface BatchSpecsPageProps extends Omit<BatchSpecListProps, 'currentSpecID'> {}
 
-export const BatchSpecsPage: React.FunctionComponent<BatchSpecsPageProps> = props => (
+export const BatchSpecsPage: React.FunctionComponent<React.PropsWithChildren<BatchSpecsPageProps>> = props => (
     <>
         <PageTitle title="Batch specs" />
         <PageHeader
@@ -42,7 +41,9 @@ export interface BatchChangeBatchSpecListProps extends Omit<BatchSpecListProps, 
     queryBatchChangeBatchSpecs?: typeof _queryBatchChangeBatchSpecs
 }
 
-export const BatchChangeBatchSpecList: React.FunctionComponent<BatchChangeBatchSpecListProps> = ({
+export const BatchChangeBatchSpecList: React.FunctionComponent<
+    React.PropsWithChildren<BatchChangeBatchSpecListProps>
+> = ({
     history,
     location,
     batchChangeID,
@@ -72,7 +73,7 @@ export interface BatchSpecListProps extends ThemeProps, Pick<RouteComponentProps
     now?: () => Date
 }
 
-export const BatchSpecList: React.FunctionComponent<BatchSpecListProps> = ({
+export const BatchSpecList: React.FunctionComponent<React.PropsWithChildren<BatchSpecListProps>> = ({
     history,
     location,
     currentSpecID,
@@ -112,16 +113,18 @@ export const BatchSpecList: React.FunctionComponent<BatchSpecListProps> = ({
     )
 }
 
-const Header: React.FunctionComponent<{}> = () => (
+const Header: React.FunctionComponent<React.PropsWithChildren<{}>> = () => (
     <>
         <span className="d-none d-md-block" />
-        <h5 className="p-2 d-none d-md-block text-uppercase text-center text-nowrap">State</h5>
-        <h5 className="p-2 d-none d-md-block text-uppercase text-nowrap">Batch spec</h5>
-        <h5 className="d-none d-md-block text-uppercase text-center text-nowrap">Execution time</h5>
+        <Typography.H5 className="p-2 d-none d-md-block text-uppercase text-center text-nowrap">State</Typography.H5>
+        <Typography.H5 className="p-2 d-none d-md-block text-uppercase text-nowrap">Batch spec</Typography.H5>
+        <Typography.H5 className="d-none d-md-block text-uppercase text-center text-nowrap">
+            Execution time
+        </Typography.H5>
     </>
 )
 
-const EmptyList: React.FunctionComponent<{}> = () => (
+const EmptyList: React.FunctionComponent<React.PropsWithChildren<{}>> = () => (
     <div className="text-muted text-center mb-3 w-100">
         <MapSearchIcon className="icon" />
         <div className="pt-2">No batch specs have been created so far.</div>

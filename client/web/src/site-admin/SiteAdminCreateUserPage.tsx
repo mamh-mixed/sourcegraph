@@ -1,5 +1,6 @@
-import classNames from 'classnames'
 import * as React from 'react'
+
+import classNames from 'classnames'
 import { RouteComponentProps } from 'react-router'
 import { Subject, Subscription } from 'rxjs'
 import { catchError, mergeMap, tap } from 'rxjs/operators'
@@ -8,7 +9,7 @@ import { ErrorAlert } from '@sourcegraph/branded/src/components/alerts'
 import { Form } from '@sourcegraph/branded/src/components/Form'
 import { asError } from '@sourcegraph/common'
 import * as GQL from '@sourcegraph/shared/src/schema'
-import { Button, Link, Alert } from '@sourcegraph/wildcard'
+import { Button, Link, Alert, Typography } from '@sourcegraph/wildcard'
 
 import { EmailInput, UsernameInput } from '../auth/SignInSignUpCommon'
 import { CopyableText } from '../components/CopyableText'
@@ -16,6 +17,7 @@ import { PageTitle } from '../components/PageTitle'
 import { eventLogger } from '../tracking/eventLogger'
 
 import { createUser } from './backend'
+
 import styles from './SiteAdminCreateUserPage.module.scss'
 
 interface State {
@@ -92,7 +94,7 @@ export class SiteAdminCreateUserPage extends React.Component<RouteComponentProps
         return (
             <div className="site-admin-create-user-page">
                 <PageTitle title="Create user - Admin" />
-                <h2>Create user account</h2>
+                <Typography.H2>Create user account</Typography.H2>
                 <p>
                     Create a new user account
                     {window.context.resetPasswordEnabled

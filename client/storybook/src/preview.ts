@@ -1,9 +1,10 @@
 import 'focus-visible'
+import { ReactElement } from 'react'
+
 import { configureActions } from '@storybook/addon-actions'
 import { withConsole } from '@storybook/addon-console'
 import { DecoratorFunction } from '@storybook/addons'
 import isChromatic from 'chromatic/isChromatic'
-import { ReactElement } from 'react'
 import { withDesign } from 'storybook-addon-designs'
 
 import { setLinkComponent, AnchorLink } from '@sourcegraph/wildcard'
@@ -19,6 +20,7 @@ export const parameters = {
     options: {
         storySort: {
             order: ['wildcard', 'shared', 'branded', '*'],
+            method: 'alphabetical',
         },
     },
     darkMode: {
@@ -28,6 +30,8 @@ export const parameters = {
         light: themeLight,
         dark: themeDark,
     },
+    // disables snapshotting for all stories by default
+    chromatic: { disableSnapshot: true },
 }
 
 configureActions({ depth: 100, limit: 20 })

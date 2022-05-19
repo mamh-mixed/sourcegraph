@@ -8,12 +8,13 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/cockroachdb/errors"
 	"github.com/inconshreveable/log15"
 
 	"github.com/sourcegraph/sourcegraph/internal/actor"
 	"github.com/sourcegraph/sourcegraph/internal/api"
 	"github.com/sourcegraph/sourcegraph/internal/gitserver/protocol"
+	"github.com/sourcegraph/sourcegraph/internal/types"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 func (s *Server) repoInfo(ctx context.Context, repo api.RepoName) (*protocol.RepoInfo, error) {
@@ -63,7 +64,7 @@ func (s *Server) repoInfo(ctx context.Context, repo api.RepoName) (*protocol.Rep
 	return &resp, nil
 }
 
-func (s *Server) repoCloneProgress(repo api.RepoName) (*protocol.RepoCloneProgress, error) {
+func (s *Server) repoCloneProgress(repo api.RepoName) *protocol.RepoCloneProgress {
 	dir := s.dir(repo)
 	resp := protocol.RepoCloneProgress{
 		Cloned: repoCloned(dir),
@@ -73,7 +74,7 @@ func (s *Server) repoCloneProgress(repo api.RepoName) (*protocol.RepoCloneProgre
 		resp.CloneInProgress = true
 		resp.CloneProgress = "This will never finish cloning"
 	}
-	return &resp, nil
+	return &resp
 }
 
 func (s *Server) handleRepoInfo(w http.ResponseWriter, r *http.Request) {
@@ -128,11 +129,7 @@ func (s *Server) handleRepoCloneProgress(w http.ResponseWriter, r *http.Request)
 		Results: make(map[api.RepoName]*protocol.RepoCloneProgress, len(req.Repos)),
 	}
 	for _, repoName := range req.Repos {
-		result, err := s.repoCloneProgress(repoName)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+		result := s.repoCloneProgress(repoName)
 		resp.Results[repoName] = result
 	}
 
@@ -149,7 +146,7 @@ func (s *Server) handleRepoDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.deleteRepo(req.Repo); err != nil {
+	if err := s.deleteRepo(r.Context(), req.Repo); err != nil {
 		log15.Error("failed to delete repository", "repo", req.Repo, "error", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -157,6 +154,16 @@ func (s *Server) handleRepoDelete(w http.ResponseWriter, r *http.Request) {
 	log15.Info("deleted repository", "repo", req.Repo)
 }
 
-func (s *Server) deleteRepo(repo api.RepoName) error {
-	return s.removeRepoDirectory(s.dir(repo))
+func (s *Server) deleteRepo(ctx context.Context, repo api.RepoName) error {
+	// The repo may be deleted in the database, in this case we need to get the
+	// original name in order to find it on disk
+	err := s.removeRepoDirectory(s.dir(api.UndeletedRepoName(repo)))
+	if err != nil {
+		return errors.Wrap(err, "removing repo directory")
+	}
+	err = s.setCloneStatus(ctx, repo, types.CloneStatusNotCloned)
+	if err != nil {
+		return errors.Wrap(err, "setting clone status after delete")
+	}
+	return nil
 }

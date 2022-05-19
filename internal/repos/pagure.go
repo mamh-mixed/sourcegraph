@@ -5,7 +5,6 @@ import (
 	"path"
 	"strconv"
 
-	"github.com/cockroachdb/errors"
 	"github.com/goware/urlx"
 
 	"github.com/sourcegraph/sourcegraph/internal/api"
@@ -14,6 +13,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/httpcli"
 	"github.com/sourcegraph/sourcegraph/internal/jsonc"
 	"github.com/sourcegraph/sourcegraph/internal/types"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 	"github.com/sourcegraph/sourcegraph/schema"
 )
 
@@ -42,7 +42,7 @@ func NewPagureSource(svc *types.ExternalService, cf *httpcli.Factory) (*PagureSo
 		return nil, err
 	}
 
-	cli, err := pagure.NewClient(&c, httpCli)
+	cli, err := pagure.NewClient(svc.URN(), &c, httpCli)
 	if err != nil {
 		return nil, err
 	}

@@ -1,5 +1,6 @@
-import { StoryFn } from '@storybook/addons'
 import React, { ReactElement, useEffect } from 'react'
+
+import { StoryFn } from '@storybook/addons'
 import { useDarkMode } from 'storybook-dark-mode'
 
 import { THEME_DARK_CLASS, THEME_LIGHT_CLASS } from '../themes'
@@ -14,7 +15,7 @@ export const createChromaticStory = (options: CreateChromaticStoryOptions): Stor
     const { storyFn, isDarkModeEnabled } = options
     // The `storyFn` is retrieved from the `StoryStore`, so it already has a `StoryContext`.
     // We can safely change its type to remove required props `StoryContext` props check.
-    const Story = storyFn as React.ComponentType
+    const Story = storyFn as React.ComponentType<React.PropsWithChildren<unknown>>
 
     const isDarkModeEnabledInitially = useDarkMode()
 

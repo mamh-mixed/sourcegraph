@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/cockroachdb/errors"
 	"github.com/opentracing-contrib/go-stdlib/nethttp"
 
 	"github.com/sourcegraph/sourcegraph/cmd/searcher/protocol"
@@ -22,6 +21,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/search"
 	"github.com/sourcegraph/sourcegraph/internal/trace"
 	"github.com/sourcegraph/sourcegraph/internal/trace/ot"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 var (
@@ -86,7 +86,7 @@ func Search(
 		return false, err
 	}
 
-	// Searcher caches the file contents for repo@commit since it is
+	// SearcherJob caches the file contents for repo@commit since it is
 	// relatively expensive to fetch from gitserver. So we use consistent
 	// hashing to increase cache hits.
 	consistentHashKey := string(repo) + "@" + string(commit)
@@ -135,7 +135,7 @@ func textSearchStream(ctx context.Context, url string, body []byte, cb func([]*p
 	req = req.WithContext(ctx)
 
 	req, ht := nethttp.TraceRequest(ot.GetTracer(ctx), req,
-		nethttp.OperationName("Searcher Client"),
+		nethttp.OperationName("SearcherJob Client"),
 		nethttp.ClientTrace(false))
 	defer ht.Finish()
 

@@ -27,11 +27,13 @@ type InsightViewSeries struct {
 	SampleIntervalValue           int
 	DefaultFilterIncludeRepoRegex *string
 	DefaultFilterExcludeRepoRegex *string
+	DefaultFilterSearchContexts   []string
 	OtherThreshold                *float64
 	PresentationType              PresentationType
 	GeneratedFromCaptureGroups    bool
 	JustInTime                    bool
 	GenerationMethod              GenerationMethod
+	IsFrozen                      bool
 }
 
 type Insight struct {
@@ -44,11 +46,13 @@ type Insight struct {
 	Filters          InsightViewFilters
 	OtherThreshold   *float64
 	PresentationType PresentationType
+	IsFrozen         bool
 }
 
 type InsightViewFilters struct {
 	IncludeRepoRegex *string
 	ExcludeRepoRegex *string
+	SearchContexts   []string
 }
 
 // InsightViewSeriesMetadata contains metadata about a viewable insight series such as render properties.
@@ -66,6 +70,7 @@ type InsightView struct {
 	Filters          InsightViewFilters
 	OtherThreshold   *float64
 	PresentationType PresentationType
+	IsFrozen         bool
 }
 
 // InsightSeries is a single data series for a Code Insight. This contains some metadata about the data series, as well
@@ -105,7 +110,6 @@ type GenerationMethod string
 
 const (
 	Search        GenerationMethod = "search"
-	SearchStream  GenerationMethod = "search-stream"
 	SearchCompute GenerationMethod = "search-compute"
 	LanguageStats GenerationMethod = "language-stats"
 )

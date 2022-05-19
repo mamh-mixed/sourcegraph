@@ -4,12 +4,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/cockroachdb/errors"
 	gqlerrors "github.com/graph-gophers/graphql-go/errors"
 
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/backend"
 	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/types"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 func TestRepositories(t *testing.T) {
@@ -70,7 +70,7 @@ func TestRepositories(t *testing.T) {
 			`,
 				ExpectedErrors: []*gqlerrors.QueryError{
 					{
-						Path:          []interface{}{"repositories", "totalCount"},
+						Path:          []any{"repositories", "totalCount"},
 						Message:       backend.ErrMustBeSiteAdmin.Error(),
 						ResolverError: backend.ErrMustBeSiteAdmin,
 					},
@@ -431,7 +431,7 @@ func TestRepositories_CursorPagination(t *testing.T) {
 				ExpectedResult: "null",
 				ExpectedErrors: []*gqlerrors.QueryError{
 					{
-						Path:          []interface{}{"repositories"},
+						Path:          []any{"repositories"},
 						Message:       `cannot unmarshal repository cursor type: ""`,
 						ResolverError: errors.Errorf(`cannot unmarshal repository cursor type: ""`),
 					},

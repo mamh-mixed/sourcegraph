@@ -1,5 +1,6 @@
-import AddIcon from 'mdi-react/AddIcon'
 import React, { useCallback, useMemo, useState } from 'react'
+
+import AddIcon from 'mdi-react/AddIcon'
 import { RouteComponentProps } from 'react-router'
 import { concat, Observable, Subject } from 'rxjs'
 import { catchError, concatMap, map, tap } from 'rxjs/operators'
@@ -9,7 +10,16 @@ import { Form } from '@sourcegraph/branded/src/components/Form'
 import { asError, createAggregateError, isErrorLike } from '@sourcegraph/common'
 import { gql } from '@sourcegraph/http-client'
 import { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryService'
-import { Container, PageHeader, LoadingSpinner, Button, useObservable, Link } from '@sourcegraph/wildcard'
+import {
+    Container,
+    PageHeader,
+    LoadingSpinner,
+    Button,
+    useObservable,
+    Link,
+    Icon,
+    Checkbox,
+} from '@sourcegraph/wildcard'
 
 import { AccessTokenScopes } from '../../../auth/accessToken'
 import { requestGraphQL } from '../../../backend/graphql'
@@ -59,7 +69,7 @@ interface Props
 /**
  * A page with a form to create an access token for a user.
  */
-export const UserSettingsCreateAccessTokenPage: React.FunctionComponent<Props> = ({
+export const UserSettingsCreateAccessTokenPage: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
     telemetryService,
     onDidCreateAccessToken,
     authenticatedUser,
@@ -148,42 +158,34 @@ export const UserSettingsCreateAccessTokenPage: React.FunctionComponent<Props> =
                                 Tokens with limited user scopes are not yet supported.
                             </small>
                         </p>
-                        <div className="form-check">
-                            <input
-                                className="form-check-input"
-                                type="checkbox"
-                                id="user-settings-create-access-token-page__scope-user:all"
-                                checked={true}
-                                value={AccessTokenScopes.UserAll}
-                                onChange={onScopesChange}
-                                disabled={true}
-                            />
-                            <label
-                                className="form-check-label"
-                                htmlFor="user-settings-create-access-token-page__scope-user:all"
-                            >
-                                <strong>{AccessTokenScopes.UserAll}</strong> — Full control of all resources accessible
-                                to the user account
-                            </label>
-                        </div>
+
+                        <Checkbox
+                            id="user-settings-create-access-token-page__scope-user:all"
+                            checked={true}
+                            label={
+                                <>
+                                    <strong>{AccessTokenScopes.UserAll}</strong> — Full control of all resources
+                                    accessible to the user account
+                                </>
+                            }
+                            value={AccessTokenScopes.UserAll}
+                            onChange={onScopesChange}
+                            disabled={true}
+                        />
                         {user.siteAdmin && !window.context.sourcegraphDotComMode && (
-                            <div className="form-check mt-2">
-                                <input
-                                    className="form-check-input"
-                                    type="checkbox"
-                                    id="user-settings-create-access-token-page__scope-site-admin:sudo"
-                                    checked={scopes.includes(AccessTokenScopes.SiteAdminSudo)}
-                                    value={AccessTokenScopes.SiteAdminSudo}
-                                    onChange={onScopesChange}
-                                />
-                                <label
-                                    className="form-check-label"
-                                    htmlFor="user-settings-create-access-token-page__scope-site-admin:sudo"
-                                >
-                                    <strong>{AccessTokenScopes.SiteAdminSudo}</strong> — Ability to perform any action
-                                    as any other user
-                                </label>
-                            </div>
+                            <Checkbox
+                                wrapperClassName="mt-2"
+                                id="user-settings-create-access-token-page__scope-site-admin:sudo"
+                                checked={scopes.includes(AccessTokenScopes.SiteAdminSudo)}
+                                value={AccessTokenScopes.SiteAdminSudo}
+                                onChange={onScopesChange}
+                                label={
+                                    <>
+                                        <strong>{AccessTokenScopes.SiteAdminSudo}</strong> — Ability to perform any
+                                        action as any other user
+                                    </>
+                                }
+                            />
                         )}
                     </div>
                 </Container>
@@ -194,8 +196,7 @@ export const UserSettingsCreateAccessTokenPage: React.FunctionComponent<Props> =
                         className="test-create-access-token-submit"
                         variant="primary"
                     >
-                        {creationOrError === 'loading' ? <LoadingSpinner /> : <AddIcon className="icon-inline" />}{' '}
-                        Generate token
+                        {creationOrError === 'loading' ? <LoadingSpinner /> : <Icon as={AddIcon} />} Generate token
                     </Button>
                     <Button
                         className="ml-2 test-create-access-token-cancel"

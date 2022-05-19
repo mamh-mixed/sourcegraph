@@ -1,6 +1,7 @@
+import * as React from 'react'
+
 import AlertCircleIcon from 'mdi-react/AlertCircleIcon'
 import SourceRepositoryIcon from 'mdi-react/SourceRepositoryIcon'
-import * as React from 'react'
 import { defer, Subject, Subscription } from 'rxjs'
 import { catchError, delay, distinctUntilChanged, map, retryWhen, switchMap, tap } from 'rxjs/operators'
 
@@ -33,7 +34,7 @@ export const RepositoryCloningInProgressPage: React.FunctionComponent<{ repoName
     />
 )
 
-export const EmptyRepositoryPage: React.FunctionComponent = () => (
+export const EmptyRepositoryPage: React.FunctionComponent<React.PropsWithChildren<unknown>> = () => (
     <HeroPage icon={RepoQuestionIcon} title="Empty repository" />
 )
 

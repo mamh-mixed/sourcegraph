@@ -1,30 +1,32 @@
-import classNames from 'classnames'
 import React, { FunctionComponent, useState, useEffect, useCallback, useRef } from 'react'
+
+import classNames from 'classnames'
 import { useLocation, useHistory } from 'react-router'
 
 import { ErrorLike } from '@sourcegraph/common'
 import { useTemporarySetting } from '@sourcegraph/shared/src/settings/temporary/useTemporarySetting'
 import { TelemetryService } from '@sourcegraph/shared/src/telemetry/telemetryService'
-import { BrandLogo } from '@sourcegraph/web/src/components/branding/BrandLogo'
-import { HeroPage } from '@sourcegraph/web/src/components/HeroPage'
-import { PageRoutes } from '@sourcegraph/web/src/routes.constants'
-import { Alert, Link } from '@sourcegraph/wildcard'
+import { Alert, Link, Typography } from '@sourcegraph/wildcard'
 
 import { AuthenticatedUser } from '../auth'
+import { BrandLogo } from '../components/branding/BrandLogo'
+import { HeroPage } from '../components/HeroPage'
 import { PageTitle } from '../components/PageTitle'
 import { SourcegraphContext } from '../jscontext'
+import { PageRoutes } from '../routes.constants'
 import { eventLogger } from '../tracking/eventLogger'
 import { SelectAffiliatedRepos } from '../user/settings/repositories/SelectAffiliatedRepos'
 import { UserExternalServicesOrRepositoriesUpdateProps } from '../util'
 
-import styles from './PostSignUpPage.module.scss'
 import { getReturnTo } from './SignInSignUpCommon'
-import signInSignUpCommonStyles from './SignInSignUpCommon.module.scss'
-import { Steps, Step, StepList, StepPanels, StepPanel, StepActions } from './Steps'
+import { Steps, Step, StepList, StepPanels, StepPanel } from './Steps'
 import { useExternalServices } from './useExternalServices'
 import { CodeHostsConnection } from './welcome/CodeHostsConnection'
 import { Footer } from './welcome/Footer'
-import { StartSearching } from './welcome/StartSearching'
+import { InviteCollaborators } from './welcome/InviteCollaborators/InviteCollaborators'
+
+import styles from './PostSignUpPage.module.scss'
+import signInSignUpCommonStyles from './SignInSignUpCommon.module.scss'
 
 interface PostSignUpPage {
     authenticatedUser: AuthenticatedUser
@@ -51,7 +53,7 @@ export type FinishWelcomeFlow = (event: React.MouseEvent<HTMLElement>, payload: 
 
 export const getPostSignUpEvent = (action?: string): string => `PostSignUp${action ? '_' + action : ''}`
 
-export const PostSignUpPage: FunctionComponent<PostSignUpPage> = ({
+export const PostSignUpPage: FunctionComponent<React.PropsWithChildren<PostSignUpPage>> = ({
     authenticatedUser: user,
     context,
     telemetryService,
@@ -125,9 +127,8 @@ export const PostSignUpPage: FunctionComponent<PostSignUpPage> = ({
     const onError = useCallback((error: ErrorLike) => setError(error), [])
 
     return (
-        <>
-            <BrandLogo className={classNames('ml-3 mt-3', styles.logo)} isLightTheme={true} variant="symbol" />
-
+        <div className={styles.wrapper}>
+            <BrandLogo className={styles.logo} isLightTheme={true} variant="symbol" />
             <div className={classNames(signInSignUpCommonStyles.signinSignupPage, styles.postSignupPage)}>
                 <PageTitle title="Welcome" />
                 <HeroPage
@@ -142,17 +143,15 @@ export const PostSignUpPage: FunctionComponent<PostSignUpPage> = ({
                                         <Link to={PageRoutes.Search}>skip to code search</Link>.
                                     </Alert>
                                 )}
-                                <h2>Get started with Sourcegraph</h2>
-                                <p className="text-muted pb-3">
-                                    Three quick steps to add your repositories and get searching with Sourcegraph
-                                </p>
+                                <Typography.H2>Get started with Sourcegraph</Typography.H2>
+                                <p className="text-muted pb-3">Follow these steps to set up your account</p>
                             </div>
-                            <div className="mt-4 pb-3 d-flex flex-column align-items-center">
-                                <Steps initialStep={debug ? parseInt(debug, 10) : 1}>
+                            <div className="mt-2 pb-3 d-flex flex-column align-items-center w-100">
+                                <Steps initialStep={debug ? parseInt(debug, 10) : 1} totalSteps={3}>
                                     <StepList numeric={true} className={styles.container}>
                                         <Step borderColor="purple">Connect with code hosts</Step>
                                         <Step borderColor="blue">Add repositories</Step>
-                                        <Step borderColor="orange">Start searching</Step>
+                                        <Step borderColor="orange">Invite collaborators</Step>
                                     </StepList>
                                     <StepPanels>
                                         <StepPanel>
@@ -168,11 +167,12 @@ export const PostSignUpPage: FunctionComponent<PostSignUpPage> = ({
                                                     context={context}
                                                     refetch={refetchExternalServices}
                                                 />
+                                                <Footer onFinish={finishWelcomeFlow} />
                                             </div>
                                         </StepPanel>
                                         <StepPanel>
-                                            <div className={classNames('mt-5', styles.container)}>
-                                                <h3>Add repositories</h3>
+                                            <div className={classNames('mt-3', styles.container)}>
+                                                <Typography.H3>Add repositories</Typography.H3>
                                                 <p className="text-muted mb-4">
                                                     Choose repositories you own or collaborate on from your code hosts.
                                                     We’ll sync and index these repositories so you can search your code
@@ -193,10 +193,11 @@ export const PostSignUpPage: FunctionComponent<PostSignUpPage> = ({
                                                     telemetryService={telemetryService}
                                                     onError={onError}
                                                 />
+                                                <Footer onFinish={finishWelcomeFlow} isSkippable={true} />
                                             </div>
                                         </StepPanel>
                                         <StepPanel>
-                                            <StartSearching
+                                            <InviteCollaborators
                                                 className={styles.container}
                                                 user={user}
                                                 repoSelectionMode={repoSelectionMode}
@@ -205,18 +206,16 @@ export const PostSignUpPage: FunctionComponent<PostSignUpPage> = ({
                                                 }
                                                 setSelectedSearchContextSpec={setSelectedSearchContextSpec}
                                                 onError={onError}
+                                                onFinish={finishWelcomeFlow}
                                             />
                                         </StepPanel>
                                     </StepPanels>
-                                    <StepActions>
-                                        <Footer onFinish={finishWelcomeFlow} />
-                                    </StepActions>
                                 </Steps>
                             </div>
                         </div>
                     }
                 />
             </div>
-        </>
+        </div>
     )
 }

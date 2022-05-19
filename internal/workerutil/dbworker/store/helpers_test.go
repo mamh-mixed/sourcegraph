@@ -118,7 +118,7 @@ func setupStoreTest(t *testing.T) dbutil.DB {
 			process_after     timestamp with time zone,
 			num_resets        integer NOT NULL default 0,
 			num_failures      integer NOT NULL default 0,
-			uploaded_at       timestamp with time zone NOT NULL default NOW(),
+			created_at        timestamp with time zone NOT NULL default NOW(),
 			execution_logs    json[],
 			worker_hostname   text NOT NULL default ''
 		)
@@ -141,11 +141,14 @@ func defaultTestStoreOptions(clock glock.Clock) Options {
 		Name:              "test",
 		TableName:         "workerutil_test w",
 		Scan:              testScanFirstRecord,
-		OrderByExpression: sqlf.Sprintf("w.uploaded_at"),
+		OrderByExpression: sqlf.Sprintf("w.created_at"),
 		ColumnExpressions: []*sqlf.Query{
 			sqlf.Sprintf("w.id"),
 			sqlf.Sprintf("w.state"),
 			sqlf.Sprintf("w.execution_logs"),
+		},
+		AlternateColumnNames: map[string]string{
+			"queued_at": "created_at",
 		},
 		StalledMaxAge: time.Second * 5,
 		MaxNumResets:  5,
@@ -154,7 +157,7 @@ func defaultTestStoreOptions(clock glock.Clock) Options {
 	}
 }
 
-func assertDequeueRecordResult(t *testing.T, expectedID int, record interface{}, ok bool, err error) {
+func assertDequeueRecordResult(t *testing.T, expectedID int, record any, ok bool, err error) {
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
@@ -170,13 +173,13 @@ func assertDequeueRecordResult(t *testing.T, expectedID int, record interface{},
 	}
 }
 
-func assertDequeueRecordResultLogCount(t *testing.T, expectedLogCount int, record interface{}) {
+func assertDequeueRecordResultLogCount(t *testing.T, expectedLogCount int, record any) {
 	if val := len(record.(TestRecord).ExecutionLogs); val != expectedLogCount {
 		t.Errorf("unexpected count of logs. want=%d have=%d", expectedLogCount, val)
 	}
 }
 
-func assertDequeueRecordViewResult(t *testing.T, expectedID, expectedNewField int, record interface{}, ok bool, err error) {
+func assertDequeueRecordViewResult(t *testing.T, expectedID, expectedNewField int, record any, ok bool, err error) {
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
@@ -195,7 +198,7 @@ func assertDequeueRecordViewResult(t *testing.T, expectedID, expectedNewField in
 	}
 }
 
-func assertDequeueRecordRetryResult(t *testing.T, expectedID, record interface{}, ok bool, err error) {
+func assertDequeueRecordRetryResult(t *testing.T, expectedID, record any, ok bool, err error) {
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}

@@ -1,4 +1,9 @@
+/* stylelint-disable-next-line @sourcegraph/no-restricted-imports */
 @import 'bootstrap/scss/type';
+
+:root {
+    --monospace-font-family: SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}
 
 h1 {
     font-size: 1.625rem; // 26px
@@ -76,14 +81,12 @@ strong {
     font-weight: 600;
 }
 
-$input-font-size-sm: (11/14) + em;
-
 // Input / Small
 .form-control-sm,
 %form-control-sm,
 .custom-select-sm,
 %custom-select-sm {
-    font-size: $input-font-size-sm;
+    font-size: var(--input-font-size-sm);
     line-height: 1rem;
 }
 

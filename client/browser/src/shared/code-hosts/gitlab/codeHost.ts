@@ -1,46 +1,54 @@
 import * as Sentry from '@sentry/browser'
 import classNames from 'classnames'
+import { fromEvent } from 'rxjs'
+import { filter, map } from 'rxjs/operators'
 import { Omit } from 'utility-types'
 
+import { LineOrPositionOrRange, subtypeOf } from '@sourcegraph/common'
 import { NotificationType } from '@sourcegraph/shared/src/api/extension/extensionHostApi'
-import { subtypeOf } from '@sourcegraph/shared/src/util/types'
 import { toAbsoluteBlobURL } from '@sourcegraph/shared/src/util/url'
 
 import { background } from '../../../browser-extension/web-extension-api/runtime'
-import { CodeHost } from '../shared/codeHost'
+import { CodeHost, OverlayPosition } from '../shared/codeHost'
 import { CodeView } from '../shared/codeViews'
 import { createNotificationClassNameGetter } from '../shared/getNotificationClassName'
 import { getSelectionsFromHash, observeSelectionsFromHash } from '../shared/util/selections'
 import { queryWithSelector, ViewResolver } from '../shared/views'
 
-import styles from './codeHost.module.scss'
 import { diffDOMFunctions, singleFileDOMFunctions } from './domFunctions'
 import { getCommandPaletteMount } from './extensions'
 import { resolveCommitFileInfo, resolveDiffFileInfo, resolveFileInfo } from './fileInfo'
 import { getPageInfo, GitLabPageKind, getFilePathsFromCodeView } from './scrape'
 
+import styles from './codeHost.module.scss'
+
 export function checkIsGitlab(): boolean {
     return !!document.head.querySelector('meta[content="GitLab"]')
 }
 
-const adjustOverlayPosition: CodeHost['adjustOverlayPosition'] = ({ top, left }) => {
+const adjustOverlayPosition: CodeHost['adjustOverlayPosition'] = args => {
+    const topOrBottom = 'top' in args ? 'top' : 'bottom'
+    let topOrBottomValue = 'top' in args ? args.top : args.bottom
+
     const header = document.querySelector('header')
     if (header) {
-        top += header.getBoundingClientRect().height
+        topOrBottomValue += header.getBoundingClientRect().height
     }
     // When running GitLab from source, we also need to take into account
     // the debug header shown at the top of the page.
     const debugHeader = document.querySelector('#js-peek.development')
     if (debugHeader) {
-        top += debugHeader.getBoundingClientRect().height
+        topOrBottomValue += debugHeader.getBoundingClientRect().height
     }
+
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     return {
-        top,
-        left,
-    }
+        [topOrBottom]: topOrBottomValue,
+        left: args.left,
+    } as OverlayPosition
 }
 
-export const getToolbarMount = (codeView: HTMLElement): HTMLElement => {
+export const getToolbarMount = (codeView: HTMLElement, pageKind?: GitLabPageKind): HTMLElement => {
     const existingMount: HTMLElement | null = codeView.querySelector('.sg-toolbar-mount-gitlab')
     if (existingMount) {
         return existingMount
@@ -52,9 +60,10 @@ export const getToolbarMount = (codeView: HTMLElement): HTMLElement => {
     }
 
     const mount = document.createElement('div')
-    mount.classList.add('btn-group')
-    mount.classList.add('sg-toolbar-mount')
-    mount.classList.add('sg-toolbar-mount-gitlab')
+    mount.classList.add('sg-toolbar-mount', 'sg-toolbar-mount-gitlab')
+    if (pageKind === GitLabPageKind.Commit) {
+        mount.classList.add('gl-mr-3')
+    }
 
     fileActions.prepend(mount)
 
@@ -63,7 +72,7 @@ export const getToolbarMount = (codeView: HTMLElement): HTMLElement => {
 
 const singleFileCodeView: Omit<CodeView, 'element'> = {
     dom: singleFileDOMFunctions,
-    getToolbarMount,
+    getToolbarMount: (codeView: HTMLElement) => getToolbarMount(codeView, GitLabPageKind.File),
     resolveFileInfo,
     getSelections: getSelectionsFromHash,
     observeSelections: observeSelectionsFromHash,
@@ -79,14 +88,14 @@ const getFileTitle = (codeView: HTMLElement): HTMLElement[] => {
 
 const mergeRequestCodeView: Omit<CodeView, 'element'> = {
     dom: diffDOMFunctions,
-    getToolbarMount,
+    getToolbarMount: (codeView: HTMLElement) => getToolbarMount(codeView, GitLabPageKind.MergeRequest),
     resolveFileInfo: resolveDiffFileInfo,
     getScrollBoundaries: getFileTitle,
 }
 
 const commitCodeView: Omit<CodeView, 'element'> = {
     dom: diffDOMFunctions,
-    getToolbarMount,
+    getToolbarMount: (codeView: HTMLElement) => getToolbarMount(codeView, GitLabPageKind.Commit),
     resolveFileInfo: resolveCommitFileInfo,
     getScrollBoundaries: getFileTitle,
 }
@@ -164,6 +173,26 @@ export const isPrivateRepository = (repoName: string, fetchCache = background.fe
         })
 }
 
+export const parseHash = (hash: string): LineOrPositionOrRange => {
+    if (hash.startsWith('#')) {
+        hash = hash.slice(1)
+    }
+
+    if (!/^L\d+(-\d+)?$/.test(hash)) {
+        return {}
+    }
+
+    const lpr = {} as LineOrPositionOrRange
+    const [startString, endString] = hash.slice(1).split('-')
+
+    lpr.line = parseInt(startString, 10)
+    if (endString) {
+        lpr.endLine = parseInt(endString, 10)
+    }
+
+    return lpr
+}
+
 export const gitlabCodeHost = subtypeOf<CodeHost>()({
     type: 'gitlab',
     name: 'GitLab',
@@ -231,9 +260,10 @@ export const gitlabCodeHost = subtypeOf<CodeHost>()({
         iconClassName: 's16 align-bottom',
     },
     codeViewToolbarClassProps: {
-        className: styles.codeViewToolbar,
-        actionItemClass: 'btn btn-sm btn-secondary ml-2',
+        className: 'pl-0',
+        actionItemClass: 'btn btn-md gl-button btn-icon',
         actionItemPressedClass: 'active',
+        actionItemIconClass: 'gl-button-icon gl-icon s16',
     },
     hoverOverlayClassProps: {
         className: classNames('card', styles.hoverOverlay),
@@ -251,4 +281,11 @@ export const gitlabCodeHost = subtypeOf<CodeHost>()({
         }
         return null
     },
+    // We listen to links clicks instead of 'hashchange' event as GitLab uses anchor links
+    // to scroll to the selected line. Link click doesn't trigger 'hashchange' event
+    // despite the URL hash is updated.
+    observeLineSelection: fromEvent(document, 'click').pipe(
+        filter(event => (event.target as HTMLElement).matches('a[data-line-number]')),
+        map(() => parseHash(window.location.hash))
+    ),
 })

@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/policies"
-	"github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/stores/dbstore"
-	"github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/stores/lsifstore"
+	policies "github.com/sourcegraph/sourcegraph/internal/codeintel/policies/enterprise"
+	"github.com/sourcegraph/sourcegraph/internal/codeintel/stores/dbstore"
+	"github.com/sourcegraph/sourcegraph/internal/codeintel/stores/lsifstore"
 	"github.com/sourcegraph/sourcegraph/internal/database/basestore"
 )
 
@@ -33,6 +33,7 @@ type DBStore interface {
 	DeleteSourcedCommits(ctx context.Context, repositoryID int, commit string, maximumCommitLag time.Duration, now time.Time) (int, int, int, error)
 	SelectPoliciesForRepositoryMembershipUpdate(ctx context.Context, batchSize int) (configurationPolicies []dbstore.ConfigurationPolicy, err error)
 	UpdateReposMatchingPatterns(ctx context.Context, patterns []string, policyID int, repositoryMatchLimit *int) (err error)
+	DeleteOldAuditLogs(ctx context.Context, maxAge time.Duration, now time.Time) (int, error)
 }
 
 type DBStoreShim struct {
@@ -53,8 +54,6 @@ type LSIFStore interface {
 	Done(err error) error
 
 	Clear(ctx context.Context, bundleIDs ...int) error
-	DeleteOldPublicSearchRecords(ctx context.Context, minimumTimeSinceLastCheck time.Duration, limit int) (int, error)
-	DeleteOldPrivateSearchRecords(ctx context.Context, minimumTimeSinceLastCheck time.Duration, limit int) (int, error)
 }
 
 type LSIFStoreShim struct {
@@ -71,5 +70,5 @@ func (s *LSIFStoreShim) Transact(ctx context.Context) (LSIFStore, error) {
 }
 
 type PolicyMatcher interface {
-	CommitsDescribedByPolicy(ctx context.Context, repositoryID int, policies []dbstore.ConfigurationPolicy, now time.Time) (map[string][]policies.PolicyMatch, error)
+	CommitsDescribedByPolicy(ctx context.Context, repositoryID int, policies []dbstore.ConfigurationPolicy, now time.Time, filterCommits ...string) (map[string][]policies.PolicyMatch, error)
 }

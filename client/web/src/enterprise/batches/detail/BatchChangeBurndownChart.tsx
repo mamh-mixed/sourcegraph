@@ -1,7 +1,8 @@
+import React, { useCallback, useMemo, useState } from 'react'
+
 import classNames from 'classnames'
 import { getYear, parseISO } from 'date-fns'
 import * as H from 'history'
-import React, { useCallback, useMemo, useState } from 'react'
 import {
     Area,
     ComposedChart,
@@ -14,11 +15,12 @@ import {
 } from 'recharts'
 
 import { Toggle } from '@sourcegraph/branded/src/components/Toggle'
-import { Container, LoadingSpinner, useObservable } from '@sourcegraph/wildcard'
+import { Checkbox, Container, LoadingSpinner, useObservable } from '@sourcegraph/wildcard'
 
 import { ChangesetCountsOverTimeFields, Scalars } from '../../../graphql-operations'
 
 import { queryChangesetCountsOverTime as _queryChangesetCountsOverTime } from './backend'
+
 import styles from './BatchChangeBurndownChart.module.scss'
 
 interface Props {
@@ -75,7 +77,7 @@ const tooltipItemSorter = ({ dataKey }: TooltipPayload): number =>
 /**
  * A burndown chart showing progress of the batch change's changesets.
  */
-export const BatchChangeBurndownChart: React.FunctionComponent<Props> = ({
+export const BatchChangeBurndownChart: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
     batchChangeID,
     queryChangesetCountsOverTime = _queryChangesetCountsOverTime,
     width = '100%',
@@ -193,15 +195,17 @@ export const BatchChangeBurndownChart: React.FunctionComponent<Props> = ({
     )
 }
 
-const LegendLabel: React.FunctionComponent<{
-    stateKey: keyof DisplayableChangesetCounts
-    label: string
-    fill: string
-    hiddenStates: Set<keyof DisplayableChangesetCounts>
-    setHiddenStates: (
-        setter: (currentValue: Set<keyof DisplayableChangesetCounts>) => Set<keyof DisplayableChangesetCounts>
-    ) => void
-}> = ({ stateKey, label, fill, hiddenStates, setHiddenStates }) => {
+const LegendLabel: React.FunctionComponent<
+    React.PropsWithChildren<{
+        stateKey: keyof DisplayableChangesetCounts
+        label: string
+        fill: string
+        hiddenStates: Set<keyof DisplayableChangesetCounts>
+        setHiddenStates: (
+            setter: (currentValue: Set<keyof DisplayableChangesetCounts>) => Set<keyof DisplayableChangesetCounts>
+        ) => void
+    }>
+> = ({ stateKey, label, fill, hiddenStates, setHiddenStates }) => {
     const onChangeCheckbox = useCallback(() => {
         setHiddenStates(current => {
             if (current.has(stateKey)) {
@@ -223,18 +227,17 @@ const LegendLabel: React.FunctionComponent<{
                 }}
                 className={classNames(styles.batchChangeBurndownChartLegendColorBox, 'mr-2')}
             />
-            <input id={stateKey} type="checkbox" className="mr-2" checked={checked} onChange={onChangeCheckbox} />
-            <label htmlFor={stateKey} className="mb-0">
-                {label}
-            </label>
+            <Checkbox id={stateKey} checked={checked} onChange={onChangeCheckbox} label={label} />
         </div>
     )
 }
 
-const IncludeArchivedToggle: React.FunctionComponent<{
-    includeArchived: boolean
-    onToggle: () => void
-}> = ({ includeArchived, onToggle }) => (
+const IncludeArchivedToggle: React.FunctionComponent<
+    React.PropsWithChildren<{
+        includeArchived: boolean
+        onToggle: () => void
+    }>
+> = ({ includeArchived, onToggle }) => (
     <div className="d-flex align-items-center justify-content-between text-nowrap mb-2 pt-1">
         <label htmlFor="include-archived" className="mb-0">
             Include archived

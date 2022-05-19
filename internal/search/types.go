@@ -2,27 +2,33 @@ package search
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
-	"time"
 
-	"github.com/google/zoekt"
 	zoektquery "github.com/google/zoekt/query"
+
 	"github.com/sourcegraph/sourcegraph/internal/api"
-	"github.com/sourcegraph/sourcegraph/internal/endpoint"
 	"github.com/sourcegraph/sourcegraph/internal/search/filter"
 	"github.com/sourcegraph/sourcegraph/internal/search/query"
-	"github.com/sourcegraph/sourcegraph/internal/search/result"
 	"github.com/sourcegraph/sourcegraph/internal/types"
-	"github.com/sourcegraph/sourcegraph/schema"
 )
 
-type TypeParameters interface {
-	typeParametersValue()
-}
+type Protocol int
 
-func (SymbolsParameters) typeParametersValue() {}
-func (TextParameters) typeParametersValue()    {}
+const (
+	Streaming Protocol = iota
+	Batch
+)
+
+func (p Protocol) String() string {
+	switch p {
+	case Streaming:
+		return "Streaming"
+	case Batch:
+		return "Batch"
+	default:
+		return fmt.Sprintf("unknown{%d}", p)
+	}
+}
 
 type SymbolsParameters struct {
 	// Repo is the name of the repository to search in.
@@ -111,47 +117,13 @@ type ZoektParameters struct {
 	Typ            IndexedRequestType
 	FileMatchLimit int32
 	Select         filter.SelectPath
-
-	Zoekt zoekt.Streamer
 }
 
 // SearcherParameters the inputs for a search fulfilled by the Searcher service
 // (cmd/searcher). Searcher fulfills (1) unindexed literal and regexp searches
 // and (2) structural search requests.
 type SearcherParameters struct {
-	SearcherURLs *endpoint.Map
-	PatternInfo  *TextPatternInfo
-
-	// UseFullDeadline indicates that the search should try do as much work as
-	// it can within context.Deadline. If false the search should try and be
-	// as fast as possible, even if a "slow" deadline is set.
-	//
-	// For example searcher will wait to full its archive cache for a
-	// repository if this field is true. Another example is we set this field
-	// to true if the user requests a specific timeout or maximum result size.
-	UseFullDeadline bool
-}
-
-// TextParameters are the parameters passed to a search backend. It contains the Pattern
-// to search for, as well as the hydrated list of repository revisions to
-// search. It defines behavior for text search on repository names, file names, and file content.
-type TextParameters struct {
 	PatternInfo *TextPatternInfo
-	RepoOptions RepoOptions
-	Features    Features
-	ResultTypes result.Types
-	Timeout     time.Duration
-
-	Repos []*RepositoryRevisions
-
-	// perf: For global queries, we only resolve private repos.
-	UserPrivateRepos []types.MinimalRepo
-	Mode             GlobalSearchMode
-
-	// Query is the parsed query from the user. You should be using Pattern
-	// instead, but Query is useful for checking extra fields that are set and
-	// ignored by Pattern, such as index:no
-	Query query.Q
 
 	// UseFullDeadline indicates that the search should try do as much work as
 	// it can within context.Deadline. If false the search should try and be
@@ -161,9 +133,6 @@ type TextParameters struct {
 	// repository if this field is true. Another example is we set this field
 	// to true if the user requests a specific timeout or maximum result size.
 	UseFullDeadline bool
-
-	Zoekt        zoekt.Streamer
-	SearcherURLs *endpoint.Map
 }
 
 // TextPatternInfo is the struct used by vscode pass on search queries. Keep it in
@@ -269,57 +238,66 @@ type Features struct {
 type RepoOptions struct {
 	RepoFilters              []string
 	MinusRepoFilters         []string
+	Dependencies             []string
+	Dependents               []string
 	CaseSensitiveRepoFilters bool
 	SearchContextSpec        string
-	UserSettings             *schema.Settings
-	NoForks                  bool
-	OnlyForks                bool
-	NoArchived               bool
-	OnlyArchived             bool
-	CommitAfter              string
-	Visibility               query.RepoVisibility
-	Limit                    int
-	Cursors                  []*types.Cursor
-	Query                    query.Q
+
+	CommitAfter string
+	Visibility  query.RepoVisibility
+	Limit       int
+	Cursors     []*types.Cursor
+
+	// ForkSet indicates whether `fork:` was set explicitly in the query,
+	// or whether the values were set from defaults.
+	ForkSet   bool
+	NoForks   bool
+	OnlyForks bool
+
+	// ArchivedSet indicates whether `archived:` was set explicitly in the query,
+	// or whether the values were set from defaults.
+	ArchivedSet  bool
+	NoArchived   bool
+	OnlyArchived bool
 }
 
 func (op *RepoOptions) String() string {
 	var b strings.Builder
-	if len(op.RepoFilters) == 0 {
-		b.WriteString("r=[]")
+
+	if len(op.RepoFilters) > 0 {
+		fmt.Fprintf(&b, "RepoFilters: %q\n", op.RepoFilters)
+	} else {
+		b.WriteString("RepoFilters: []\n")
 	}
-	for i, r := range op.RepoFilters {
-		if i != 0 {
-			b.WriteByte(' ')
-		}
-		b.WriteString(strconv.Quote(r))
+	if len(op.MinusRepoFilters) > 0 {
+		fmt.Fprintf(&b, "MinusRepoFilters: %q\n", op.MinusRepoFilters)
+	} else {
+		b.WriteString("MinusRepoFilters: []\n")
 	}
 
-	if len(op.MinusRepoFilters) > 0 {
-		_, _ = fmt.Fprintf(&b, " -r=%v", op.MinusRepoFilters)
-	}
-	if op.CommitAfter != "" {
-		_, _ = fmt.Fprintf(&b, " CommitAfter=%q", op.CommitAfter)
-	}
+	fmt.Fprintf(&b, "CommitAfter: %s\n", op.CommitAfter)
+	fmt.Fprintf(&b, "Visibility: %s\n", string(op.Visibility))
 
 	if op.CaseSensitiveRepoFilters {
-		b.WriteString(" CaseSensitiveRepoFilters")
+		fmt.Fprintf(&b, "CaseSensitiveRepoFilters: %t\n", op.CaseSensitiveRepoFilters)
 	}
-
+	if op.ForkSet {
+		fmt.Fprintf(&b, "ForkSet: %t\n", op.ForkSet)
+	}
 	if op.NoForks {
-		b.WriteString(" NoForks")
+		fmt.Fprintf(&b, "NoForks: %t\n", op.NoForks)
 	}
 	if op.OnlyForks {
-		b.WriteString(" OnlyForks")
+		fmt.Fprintf(&b, "OnlyForks: %t\n", op.OnlyForks)
+	}
+	if op.ArchivedSet {
+		fmt.Fprintf(&b, "ArchivedSet: %t\n", op.ArchivedSet)
 	}
 	if op.NoArchived {
-		b.WriteString(" NoArchived")
+		fmt.Fprintf(&b, "NoArchived: %t\n", op.NoArchived)
 	}
 	if op.OnlyArchived {
-		b.WriteString(" OnlyArchived")
-	}
-	if op.Visibility != query.Any {
-		b.WriteString(" Visibility" + string(op.Visibility))
+		fmt.Fprintf(&b, "OnlyArchived: %t\n", op.OnlyArchived)
 	}
 
 	return b.String()

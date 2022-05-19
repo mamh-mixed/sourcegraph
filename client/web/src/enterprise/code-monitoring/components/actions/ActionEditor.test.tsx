@@ -1,6 +1,5 @@
 import { render } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import React from 'react'
 import sinon from 'sinon'
 
 import { ActionEditor, ActionEditorProps } from './ActionEditor'
@@ -16,11 +15,17 @@ describe('ActionEditor', () => {
         idName: 'email',
         actionEnabled: true,
         toggleActionEnabled: sinon.fake(),
+        includeResults: true,
+        toggleIncludeResults: sinon.fake(),
         canSubmit: true,
         onSubmit: sinon.fake(),
         onCancel: sinon.fake(),
         canDelete: true,
         onDelete: sinon.fake(),
+        testButtonText: 'Send test email',
+        onTest: sinon.fake(),
+        testAgainButtonText: 'Send again',
+        testState: undefined,
     }
 
     test('expand and collapse with cancel button', () => {
@@ -96,7 +101,7 @@ describe('ActionEditor', () => {
         expect(getByTestId('enable-action-toggle-collapsed-email')).toBeChecked()
 
         userEvent.click(getByTestId('enable-action-toggle-collapsed-email'))
-        sinon.assert.calledWithExactly(toggleActionEnabledSpy, false)
+        sinon.assert.calledWithExactly(toggleActionEnabledSpy, false, true)
     })
 
     test('toggle disable when expanded', () => {
@@ -113,6 +118,6 @@ describe('ActionEditor', () => {
         expect(getByTestId('enable-action-toggle-expanded-email')).not.toBeChecked()
 
         userEvent.click(getByTestId('enable-action-toggle-expanded-email'))
-        sinon.assert.calledWithExactly(toggleActionEnabledSpy, true)
+        sinon.assert.calledWithExactly(toggleActionEnabledSpy, true, false)
     })
 })

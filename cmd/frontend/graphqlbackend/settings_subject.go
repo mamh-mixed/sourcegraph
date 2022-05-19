@@ -3,13 +3,13 @@ package graphqlbackend
 import (
 	"context"
 
-	"github.com/cockroachdb/errors"
 	"github.com/graph-gophers/graphql-go"
 
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/backend"
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/envvar"
 	"github.com/sourcegraph/sourcegraph/internal/api"
 	"github.com/sourcegraph/sourcegraph/internal/jsonc"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 func (r *schemaResolver) SettingsSubject(ctx context.Context, args *struct{ ID graphql.ID }) (*settingsSubject, error) {
@@ -170,7 +170,7 @@ func (s *settingsSubject) ConfigurationCascade() (*settingsCascade, error) {
 }
 
 // readSettings unmarshals s's latest settings into v.
-func (s *settingsSubject) readSettings(ctx context.Context, v interface{}) error {
+func (s *settingsSubject) readSettings(ctx context.Context, v any) error {
 	settings, err := s.LatestSettings(ctx)
 	if err != nil {
 		return err

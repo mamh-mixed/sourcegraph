@@ -6,8 +6,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/cockroachdb/errors"
-	"github.com/hashicorp/go-multierror"
 	"github.com/inconshreveable/log15"
 
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/backend"
@@ -15,6 +13,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/authz"
 	"github.com/sourcegraph/sourcegraph/internal/comby"
 	"github.com/sourcegraph/sourcegraph/internal/database"
+	"github.com/sourcegraph/sourcegraph/internal/extsvc"
 	"github.com/sourcegraph/sourcegraph/internal/gitserver/gitdomain"
 	"github.com/sourcegraph/sourcegraph/internal/search"
 	"github.com/sourcegraph/sourcegraph/internal/search/commit"
@@ -22,6 +21,7 @@ import (
 	searchrepos "github.com/sourcegraph/sourcegraph/internal/search/repos"
 	"github.com/sourcegraph/sourcegraph/internal/search/run"
 	"github.com/sourcegraph/sourcegraph/internal/search/searchcontexts"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 type Observer struct {
@@ -44,7 +44,6 @@ type Observer struct {
 // raising NoResolvedRepos alerts with suggestions when we know the original
 // query does not contain any repos to search.
 func (o *Observer) reposExist(ctx context.Context, options search.RepoOptions) bool {
-	options.UserSettings = o.UserSettings
 	repositoryResolver := &searchrepos.Resolver{DB: o.Db}
 	resolved, err := repositoryResolver.Resolve(ctx, options)
 	return err == nil && len(resolved.RepoRevs) > 0
@@ -53,6 +52,7 @@ func (o *Observer) reposExist(ctx context.Context, options search.RepoOptions) b
 func (o *Observer) alertForNoResolvedRepos(ctx context.Context, q query.Q) *search.Alert {
 	repoFilters, minusRepoFilters := q.Repositories()
 	contextFilters, _ := q.StringValues(query.FieldContext)
+	dependencies := q.Dependencies()
 	onlyForks, noForks, forksNotSet := false, false, true
 	if fork := q.Fork(); fork != nil {
 		onlyForks = *fork == query.Only
@@ -62,13 +62,6 @@ func (o *Observer) alertForNoResolvedRepos(ctx context.Context, q query.Q) *sear
 	archived := q.Archived()
 	archivedNotSet := archived == nil
 
-	if len(repoFilters) == 0 && len(minusRepoFilters) == 0 {
-		return &search.Alert{
-			PrometheusType: "no_resolved_repos__no_repositories",
-			Title:          "Add repositories or connect repository hosts",
-			Description:    "There are no repositories to search. Add an external service connection to your code host.",
-		}
-	}
 	if len(contextFilters) == 1 && !searchcontexts.IsGlobalSearchContextSpec(contextFilters[0]) && len(repoFilters) > 0 {
 		withoutContextFilter := query.OmitField(q, query.FieldContext)
 		proposedQueries := []*search.ProposedQuery{
@@ -88,10 +81,26 @@ func (o *Observer) alertForNoResolvedRepos(ctx context.Context, q query.Q) *sear
 
 	isSiteAdmin := backend.CheckCurrentUserIsSiteAdmin(ctx, o.Db) == nil
 	if !envvar.SourcegraphDotComMode() {
+		if len(dependencies) > 0 {
+			needsPackageHostConfig, err := needsPackageHostConfiguration(ctx, o.Db)
+			if err == nil && needsPackageHostConfig {
+				if isSiteAdmin {
+					return &search.Alert{
+						Title:       "No package hosts configured",
+						Description: "To start searching your dependencies, first go to site admin to configure package hosts.",
+					}
+				} else {
+					return &search.Alert{
+						Title:       "No package hosts configured",
+						Description: "To start searching your dependencies, ask the site admin to configure package hosts.",
+					}
+				}
+			}
+		}
+
 		if needsRepoConfig, err := needsRepositoryConfiguration(ctx, o.Db); err == nil && needsRepoConfig {
 			if isSiteAdmin {
 				return &search.Alert{
-
 					Title:       "No repositories or code hosts configured",
 					Description: "To start searching code, first go to site admin to configure repositories and code hosts.",
 				}
@@ -104,7 +113,14 @@ func (o *Observer) alertForNoResolvedRepos(ctx context.Context, q query.Q) *sear
 		}
 	}
 
-	proposedQueries := []*search.ProposedQuery{}
+	if len(dependencies) > 0 {
+		return &search.Alert{
+			Title:       "No dependency repositories found",
+			Description: "Dependency repos are cloned on-demand when first searched. Try again in a few seconds if you know the given repositories have dependencies.\n\nRead more about dependencies search [here](https://docs.sourcegraph.com/code_search/how-to/dependencies_search).",
+		}
+	}
+
+	var proposedQueries []*search.ProposedQuery
 	if forksNotSet {
 		tryIncludeForks := search.RepoOptions{
 			RepoFilters:      repoFilters,
@@ -145,7 +161,7 @@ func (o *Observer) alertForNoResolvedRepos(ctx context.Context, q query.Q) *sear
 		return &search.Alert{
 			PrometheusType:  "no_resolved_repos__repos_exist_when_altered",
 			Title:           "No repositories found",
-			Description:     "Try alter the query or use a different `repo:<regexp>` filter to see results",
+			Description:     "Try altering the query or use a different `repo:<regexp>` filter to see results",
 			ProposedQueries: proposedQueries,
 		}
 	}
@@ -157,14 +173,14 @@ func (o *Observer) alertForNoResolvedRepos(ctx context.Context, q query.Q) *sear
 	}
 }
 
-// multierrorToAlert converts a multierror.Error into the highest priority alert
+// multierrorToAlert converts an error.MultiError into the highest priority alert
 // for the errors contained in it, and a new error with all the errors that could
 // not be converted to alerts.
-func (o *Observer) multierrorToAlert(ctx context.Context, me *multierror.Error) (resAlert *search.Alert, resErr error) {
-	for _, err := range me.Errors {
+func (o *Observer) multierrorToAlert(ctx context.Context, me errors.MultiError) (resAlert *search.Alert, resErr error) {
+	for _, err := range me.Errors() {
 		alert, err := o.errorToAlert(ctx, err)
 		resAlert = maxAlertByPriority(resAlert, alert)
-		resErr = multierror.Append(resErr, err)
+		resErr = errors.Append(resErr, err)
 	}
 
 	return resAlert, resErr
@@ -189,7 +205,7 @@ func (o *Observer) Error(ctx context.Context, err error) {
 	}
 
 	// Track the unexpected error for reporting when calling Done.
-	o.err = multierror.Append(o.err, err)
+	o.err = errors.Append(o.err, err)
 }
 
 // update to alert if it is more important than our current alert.
@@ -199,7 +215,7 @@ func (o *Observer) update(alert *search.Alert) {
 	}
 }
 
-// Done returns the highest priority alert and a multierror.Error containing
+// Done returns the highest priority alert and an error.MultiError containing
 // all errors that could not be converted to alerts.
 func (o *Observer) Done() (*search.Alert, error) {
 	if !o.HasResults && o.PatternType != query.SearchTypeStructural && comby.MatchHoleRegexp.MatchString(o.OriginalQuery) {
@@ -219,7 +235,7 @@ func (o *Observer) errorToAlert(ctx context.Context, err error) (*search.Alert, 
 		return nil, nil
 	}
 
-	var e *multierror.Error
+	var e errors.MultiError
 	if errors.As(err, &e) {
 		return o.multierrorToAlert(ctx, e)
 	}
@@ -242,7 +258,7 @@ func (o *Observer) errorToAlert(ctx context.Context, err error) (*search.Alert, 
 		}
 	}
 
-	if err == searchrepos.ErrNoResolvedRepos {
+	if !o.HasResults && errors.Is(err, searchrepos.ErrNoResolvedRepos) {
 		return o.alertForNoResolvedRepos(ctx, o.Query), nil
 	}
 
@@ -256,7 +272,13 @@ func (o *Observer) errorToAlert(ctx context.Context, err error) (*search.Alert, 
 	}
 
 	if errors.As(err, &mErr) {
-		a := search.AlertForMissingRepoRevs(mErr.Missing)
+		var a *search.Alert
+		dependencies := o.Query.Dependencies()
+		if len(dependencies) == 0 {
+			a = search.AlertForMissingRepoRevs(mErr.Missing)
+		} else {
+			a = search.AlertForMissingDependencyRepoRevs(mErr.Missing)
+		}
 		a.Priority = 6
 		return a, nil
 	}
@@ -323,8 +345,21 @@ func needsRepositoryConfiguration(ctx context.Context, db database.DB) (bool, er
 		}
 	}
 
-	count, err := database.ExternalServices(db).Count(ctx, database.ExternalServicesListOptions{
+	count, err := db.ExternalServices().Count(ctx, database.ExternalServicesListOptions{
 		Kinds: kinds,
+	})
+	if err != nil {
+		return false, err
+	}
+	return count == 0, nil
+}
+
+func needsPackageHostConfiguration(ctx context.Context, db database.DB) (bool, error) {
+	count, err := db.ExternalServices().Count(ctx, database.ExternalServicesListOptions{
+		Kinds: []string{
+			extsvc.KindNpmPackages,
+			extsvc.KindGoModules,
+		},
 	})
 	if err != nil {
 		return false, err

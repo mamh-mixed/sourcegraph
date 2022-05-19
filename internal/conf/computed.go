@@ -19,7 +19,7 @@ import (
 func init() {
 	deployType := deploy.Type()
 	if !deploy.IsValidDeployType(deployType) {
-		log.Fatalf("The 'DEPLOY_TYPE' environment variable is invalid. Expected one of: %q, %q, %q, %q, %q. Got: %q", deploy.Kubernetes, deploy.DockerCompose, deploy.PureDocker, deploy.SingleDocker, deploy.Dev, deployType)
+		log.Fatalf("The 'DEPLOY_TYPE' environment variable is invalid. Expected one of: %q, %q, %q, %q, %q, %q. Got: %q", deploy.Kubernetes, deploy.DockerCompose, deploy.PureDocker, deploy.SingleDocker, deploy.Dev, deploy.Helm, deployType)
 	}
 
 	confdefaults.Default = defaultConfigForDeployment()
@@ -37,14 +37,6 @@ func defaultConfigForDeployment() conftypes.RawUnified {
 	default:
 		panic("deploy type did not register default configuration")
 	}
-}
-
-func AWSCodeCommitConfigs(ctx context.Context) ([]*schema.AWSCodeCommitConnection, error) {
-	var config []*schema.AWSCodeCommitConnection
-	if err := internalapi.Client.ExternalServiceConfigs(ctx, extsvc.KindAWSCodeCommit, &config); err != nil {
-		return nil, err
-	}
-	return config, nil
 }
 
 func BitbucketServerConfigs(ctx context.Context) ([]*schema.BitbucketServerConnection, error) {
@@ -244,14 +236,6 @@ func EventLoggingEnabled() bool {
 	return val == "enabled"
 }
 
-func APIDocsSearchIndexingEnabled() bool {
-	val := ExperimentalFeatures().ApidocsSearchIndexing
-	if val == "" {
-		return false // off by default until API docs search indexing stabilizes, see https://github.com/sourcegraph/sourcegraph/issues/26292
-	}
-	return val == "enabled"
-}
-
 func StructuralSearchEnabled() bool {
 	val := ExperimentalFeatures().StructuralSearch
 	if val == "" {
@@ -260,8 +244,8 @@ func StructuralSearchEnabled() bool {
 	return val == "enabled"
 }
 
-func AndOrQueryEnabled() bool {
-	val := ExperimentalFeatures().AndOrQuery
+func DependeciesSearchEnabled() bool {
+	val := ExperimentalFeatures().DependenciesSearch
 	if val == "" {
 		return true
 	}
@@ -274,6 +258,14 @@ func ExperimentalFeatures() schema.ExperimentalFeatures {
 		return schema.ExperimentalFeatures{}
 	}
 	return *val
+}
+
+func Tracer() string {
+	ot := Get().ObservabilityTracing
+	if ot == nil {
+		return ""
+	}
+	return ot.Type
 }
 
 // AuthMinPasswordLength returns the value of minimum password length requirement.
@@ -295,6 +287,30 @@ func AuthPasswordResetLinkExpiry() int {
 	val := Get().AuthPasswordResetLinkExpiry
 	if val <= 0 {
 		return defaultPasswordLinkExpiry
+	}
+	return val
+}
+
+// AuthLockout populates and returns the *schema.AuthLockout with default values
+// for fields that are not initialized.
+func AuthLockout() *schema.AuthLockout {
+	val := Get().AuthLockout
+	if val == nil {
+		return &schema.AuthLockout{
+			ConsecutivePeriod:      3600,
+			FailedAttemptThreshold: 5,
+			LockoutPeriod:          1800,
+		}
+	}
+
+	if val.ConsecutivePeriod <= 0 {
+		val.ConsecutivePeriod = 3600
+	}
+	if val.FailedAttemptThreshold <= 0 {
+		val.FailedAttemptThreshold = 5
+	}
+	if val.LockoutPeriod <= 0 {
+		val.LockoutPeriod = 1800
 	}
 	return val
 }

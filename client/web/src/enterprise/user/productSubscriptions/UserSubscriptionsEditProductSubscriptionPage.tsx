@@ -1,6 +1,7 @@
+import React, { useEffect, useMemo, useCallback } from 'react'
+
 import * as H from 'history'
 import ArrowLeftIcon from 'mdi-react/ArrowLeftIcon'
-import React, { useEffect, useMemo, useCallback } from 'react'
 import { RouteComponentProps } from 'react-router'
 import { Observable, throwError } from 'rxjs'
 import { catchError, map, mapTo, startWith, switchMap, tap } from 'rxjs/operators'
@@ -10,7 +11,15 @@ import { asError, createAggregateError, isErrorLike } from '@sourcegraph/common'
 import { gql } from '@sourcegraph/http-client'
 import * as GQL from '@sourcegraph/shared/src/schema'
 import { ThemeProps } from '@sourcegraph/shared/src/theme'
-import { LoadingSpinner, useEventObservable, useObservable, Button, Link } from '@sourcegraph/wildcard'
+import {
+    LoadingSpinner,
+    useEventObservable,
+    useObservable,
+    Button,
+    Link,
+    Icon,
+    Typography,
+} from '@sourcegraph/wildcard'
 
 import { mutateGraphQL, queryGraphQL } from '../../../backend/graphql'
 import { PageTitle } from '../../../components/PageTitle'
@@ -33,7 +42,7 @@ const LOADING = 'loading' as const
 /**
  * Displays a page for editing a product subscription in the user subscriptions area.
  */
-export const UserSubscriptionsEditProductSubscriptionPage: React.FunctionComponent<Props> = ({
+export const UserSubscriptionsEditProductSubscriptionPage: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
     user,
     match: {
         params: { subscriptionUUID },
@@ -104,9 +113,9 @@ export const UserSubscriptionsEditProductSubscriptionPage: React.FunctionCompone
             ) : (
                 <>
                     <Button to={productSubscription.url} className="mb-3" variant="link" size="sm" as={Link}>
-                        <ArrowLeftIcon className="icon-inline" /> Subscription
+                        <Icon as={ArrowLeftIcon} /> Subscription
                     </Button>
-                    <h2>Upgrade or change subscription {productSubscription.name}</h2>
+                    <Typography.H2>Upgrade or change subscription {productSubscription.name}</Typography.H2>
                     <ProductSubscriptionForm
                         accountID={user.id}
                         subscriptionID={productSubscription.id}

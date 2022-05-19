@@ -29,7 +29,7 @@ exports[`SignUpPage renders sign up page (cloud) 1`] = `
           src="/img/sourcegraph-logo-light.svg"
         />
         <h2
-          class="d-flex align-items-center mb-4 mt-1 pageHeading"
+          class="h2 d-flex align-items-center mb-4 mt-1 pageHeading"
         >
           Easily search the code you care about.
         </h2>
@@ -42,7 +42,7 @@ exports[`SignUpPage renders sign up page (cloud) 1`] = `
               class="d-flex align-items-center"
             >
               <span
-                class="productStatusBadge text-uppercase mr-1"
+                class="badge info productStatusBadge text-uppercase mr-1"
                 status="beta"
               >
                 beta
@@ -74,7 +74,9 @@ exports[`SignUpPage renders sign up page (cloud) 1`] = `
       <div
         class="leftOrRight signUpWrapper"
       >
-        <h2>
+        <h2
+          class="h2"
+        >
           Create a free account
         </h2>
         <div
@@ -82,7 +84,7 @@ exports[`SignUpPage renders sign up page (cloud) 1`] = `
         >
           Or, 
           <a
-            class=""
+            class="anchorLink"
             href="/?showEmail=true"
           >
             continue with email
@@ -93,7 +95,7 @@ exports[`SignUpPage renders sign up page (cloud) 1`] = `
         >
           By registering, you agree to our 
           <a
-            class=""
+            class="anchorLink"
             href="https://about.sourcegraph.com/terms"
             rel="noopener"
             target="_blank"
@@ -102,7 +104,7 @@ exports[`SignUpPage renders sign up page (cloud) 1`] = `
           </a>
            and 
           <a
-            class=""
+            class="anchorLink"
             href="https://about.sourcegraph.com/privacy"
             rel="noopener"
             target="_blank"
@@ -117,7 +119,7 @@ exports[`SignUpPage renders sign up page (cloud) 1`] = `
         <div>
           Already have an account? 
           <a
-            class=""
+            class="anchorLink"
             href="/sign-in"
           >
             Log in
@@ -161,11 +163,11 @@ exports[`SignUpPage renders sign up page (server) 1`] = `
           />
         </svg>
       </div>
-      <div
-        class="title"
+      <h1
+        class="h1 title"
       >
         Sign up for Sourcegraph Server
-      </div>
+      </h1>
       <div
         class="pb-5 signupPageContainer"
       >
@@ -252,7 +254,7 @@ exports[`SignUpPage renders sign up page (server) 1`] = `
               />
             </div>
             <small
-              class="form-text text-muted"
+              class="form-help text-muted"
             >
               At least 12 characters
             </small>
@@ -276,7 +278,7 @@ exports[`SignUpPage renders sign up page (server) 1`] = `
             >
               By signing up, you agree to our 
               <a
-                class=""
+                class="anchorLink"
                 href="https://about.sourcegraph.com/terms"
                 rel="noopener"
                 target="_blank"
@@ -285,7 +287,7 @@ exports[`SignUpPage renders sign up page (server) 1`] = `
               </a>
                and 
               <a
-                class=""
+                class="anchorLink"
                 href="https://about.sourcegraph.com/privacy"
                 rel="noopener"
                 target="_blank"
@@ -301,7 +303,7 @@ exports[`SignUpPage renders sign up page (server) 1`] = `
         >
           Already have an account? 
           <a
-            class=""
+            class="anchorLink"
             href="/sign-in"
           >
             Sign in

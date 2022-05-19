@@ -20,6 +20,7 @@ const (
 	CIScripts
 	Terraform
 	SVG
+	Shell
 
 	// All indicates all changes should be considered included in this diff, except None.
 	All
@@ -32,6 +33,20 @@ func ForEachDiffType(callback func(d Diff)) {
 	for d := firstDiffType; d < All; d <<= 1 {
 		callback(d)
 	}
+}
+
+// topLevelGoDirs is a slice of directories which contain most of our go code.
+// A PR could just mutate test data or embedded files, so we treat any change
+// in these directories as a go change.
+var topLevelGoDirs = []string{
+	"cmd",
+	"enterprise/cmd",
+	"enterprise/internal",
+	"internal",
+	"lib",
+	"migrations",
+	"monitoring",
+	"schema",
 }
 
 // ParseDiff identifies what has changed in files by generating a Diff that can be used
@@ -47,9 +62,20 @@ func ParseDiff(files []string) (diff Diff) {
 		if strings.HasSuffix(p, ".go") || p == "go.sum" || p == "go.mod" {
 			diff |= Go
 		}
+		if strings.HasSuffix(p, "dev/ci/go-test.sh") {
+			diff |= Go
+		}
+		for _, dir := range topLevelGoDirs {
+			if strings.HasPrefix(p, dir+"/") {
+				diff |= Go
+			}
+		}
 
 		// Client
 		if !strings.HasSuffix(p, ".md") && (isRootClientFile(p) || strings.HasPrefix(p, "client/")) {
+			diff |= Client
+		}
+		if strings.HasSuffix(p, "dev/ci/yarn-test.sh") {
 			diff |= Client
 		}
 
@@ -61,6 +87,9 @@ func ParseDiff(files []string) (diff Diff) {
 		// Affects DB schema
 		if strings.HasPrefix(p, "migrations/") {
 			diff |= (DatabaseSchema | Go)
+		}
+		if strings.HasPrefix(p, "dev/ci/go-backcompat") {
+			diff |= DatabaseSchema
 		}
 
 		// Affects docs
@@ -92,6 +121,11 @@ func ParseDiff(files []string) (diff Diff) {
 		if strings.HasSuffix(p, ".svg") {
 			diff |= SVG
 		}
+
+		// Affects scripts
+		if strings.HasSuffix(p, ".sh") {
+			diff |= Shell
+		}
 	}
 	return
 }
@@ -121,6 +155,8 @@ func (d Diff) String() string {
 		return "Terraform"
 	case SVG:
 		return "SVG"
+	case Shell:
+		return "Shell"
 
 	case All:
 		return "All"

@@ -1,6 +1,6 @@
 package gqltestutil
 
-import "github.com/cockroachdb/errors"
+import "github.com/sourcegraph/sourcegraph/lib/errors"
 
 // ScheduleRepositoryPermissionsSync schedules a permissions syncing request for
 // the given repository.
@@ -12,7 +12,7 @@ mutation ScheduleRepositoryPermissionsSync($repository: ID!) {
 	}
 }
 `
-	variables := map[string]interface{}{
+	variables := map[string]any{
 		"repository": id,
 	}
 	err := c.GraphQL("", query, variables, nil)

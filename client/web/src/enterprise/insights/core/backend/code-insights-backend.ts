@@ -1,12 +1,9 @@
 import { Observable } from 'rxjs'
-import { LineChartContent, PieChartContent } from 'sourcegraph'
 
-import { ViewContexts, ViewProviderResult } from '@sourcegraph/shared/src/api/extension/extensionHostApi'
-
-import { BackendInsight, Insight, InsightDashboard } from '../types'
-import { SupportedInsightSubject } from '../types/subjects'
+import { BackendInsight, Insight, InsightDashboard, InsightsDashboardOwner } from '../types'
 
 import {
+    AssignInsightsToDashboardInput,
     BackendInsightData,
     CaptureInsightSettings,
     DashboardCreateInput,
@@ -20,8 +17,13 @@ import {
     GetSearchInsightContentInput,
     InsightCreateInput,
     InsightUpdateInput,
-    ReachableInsight,
+    AccessibleInsightInfo,
+    RemoveInsightFromDashboardInput,
     RepositorySuggestionData,
+    CategoricalChartContent,
+    SeriesChartContent,
+    UiFeaturesConfig,
+    InsightContent,
 } from './code-insights-backend-types'
 
 /**
@@ -42,7 +44,7 @@ export interface CodeInsightsBackend {
      * Returns all possible visibility options for dashboard. Dashboard can be stored
      * as private (user subject), org level (organization subject) or global (site subject)
      */
-    getDashboardSubjects: () => Observable<SupportedInsightSubject[]>
+    getDashboardOwners: () => Observable<InsightsDashboardOwner[]>
 
     findDashboardByName: (name: string) => Observable<InsightDashboard | null>
 
@@ -52,25 +54,19 @@ export interface CodeInsightsBackend {
 
     deleteDashboard: (input: DashboardDeleteInput) => Observable<void>
 
-    assignInsightsToDashboard: (input: DashboardUpdateInput) => Observable<unknown>
+    assignInsightsToDashboard: (input: AssignInsightsToDashboardInput) => Observable<unknown>
 
     /**
      * Return all accessible for a user insights that are filtered by ids param.
      * If ids is nullable value then returns all insights. Insights in this case
-     * present only insight configurations and meta data without actual data about
+     * present only insight configurations and metadata without actual data about
      * data series or pie chart data.
      *
      * @param ids - list of insight ids
      */
     getInsights: (input: { dashboardId: string }) => Observable<Insight[]>
 
-    /**
-     * Returns all reachable subject's insights from subject with subjectId.
-     *
-     * User subject has access to all insights from all organizations and global site settings.
-     * Organization subject has access to only its insights.
-     */
-    getReachableInsights: (input: { subjectId: string }) => Observable<ReachableInsight[]>
+    getAccessibleInsightsList: () => Observable<AccessibleInsightInfo[]>
 
     /**
      * Return insight (meta and presentation data) by insight id.
@@ -80,7 +76,9 @@ export interface CodeInsightsBackend {
 
     findInsightByName: (input: FindInsightByNameInput) => Observable<Insight | null>
 
-    hasInsights: () => Observable<boolean>
+    hasInsights: (insightsCount: number) => Observable<boolean>
+
+    getActiveInsightsCount: (insightsCount: number) => Observable<number>
 
     createInsight: (input: InsightCreateInput) => Observable<unknown>
 
@@ -88,11 +86,7 @@ export interface CodeInsightsBackend {
 
     deleteInsight: (insightId: string) => Observable<unknown>
 
-    /**
-     * Returns all available for users subjects (sharing levels, historically it was introduced
-     * from the setting cascade subject levels - global, org levels, personal)
-     */
-    getInsightSubjects: () => Observable<SupportedInsightSubject[]>
+    removeInsightFromDashboard: (input: RemoveInsightFromDashboardInput) => Observable<unknown>
 
     /**
      * Returns backend insight (via gql API handler)
@@ -101,30 +95,24 @@ export interface CodeInsightsBackend {
 
     /**
      * Returns extension like built-in insight that is fetched via frontend
-     * network requests to Sourcegraph search API.
+     * network utils to Sourcegraph search API.
      */
-    getBuiltInInsightData: <D extends keyof ViewContexts>(
-        input: GetBuiltInsightInput<D>
-    ) => Observable<ViewProviderResult>
+    getBuiltInInsightData: (input: GetBuiltInsightInput) => Observable<InsightContent<unknown>>
 
     /**
      * Returns content for the search based insight live preview chart.
      */
-    getSearchInsightContent: <D extends keyof ViewContexts>(
-        input: GetSearchInsightContentInput<D>
-    ) => Promise<LineChartContent<any, string>>
+    getSearchInsightContent: (input: GetSearchInsightContentInput) => Promise<SeriesChartContent<unknown>>
 
     /**
      * Returns content for the code stats insight live preview chart.
      */
-    getLangStatsInsightContent: <D extends keyof ViewContexts>(
-        input: GetLangStatsInsightContentInput<D>
-    ) => Promise<PieChartContent<any>>
+    getLangStatsInsightContent: (input: GetLangStatsInsightContentInput) => Promise<CategoricalChartContent<unknown>>
 
-    getCaptureInsightContent: (input: CaptureInsightSettings) => Promise<LineChartContent<any, string>>
+    getCaptureInsightContent: (input: CaptureInsightSettings) => Promise<SeriesChartContent<unknown>>
 
     /**
-     * Returns a list of suggestions for the repositories field in the insight creation UI.
+     * Returns a list of suggestions for the repositories' field in the insight creation UI.
      *
      * @param query - A string with a possible value for the repository name
      */
@@ -138,4 +126,19 @@ export interface CodeInsightsBackend {
      * @param query - search page query value
      */
     getResolvedSearchRepositories: (query: string) => Promise<string[]>
+
+    /**
+     * Used for the dynamic insight example on the insights landing page.
+     * Attempts to return a repository that contains the string "TODO"
+     * If a repository is not found it then returns the first repository it finds.
+     *
+     * Under the hood this is calling the search API with "select:repo TODO count:1"
+     * or "select:repo count:1" if no repository is found with the string "TODO"
+     */
+    getFirstExampleRepository: () => Observable<string>
+
+    /**
+     * Returns a features object used to show/hide and enable/disable UI elements
+     */
+    readonly UIFeatures: UiFeaturesConfig
 }

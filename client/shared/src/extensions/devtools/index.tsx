@@ -1,21 +1,35 @@
-import { Tab, TabList, TabPanel, TabPanels, Tabs } from '@reach/tabs'
+import React, { useCallback } from 'react'
+
 import classNames from 'classnames'
 import MenuUpIcon from 'mdi-react/MenuUpIcon'
-import React, { useCallback } from 'react'
-import { UncontrolledPopover } from 'reactstrap'
 
-import { Button, Card, useLocalStorage } from '@sourcegraph/wildcard'
+import {
+    Button,
+    Card,
+    Tab,
+    TabList,
+    TabPanel,
+    TabPanels,
+    Tabs,
+    useLocalStorage,
+    Icon,
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+    Position,
+} from '@sourcegraph/wildcard'
 
 import { PlatformContextProps } from '../../platform/context'
 import { ExtensionsControllerProps } from '../controller'
 
 import { ActiveExtensionsPanel } from './ActiveExtensionsPanel'
+
 import styles from './index.module.scss'
 
 export interface ExtensionsDevelopmentToolsProps
     extends ExtensionsControllerProps,
         PlatformContextProps<'sideloadedExtensionURL' | 'settings'> {
-    link: React.ComponentType<{ id: string }>
+    link: React.ComponentType<React.PropsWithChildren<{ id: string }>>
 }
 
 const LAST_TAB_STORAGE_KEY = 'ExtensionDevTools.lastTab'
@@ -25,14 +39,16 @@ type ExtensionDevelopmentToolsTabID = 'activeExtensions' | 'loggers'
 interface ExtensionDevelopmentToolsTab {
     id: ExtensionDevelopmentToolsTabID
     label: string
-    component: React.ComponentType<ExtensionsDevelopmentToolsProps>
+    component: React.ComponentType<React.PropsWithChildren<ExtensionsDevelopmentToolsProps>>
 }
 
 const TABS: ExtensionDevelopmentToolsTab[] = [
     { id: 'activeExtensions', label: 'Active extensions', component: ActiveExtensionsPanel },
 ]
 
-const ExtensionDevelopmentTools: React.FunctionComponent<ExtensionsDevelopmentToolsProps> = props => {
+const ExtensionDevelopmentTools: React.FunctionComponent<
+    React.PropsWithChildren<ExtensionsDevelopmentToolsProps>
+> = props => {
     const [tabIndex, setTabIndex] = useLocalStorage(LAST_TAB_STORAGE_KEY, 0)
     const handleTabsChange = useCallback((index: number) => setTabIndex(index), [setTabIndex])
 
@@ -43,15 +59,13 @@ const ExtensionDevelopmentTools: React.FunctionComponent<ExtensionsDevelopmentTo
             className={classNames('border-0 rounded-0', styles.extensionStatus)}
             onChange={handleTabsChange}
         >
-            <div className="tablist-wrapper w-100 align-items-center">
-                <TabList>
-                    {TABS.map(({ label, id }) => (
-                        <Tab className="d-flex flex-1 justify-content-around" key={id} data-tab-content={id}>
-                            {label}
-                        </Tab>
-                    ))}
-                </TabList>
-            </div>
+            <TabList>
+                {TABS.map(({ label, id }) => (
+                    <Tab key={id} data-tab-content={id}>
+                        {label}
+                    </Tab>
+                ))}
+            </TabList>
 
             <TabPanels>
                 {TABS.map(tab => (
@@ -66,17 +80,17 @@ const ExtensionDevelopmentTools: React.FunctionComponent<ExtensionsDevelopmentTo
 
 /** A button that toggles the visibility of the ExtensionDevTools element in a popover. */
 export const ExtensionDevelopmentToolsPopover = React.memo<ExtensionsDevelopmentToolsProps>(props => (
-    <>
-        <Button id="extension-status-popover" className="text-decoration-none px-2" variant="link">
-            <span className="text-muted">Ext</span> <MenuUpIcon className="icon-inline" />
-        </Button>
-        <UncontrolledPopover
-            placement="auto-end"
-            target="extension-status-popover"
-            hideArrow={true}
-            popperClassName="border-0 rounded-0"
+    <Popover>
+        <PopoverTrigger
+            as={Button}
+            className="text-decoration-none px-2"
+            variant="link"
+            aria-label="Open extensions developer tools"
         >
+            <span className="text-muted">Ext</span> <Icon role="img" as={MenuUpIcon} aria-hidden={true} />
+        </PopoverTrigger>
+        <PopoverContent position={Position.leftEnd}>
             <ExtensionDevelopmentTools {...props} />
-        </UncontrolledPopover>
-    </>
+        </PopoverContent>
+    </Popover>
 ))

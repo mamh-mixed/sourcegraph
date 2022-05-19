@@ -132,9 +132,9 @@ func (q *requestQueue) enqueue(meta *requestMeta) (updated bool) {
 
 // remove removes the sync request from the queue if the request.acquired matches the
 // acquired argument.
-func (q *requestQueue) remove(typ requestType, id int32, acquired bool) (removed bool) {
+func (q *requestQueue) remove(typ requestType, id int32, acquired bool) {
 	if id == 0 {
-		return false
+		return
 	}
 
 	q.mu.Lock()
@@ -147,10 +147,7 @@ func (q *requestQueue) remove(typ requestType, id int32, acquired bool) (removed
 	request := q.index[key]
 	if request != nil && request.acquired == acquired {
 		heap.Remove(q, request.index)
-		return true
 	}
-
-	return false
 }
 
 // acquireNext acquires the next sync request. The acquired request must be removed from
@@ -230,7 +227,7 @@ func (q *requestQueue) Swap(i, j int) {
 	q.heap[j].index = j
 }
 
-func (q *requestQueue) Push(x interface{}) {
+func (q *requestQueue) Push(x any) {
 	n := len(q.heap)
 	request := x.(*syncRequest)
 	request.index = n
@@ -243,7 +240,7 @@ func (q *requestQueue) Push(x interface{}) {
 	q.index[key] = request
 }
 
-func (q *requestQueue) Pop() interface{} {
+func (q *requestQueue) Pop() any {
 	n := len(q.heap)
 	request := q.heap[n-1]
 	request.index = -1 // for safety

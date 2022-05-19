@@ -1,5 +1,4 @@
 import { storiesOf } from '@storybook/react'
-import React from 'react'
 
 import { BrandedStory } from '@sourcegraph/branded/src/components/BrandedStory'
 import { SearchPatternType } from '@sourcegraph/shared/src/schema'
@@ -10,7 +9,9 @@ import {
     mockGetUserSearchContextNamespaces,
 } from '@sourcegraph/shared/src/testing/searchContexts/testHelpers'
 import { NOOP_PLATFORM_CONTEXT } from '@sourcegraph/shared/src/testing/searchTestHelpers'
+import { Typography } from '@sourcegraph/wildcard'
 
+import { LazyMonacoQueryInputProps } from './LazyMonacoQueryInput'
 import { SearchBox, SearchBoxProps } from './SearchBox'
 
 const { add } = storiesOf('search-ui/input/SearchBox', module).addParameters({
@@ -46,70 +47,80 @@ const defaultProps: SearchBoxProps = {
     hasUserAddedExternalServices: false,
     getUserSearchContextNamespaces: mockGetUserSearchContextNamespaces,
     platformContext: NOOP_PLATFORM_CONTEXT,
+    editorComponent: 'monaco',
 }
 
 add('SearchBox', () => (
     <BrandedStory>
         {props => (
             <>
-                <h2>Default</h2>
-                <div className="w-100 d-flex my-2">
-                    <SearchBox {...defaultProps} isLightTheme={props.isLightTheme} />
-                </div>
+                {(['monaco', 'codemirror6'] as LazyMonacoQueryInputProps['editorComponent'][]).map(editorComponent => {
+                    const searchBoxProps = { ...defaultProps, editorComponent }
 
-                <h2>Regexp enabled</h2>
-                <div className="w-100 d-flex my-2">
-                    <SearchBox
-                        {...defaultProps}
-                        patternType={SearchPatternType.regexp}
-                        isLightTheme={props.isLightTheme}
-                    />
-                </div>
+                    return (
+                        <div key={editorComponent}>
+                            <Typography.H1>{editorComponent}</Typography.H1>
+                            <Typography.H2>Default</Typography.H2>
+                            <div className="w-100 d-flex my-2">
+                                <SearchBox {...searchBoxProps} isLightTheme={props.isLightTheme} />
+                            </div>
 
-                <h2>Structural enabled</h2>
-                <div className="w-100 d-flex my-2">
-                    <SearchBox
-                        {...defaultProps}
-                        patternType={SearchPatternType.structural}
-                        isLightTheme={props.isLightTheme}
-                    />
-                </div>
+                            <Typography.H2>Regexp enabled</Typography.H2>
+                            <div className="w-100 d-flex my-2">
+                                <SearchBox
+                                    {...searchBoxProps}
+                                    patternType={SearchPatternType.regexp}
+                                    isLightTheme={props.isLightTheme}
+                                />
+                            </div>
 
-                <h2>Case sensitivity enabled</h2>
-                <div className="w-100 d-flex my-2">
-                    <SearchBox {...defaultProps} caseSensitive={true} isLightTheme={props.isLightTheme} />
-                </div>
+                            <Typography.H2>Structural enabled</Typography.H2>
+                            <div className="w-100 d-flex my-2">
+                                <SearchBox
+                                    {...searchBoxProps}
+                                    patternType={SearchPatternType.structural}
+                                    isLightTheme={props.isLightTheme}
+                                />
+                            </div>
 
-                <h2>With search contexts</h2>
-                <div className="w-100 d-flex my-2">
-                    <SearchBox
-                        {...defaultProps}
-                        showSearchContext={true}
-                        isLightTheme={props.isLightTheme}
-                        selectedSearchContextSpec="global"
-                    />
-                </div>
+                            <Typography.H2>Case sensitivity enabled</Typography.H2>
+                            <div className="w-100 d-flex my-2">
+                                <SearchBox {...searchBoxProps} caseSensitive={true} isLightTheme={props.isLightTheme} />
+                            </div>
 
-                <h2>With search contexts, user context selected</h2>
-                <div className="w-100 d-flex my-2">
-                    <SearchBox
-                        {...defaultProps}
-                        showSearchContext={true}
-                        isLightTheme={props.isLightTheme}
-                        selectedSearchContextSpec="@username/test-version-1.5"
-                    />
-                </div>
+                            <Typography.H2>With search contexts</Typography.H2>
+                            <div className="w-100 d-flex my-2">
+                                <SearchBox
+                                    {...searchBoxProps}
+                                    showSearchContext={true}
+                                    isLightTheme={props.isLightTheme}
+                                    selectedSearchContextSpec="global"
+                                />
+                            </div>
 
-                <h2>With search contexts, disabled based on query</h2>
-                <div className="w-100 d-flex my-2">
-                    <SearchBox
-                        {...defaultProps}
-                        showSearchContext={true}
-                        isLightTheme={props.isLightTheme}
-                        queryState={{ query: 'hello context:global' }}
-                        selectedSearchContextSpec="@username"
-                    />
-                </div>
+                            <Typography.H2>With search contexts, user context selected</Typography.H2>
+                            <div className="w-100 d-flex my-2">
+                                <SearchBox
+                                    {...searchBoxProps}
+                                    showSearchContext={true}
+                                    isLightTheme={props.isLightTheme}
+                                    selectedSearchContextSpec="@username/test-version-1.5"
+                                />
+                            </div>
+
+                            <Typography.H2>With search contexts, disabled based on query</Typography.H2>
+                            <div className="w-100 d-flex my-2">
+                                <SearchBox
+                                    {...searchBoxProps}
+                                    showSearchContext={true}
+                                    isLightTheme={props.isLightTheme}
+                                    queryState={{ query: 'hello context:global' }}
+                                    selectedSearchContextSpec="@username"
+                                />
+                            </div>
+                        </div>
+                    )
+                })}
             </>
         )}
     </BrandedStory>

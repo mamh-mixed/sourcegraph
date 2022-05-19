@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"regexp"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/grafana/regexp"
 
 	authzGitHub "github.com/sourcegraph/sourcegraph/enterprise/internal/authz/github"
 	edb "github.com/sourcegraph/sourcegraph/enterprise/internal/database"
@@ -27,6 +27,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/repos"
 	"github.com/sourcegraph/sourcegraph/internal/timeutil"
 	"github.com/sourcegraph/sourcegraph/internal/types"
+	"github.com/sourcegraph/sourcegraph/lib/log/logtest"
 )
 
 var updateRegex = flag.String("update", "", "Update testdata of tests matching the given regex")
@@ -85,14 +86,14 @@ func TestIntegration_GitHubPermissions(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			cli := extsvcGitHub.NewV3Client(uri, &auth.OAuthBearerToken{Token: token}, doer)
+			cli := extsvcGitHub.NewV3Client(logtest.Scoped(t), svc.URN(), uri, &auth.OAuthBearerToken{Token: token}, doer)
 
 			testDB := dbtest.NewDB(t)
 			ctx := actor.WithInternalActor(context.Background())
 
-			reposStore := repos.NewStore(testDB, sql.TxOptions{})
+			reposStore := repos.NewStore(database.NewDB(testDB), sql.TxOptions{})
 
-			err = reposStore.ExternalServiceStore.Upsert(ctx, &svc)
+			err = reposStore.ExternalServiceStore().Upsert(ctx, &svc)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -122,7 +123,7 @@ func TestIntegration_GitHubPermissions(t *testing.T) {
 					},
 				},
 			}
-			err = reposStore.RepoStore.Create(ctx, &repo)
+			err = reposStore.RepoStore().Create(ctx, &repo)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -151,8 +152,8 @@ func TestIntegration_GitHubPermissions(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			wantIDs := []uint32{1}
-			if diff := cmp.Diff(wantIDs, p.IDs.ToArray()); diff != "" {
+			wantIDs := []int32{1}
+			if diff := cmp.Diff(wantIDs, p.GenerateSortedIDsSlice()); diff != "" {
 				t.Fatalf("IDs mismatch (-want +got):\n%s", diff)
 			}
 		})
@@ -166,14 +167,14 @@ func TestIntegration_GitHubPermissions(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			cli := extsvcGitHub.NewV3Client(uri, &auth.OAuthBearerToken{Token: token}, doer)
+			cli := extsvcGitHub.NewV3Client(logtest.Scoped(t), svc.URN(), uri, &auth.OAuthBearerToken{Token: token}, doer)
 
 			testDB := dbtest.NewDB(t)
 			ctx := actor.WithInternalActor(context.Background())
 
-			reposStore := repos.NewStore(testDB, sql.TxOptions{})
+			reposStore := repos.NewStore(database.NewDB(testDB), sql.TxOptions{})
 
-			err = reposStore.ExternalServiceStore.Upsert(ctx, &svc)
+			err = reposStore.ExternalServiceStore().Upsert(ctx, &svc)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -203,7 +204,7 @@ func TestIntegration_GitHubPermissions(t *testing.T) {
 					},
 				},
 			}
-			err = reposStore.RepoStore.Create(ctx, &repo)
+			err = reposStore.RepoStore().Create(ctx, &repo)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -232,8 +233,8 @@ func TestIntegration_GitHubPermissions(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			wantIDs := []uint32{1}
-			if diff := cmp.Diff(wantIDs, p.IDs.ToArray()); diff != "" {
+			wantIDs := []int32{1}
+			if diff := cmp.Diff(wantIDs, p.GenerateSortedIDsSlice()); diff != "" {
 				t.Fatalf("IDs mismatch (-want +got):\n%s", diff)
 			}
 
@@ -246,7 +247,7 @@ func TestIntegration_GitHubPermissions(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if diff := cmp.Diff(wantIDs, p.IDs.ToArray()); diff != "" {
+			if diff := cmp.Diff(wantIDs, p.GenerateSortedIDsSlice()); diff != "" {
 				t.Fatalf("IDs mismatch (-want +got):\n%s", diff)
 			}
 		})
@@ -270,14 +271,14 @@ func TestIntegration_GitHubPermissions(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			cli := extsvcGitHub.NewV3Client(uri, &auth.OAuthBearerToken{Token: token}, doer)
+			cli := extsvcGitHub.NewV3Client(logtest.Scoped(t), svc.URN(), uri, &auth.OAuthBearerToken{Token: token}, doer)
 
 			testDB := dbtest.NewDB(t)
 			ctx := actor.WithInternalActor(context.Background())
 
-			reposStore := repos.NewStore(testDB, sql.TxOptions{})
+			reposStore := repos.NewStore(database.NewDB(testDB), sql.TxOptions{})
 
-			err = reposStore.ExternalServiceStore.Upsert(ctx, &svc)
+			err = reposStore.ExternalServiceStore().Upsert(ctx, &svc)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -307,7 +308,7 @@ func TestIntegration_GitHubPermissions(t *testing.T) {
 					},
 				},
 			}
-			err = reposStore.RepoStore.Create(ctx, &repo)
+			err = reposStore.RepoStore().Create(ctx, &repo)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -339,8 +340,8 @@ func TestIntegration_GitHubPermissions(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			wantIDs := []uint32{1}
-			if diff := cmp.Diff(wantIDs, p.IDs.ToArray()); diff != "" {
+			wantIDs := []int32{1}
+			if diff := cmp.Diff(wantIDs, p.GenerateSortedIDsSlice()); diff != "" {
 				t.Fatalf("IDs mismatch (-want +got):\n%s", diff)
 			}
 		})
@@ -354,14 +355,14 @@ func TestIntegration_GitHubPermissions(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			cli := extsvcGitHub.NewV3Client(uri, &auth.OAuthBearerToken{Token: token}, doer)
+			cli := extsvcGitHub.NewV3Client(logtest.Scoped(t), svc.URN(), uri, &auth.OAuthBearerToken{Token: token}, doer)
 
 			testDB := dbtest.NewDB(t)
 			ctx := actor.WithInternalActor(context.Background())
 
-			reposStore := repos.NewStore(testDB, sql.TxOptions{})
+			reposStore := repos.NewStore(database.NewDB(testDB), sql.TxOptions{})
 
-			err = reposStore.ExternalServiceStore.Upsert(ctx, &svc)
+			err = reposStore.ExternalServiceStore().Upsert(ctx, &svc)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -391,7 +392,7 @@ func TestIntegration_GitHubPermissions(t *testing.T) {
 					},
 				},
 			}
-			err = reposStore.RepoStore.Create(ctx, &repo)
+			err = reposStore.RepoStore().Create(ctx, &repo)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -423,8 +424,8 @@ func TestIntegration_GitHubPermissions(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			wantIDs := []uint32{1}
-			if diff := cmp.Diff(wantIDs, p.IDs.ToArray()); diff != "" {
+			wantIDs := []int32{1}
+			if diff := cmp.Diff(wantIDs, p.GenerateSortedIDsSlice()); diff != "" {
 				t.Fatalf("IDs mismatch (-want +got):\n%s", diff)
 			}
 
@@ -437,7 +438,7 @@ func TestIntegration_GitHubPermissions(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if diff := cmp.Diff(wantIDs, p.IDs.ToArray()); diff != "" {
+			if diff := cmp.Diff(wantIDs, p.GenerateSortedIDsSlice()); diff != "" {
 				t.Fatalf("IDs mismatch (-want +got):\n%s", diff)
 			}
 		})

@@ -1,19 +1,23 @@
 package git
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/cockroachdb/errors"
 	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/require"
 
 	"github.com/sourcegraph/sourcegraph/internal/actor"
 	"github.com/sourcegraph/sourcegraph/internal/api"
 	"github.com/sourcegraph/sourcegraph/internal/authz"
+	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/gitserver"
 	"github.com/sourcegraph/sourcegraph/internal/gitserver/gitdomain"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 var (
@@ -21,11 +25,17 @@ var (
 	fileWithoutAccess = "file-without-access"
 )
 
+func TestLogPartsPerCommitInSync(t *testing.T) {
+	require.Equal(t, 2*partsPerCommitBasic, strings.Count(logFormatWithoutRefs, "%"),
+		"Expected (2 * %0d) %% signs in log format string (%0d fields, %0d %%x00 separators)",
+		partsPerCommitBasic)
+}
+
 func TestRepository_GetCommit(t *testing.T) {
 	ctx := actor.WithActor(context.Background(), &actor.Actor{
 		UID: 1,
 	})
-
+	db := database.NewMockDB()
 	gitCommands := []string{
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
 		"GIT_COMMITTER_NAME=c GIT_COMMITTER_EMAIL=c@c.com GIT_COMMITTER_DATE=2006-01-02T15:04:07Z git commit --allow-empty -m bar --author='a <a@a.com>' --date 2006-01-02T15:04:06Z",
@@ -49,16 +59,16 @@ func TestRepository_GetCommit(t *testing.T) {
 				t.Cleanup(func() {
 					runCommitLog = oldRunCommitLog
 				})
-				runCommitLog = func(ctx context.Context, cmd *gitserver.Cmd, opt CommitsOptions) ([]*wrappedCommit, error) {
+				runCommitLog = func(ctx context.Context, cmd gitserver.GitCommand, opt CommitsOptions) ([]*wrappedCommit, error) {
 					// Track the value of NoEnsureRevision we pass to gitserver
 					noEnsureRevision = opt.NoEnsureRevision
 					return oldRunCommitLog(ctx, cmd, opt)
 				}
 
-				resolveRevisionOptions := ResolveRevisionOptions{
+				resolveRevisionOptions := gitserver.ResolveRevisionOptions{
 					NoEnsureRevision: test.noEnsureRevision,
 				}
-				commit, err := GetCommit(ctx, test.repo, test.id, resolveRevisionOptions, checker)
+				commit, err := GetCommit(ctx, db, test.repo, test.id, resolveRevisionOptions, checker)
 				if err != nil {
 					if test.revisionNotFoundError {
 						if !errors.HasType(err, &gitdomain.RevisionNotFoundError{}) {
@@ -71,10 +81,11 @@ func TestRepository_GetCommit(t *testing.T) {
 
 				if !CommitsEqual(commit, test.wantCommit) {
 					t.Errorf("%s: got commit == %+v, want %+v", label, commit, test.wantCommit)
+					return
 				}
 
 				// Test that trying to get a nonexistent commit returns RevisionNotFoundError.
-				if _, err := GetCommit(ctx, test.repo, NonExistentCommitID, resolveRevisionOptions, checker); !errors.HasType(err, &gitdomain.RevisionNotFoundError{}) {
+				if _, err := GetCommit(ctx, db, test.repo, NonExistentCommitID, resolveRevisionOptions, checker); !errors.HasType(err, &gitdomain.RevisionNotFoundError{}) {
 					t.Errorf("%s: for nonexistent commit: got err %v, want RevisionNotFoundError", label, err)
 				}
 
@@ -137,6 +148,8 @@ func TestRepository_HasCommitAfter(t *testing.T) {
 	ctx := actor.WithActor(context.Background(), &actor.Actor{
 		UID: 1,
 	})
+
+	db := database.NewMockDB()
 
 	testCases := []struct {
 		label                 string
@@ -216,7 +229,7 @@ func TestRepository_HasCommitAfter(t *testing.T) {
 				}
 
 				repo := MakeGitRepository(t, gitCommands...)
-				got, err := HasCommitAfter(ctx, repo, tc.after, tc.revspec, nil)
+				got, err := HasCommitAfter(ctx, db, repo, tc.after, tc.revspec, nil)
 				if err != nil || got != tc.want {
 					t.Errorf("got %t hascommitafter, want %t", got, tc.want)
 				}
@@ -236,7 +249,7 @@ func TestRepository_HasCommitAfter(t *testing.T) {
 				// Case where user can't view commit 2, but can view commits 0 and 1. In each test case the result should match the case where no sub-repo perms enabled
 				checker := getTestSubRepoPermsChecker("file2")
 				repo := MakeGitRepository(t, gitCommands...)
-				got, err := HasCommitAfter(ctx, repo, tc.after, tc.revspec, checker)
+				got, err := HasCommitAfter(ctx, db, repo, tc.after, tc.revspec, checker)
 				if err != nil {
 					t.Errorf("got error: %s", err)
 				}
@@ -247,7 +260,7 @@ func TestRepository_HasCommitAfter(t *testing.T) {
 				// Case where user can't view commit 1 or commit 2, which will mean in some cases since HasCommitAfter will be false due to those commits not being visible.
 				checker = getTestSubRepoPermsChecker("file1", "file2")
 				repo = MakeGitRepository(t, gitCommands...)
-				got, err = HasCommitAfter(ctx, repo, tc.after, tc.revspec, checker)
+				got, err = HasCommitAfter(ctx, db, repo, tc.after, tc.revspec, checker)
 				if err != nil {
 					t.Errorf("got error: %s", err)
 				}
@@ -264,6 +277,8 @@ func TestRepository_FirstEverCommit(t *testing.T) {
 	ctx := actor.WithActor(context.Background(), &actor.Actor{
 		UID: 1,
 	})
+
+	db := database.NewMockDB()
 
 	testCases := []struct {
 		commitDates []string
@@ -294,7 +309,7 @@ func TestRepository_FirstEverCommit(t *testing.T) {
 			}
 
 			repo := MakeGitRepository(t, gitCommands...)
-			gotCommit, err := FirstEverCommit(ctx, repo, nil)
+			gotCommit, err := FirstEverCommit(ctx, db, repo, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -319,12 +334,12 @@ func TestRepository_FirstEverCommit(t *testing.T) {
 
 			repo := MakeGitRepository(t, gitCommands...)
 			// Try to get first commit when user doesn't have permission to view
-			_, err := FirstEverCommit(ctx, repo, checkerWithoutAccessFirstCommit)
+			_, err := FirstEverCommit(ctx, db, repo, checkerWithoutAccessFirstCommit)
 			if !errors.HasType(err, &gitdomain.RevisionNotFoundError{}) {
 				t.Errorf("expected a RevisionNotFoundError since the user does not have access to view this commit, got :%s", err)
 			}
 			// Try to get first commit when user does have permission to view, should succeed
-			gotCommit, err := FirstEverCommit(ctx, repo, checkerWithAccessFirstCommit)
+			gotCommit, err := FirstEverCommit(ctx, db, repo, checkerWithAccessFirstCommit)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -337,7 +352,7 @@ func TestRepository_FirstEverCommit(t *testing.T) {
 				UID:      1,
 				Internal: true,
 			})
-			gotCommit, err = FirstEverCommit(newCtx, repo, checkerWithoutAccessFirstCommit)
+			gotCommit, err = FirstEverCommit(newCtx, db, repo, checkerWithoutAccessFirstCommit)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -359,7 +374,7 @@ func TestHead(t *testing.T) {
 		repo := MakeGitRepository(t, gitCommands...)
 		ctx := context.Background()
 
-		head, exists, err := Head(ctx, repo, nil)
+		head, exists, err := Head(ctx, database.NewMockDB(), repo, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -373,6 +388,7 @@ func TestHead(t *testing.T) {
 	})
 
 	t.Run("with sub-repo permissions", func(t *testing.T) {
+		db := database.NewMockDB()
 		gitCommands := []string{
 			"touch file",
 			"git add file",
@@ -384,7 +400,7 @@ func TestHead(t *testing.T) {
 		})
 		checker := getTestSubRepoPermsChecker("file")
 		// call Head() when user doesn't have access to view the commit
-		_, exists, err := Head(ctx, repo, checker)
+		_, exists, err := Head(ctx, db, repo, checker)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -393,7 +409,7 @@ func TestHead(t *testing.T) {
 		}
 		readAllChecker := getTestSubRepoPermsChecker()
 		// call Head() when user has access to view the commit; should return expected commit
-		head, exists, err := Head(ctx, repo, readAllChecker)
+		head, exists, err := Head(ctx, db, repo, readAllChecker)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -412,12 +428,12 @@ func TestCommitExists(t *testing.T) {
 	ctx := actor.WithActor(context.Background(), &actor.Actor{
 		UID: 1,
 	})
-
+	db := database.NewMockDB()
 	testCommitExists := func(label string, gitCommands []string, commitID, nonExistentCommitID api.CommitID, checker authz.SubRepoPermissionChecker) {
 		t.Run(label, func(t *testing.T) {
 			repo := MakeGitRepository(t, gitCommands...)
 
-			exists, err := CommitExists(ctx, repo, commitID, checker)
+			exists, err := CommitExists(ctx, db, repo, commitID, checker)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -425,7 +441,7 @@ func TestCommitExists(t *testing.T) {
 				t.Fatal("Should exist")
 			}
 
-			exists, err = CommitExists(ctx, repo, NonExistentCommitID, checker)
+			exists, err = CommitExists(ctx, db, repo, nonExistentCommitID, checker)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -494,7 +510,7 @@ func TestRepository_Commits(t *testing.T) {
 				testCommits(ctx, label, test.repo, CommitsOptions{Range: string(test.id)}, checker, test.wantTotal, test.wantCommits, t)
 
 				// Test that trying to get a nonexistent commit returns RevisionNotFoundError.
-				if _, err := Commits(ctx, test.repo, CommitsOptions{Range: string(NonExistentCommitID)}, nil); !errors.HasType(err, &gitdomain.RevisionNotFoundError{}) {
+				if _, err := Commits(ctx, database.NewMockDB(), test.repo, CommitsOptions{Range: string(NonExistentCommitID)}, nil); !errors.HasType(err, &gitdomain.RevisionNotFoundError{}) {
 					t.Errorf("%s: for nonexistent commit: got err %v, want RevisionNotFoundError", label, err)
 				}
 			})
@@ -509,16 +525,6 @@ func TestCommits_SubRepoPerms(t *testing.T) {
 	t.Parallel()
 	ctx := actor.WithActor(context.Background(), &actor.Actor{
 		UID: 1,
-	})
-	checker := authz.NewMockSubRepoPermissionChecker()
-	checker.EnabledFunc.SetDefaultHook(func() bool {
-		return true
-	})
-	checker.PermissionsFunc.SetDefaultHook(func(ctx context.Context, i int32, content authz.RepoContent) (authz.Perms, error) {
-		if content.Path == "file2" || content.Path == "file3" {
-			return authz.None, nil
-		}
-		return authz.Read, nil
 	})
 	gitCommands := []string{
 		"touch file1",
@@ -535,10 +541,11 @@ func TestCommits_SubRepoPerms(t *testing.T) {
 	}
 
 	tests := map[string]struct {
-		repo        api.RepoName
-		wantCommits []*gitdomain.Commit
-		opt         CommitsOptions
-		wantTotal   uint
+		repo          api.RepoName
+		wantCommits   []*gitdomain.Commit
+		opt           CommitsOptions
+		wantTotal     uint
+		noAccessPaths []string
 	}{
 		"if no read perms on file should filter out commit": {
 			repo:      MakeGitRepository(t, gitCommands...),
@@ -551,21 +558,21 @@ func TestCommits_SubRepoPerms(t *testing.T) {
 					Message:   "commit1",
 				},
 			},
+			noAccessPaths: []string{"file2", "file3"},
 		},
 		"sub-repo perms with path (w/ no access) specified should return no commits": {
 			repo:      MakeGitRepository(t, gitCommands...),
 			wantTotal: 1,
 			opt: CommitsOptions{
-				//Range: "master",
 				Path: "file2",
 			},
-			wantCommits: []*gitdomain.Commit{},
+			wantCommits:   []*gitdomain.Commit{},
+			noAccessPaths: []string{"file2", "file3"},
 		},
 		"sub-repo perms with path (w/ access) specified should return that commit": {
 			repo:      MakeGitRepository(t, gitCommands...),
 			wantTotal: 1,
 			opt: CommitsOptions{
-				//Range: "master",
 				Path: "file1",
 			},
 			wantCommits: []*gitdomain.Commit{
@@ -576,21 +583,117 @@ func TestCommits_SubRepoPerms(t *testing.T) {
 					Message:   "commit1",
 				},
 			},
+			noAccessPaths: []string{"file2", "file3"},
 		},
 	}
 
 	for label, test := range tests {
-		commits, err := Commits(ctx, test.repo, test.opt, checker)
-		if err != nil {
-			t.Errorf("%s: Commits(): %s", label, err)
-			return
-		}
+		t.Run(label, func(t *testing.T) {
+			checker := getTestSubRepoPermsChecker(test.noAccessPaths...)
+			commits, err := Commits(ctx, database.NewMockDB(), test.repo, test.opt, checker)
+			if err != nil {
+				t.Errorf("%s: Commits(): %s", label, err)
+				return
+			}
 
-		if len(commits) != len(test.wantCommits) {
-			t.Errorf("%s: got %d commits, want %d", label, len(commits), len(test.wantCommits))
-		}
+			if len(commits) != len(test.wantCommits) {
+				t.Errorf("%s: got %d commits, want %d", label, len(commits), len(test.wantCommits))
+			}
 
-		checkCommits(t, label, commits, test.wantCommits)
+			checkCommits(t, label, commits, test.wantCommits)
+		})
+	}
+}
+
+func TestCommits_SubRepoPerms_ReturnNCommits(t *testing.T) {
+	t.Parallel()
+	ctx := actor.WithActor(context.Background(), &actor.Actor{
+		UID: 1,
+	})
+	gitCommands := []string{
+		"touch file1",
+		"git add file1",
+		"GIT_COMMITTER_NAME=c GIT_COMMITTER_EMAIL=c@c.com GIT_COMMITTER_DATE=2006-01-02T15:04:01Z git commit -m commit1 --author='a <a@a.com>' --date 2006-01-02T15:04:01Z",
+		"touch file2",
+		"git add file2",
+		"GIT_COMMITTER_NAME=c GIT_COMMITTER_EMAIL=c@c.com GIT_COMMITTER_DATE=2006-01-02T15:04:02Z git commit -m commit2 --author='a <a@a.com>' --date 2006-01-02T15:04:02Z",
+		"echo foo > file1",
+		"git add file1",
+		"GIT_COMMITTER_NAME=c GIT_COMMITTER_EMAIL=c@c.com GIT_COMMITTER_DATE=2006-01-02T15:04:03Z git commit -m commit3 --author='a <a@a.com>' --date 2006-01-02T15:04:03Z",
+		"echo asdf > file1",
+		"git add file1",
+		"GIT_COMMITTER_NAME=c GIT_COMMITTER_EMAIL=c@c.com GIT_COMMITTER_DATE=2006-01-02T15:04:04Z git commit -m commit4 --author='a <a@a.com>' --date 2006-01-02T15:04:04Z",
+		"echo bar > file1",
+		"git add file1",
+		"GIT_COMMITTER_NAME=c GIT_COMMITTER_EMAIL=c@c.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit -m commit5 --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+		"echo asdf2 > file2",
+		"git add file2",
+		"GIT_COMMITTER_NAME=c GIT_COMMITTER_EMAIL=c@c.com GIT_COMMITTER_DATE=2006-01-02T15:04:06Z git commit -m commit6 --author='a <a@a.com>' --date 2006-01-02T15:04:06Z",
+		"echo bazz > file1",
+		"git add file1",
+		"GIT_COMMITTER_NAME=c GIT_COMMITTER_EMAIL=c@c.com GIT_COMMITTER_DATE=2006-01-02T15:04:07Z git commit -m commit7 --author='a <a@a.com>' --date 2006-01-02T15:04:07Z",
+		"echo bazz > file2",
+		"git add file2",
+		"GIT_COMMITTER_NAME=c GIT_COMMITTER_EMAIL=c@c.com GIT_COMMITTER_DATE=2006-01-02T15:04:08Z git commit -m commit8 --author='a <a@a.com>' --date 2006-01-02T15:04:08Z",
+	}
+
+	tests := map[string]struct {
+		repo          api.RepoName
+		wantCommits   []*gitdomain.Commit
+		opt           CommitsOptions
+		wantTotal     uint
+		noAccessPaths []string
+	}{
+		"return the requested number of commits": {
+			repo:      MakeGitRepository(t, gitCommands...),
+			wantTotal: 3,
+			opt: CommitsOptions{
+				N: 3,
+			},
+			wantCommits: []*gitdomain.Commit{
+				{
+					ID:        "61dbc35f719c53810904a2d359309d4e1e98a6be",
+					Author:    gitdomain.Signature{Name: "a", Email: "a@a.com", Date: MustParseTime(time.RFC3339, "2006-01-02T15:04:07Z")},
+					Committer: &gitdomain.Signature{Name: "c", Email: "c@c.com", Date: MustParseTime(time.RFC3339, "2006-01-02T15:04:07Z")},
+					Message:   "commit7",
+					Parents:   []api.CommitID{"66566c8aa223f3e1b94ebe09e6cdb14c3a5bfb36"},
+				},
+				{
+					ID:        "2e6b2c94293e9e339f781b2a2f7172e15460f88c",
+					Author:    gitdomain.Signature{Name: "a", Email: "a@a.com", Date: MustParseTime(time.RFC3339, "2006-01-02T15:04:05Z")},
+					Committer: &gitdomain.Signature{Name: "c", Email: "c@c.com", Date: MustParseTime(time.RFC3339, "2006-01-02T15:04:05Z")},
+					Parents: []api.CommitID{
+						"9a7ec70986d657c4c86d6ac476f0c5181ece509a",
+					},
+					Message: "commit5",
+				},
+				{
+					ID:        "9a7ec70986d657c4c86d6ac476f0c5181ece509a",
+					Author:    gitdomain.Signature{Name: "a", Email: "a@a.com", Date: MustParseTime(time.RFC3339, "2006-01-02T15:04:04Z")},
+					Committer: &gitdomain.Signature{Name: "c", Email: "c@c.com", Date: MustParseTime(time.RFC3339, "2006-01-02T15:04:04Z")},
+					Message:   "commit4",
+					Parents: []api.CommitID{
+						"f3fa8cf6ec56d0469402523385d6ca4b7cb222d8",
+					},
+				},
+			},
+			noAccessPaths: []string{"file2"},
+		},
+	}
+
+	for label, test := range tests {
+		t.Run(label, func(t *testing.T) {
+			checker := getTestSubRepoPermsChecker(test.noAccessPaths...)
+			commits, err := Commits(ctx, database.NewMockDB(), test.repo, test.opt, checker)
+			if err != nil {
+				t.Errorf("%s: Commits(): %s", label, err)
+				return
+			}
+
+			if diff := cmp.Diff(test.wantCommits, commits); diff != "" {
+				t.Fatal(diff)
+			}
+		})
 	}
 }
 
@@ -768,13 +871,13 @@ func TestParseCommitsUniqueToBranch(t *testing.T) {
 	}
 
 	expectedCommits := map[string]time.Time{
-		"c165bfff52e9d4f87891bba497e3b70fea144d89": mustParseDate("2020-08-04T08:23:30-05:00", t),
-		"f73ee8ed601efea74f3b734eeb073307e1615606": mustParseDate("2020-04-16T16:06:21-04:00", t),
-		"6057f7ed8d331c82030c713b650fc8fd2c0c2347": mustParseDate("2020-04-16T16:20:26-04:00", t),
-		"7886287b8758d1baf19cf7b8253856128369a2a7": mustParseDate("2020-04-16T16:55:58-04:00", t),
-		"b69f89473bbcc04dc52cafaf6baa504e34791f5a": mustParseDate("2020-04-20T12:10:49-04:00", t),
-		"172b7fcf8b8c49b37b231693433586c2bfd1619e": mustParseDate("2020-04-20T12:37:36-04:00", t),
-		"5bc35c78fb5fb388891ca944cd12d85fd6dede95": mustParseDate("2020-05-05T12:53:18-05:00", t),
+		"c165bfff52e9d4f87891bba497e3b70fea144d89": *mustParseDate("2020-08-04T08:23:30-05:00", t),
+		"f73ee8ed601efea74f3b734eeb073307e1615606": *mustParseDate("2020-04-16T16:06:21-04:00", t),
+		"6057f7ed8d331c82030c713b650fc8fd2c0c2347": *mustParseDate("2020-04-16T16:20:26-04:00", t),
+		"7886287b8758d1baf19cf7b8253856128369a2a7": *mustParseDate("2020-04-16T16:55:58-04:00", t),
+		"b69f89473bbcc04dc52cafaf6baa504e34791f5a": *mustParseDate("2020-04-20T12:10:49-04:00", t),
+		"172b7fcf8b8c49b37b231693433586c2bfd1619e": *mustParseDate("2020-04-20T12:37:36-04:00", t),
+		"5bc35c78fb5fb388891ca944cd12d85fd6dede95": *mustParseDate("2020-05-05T12:53:18-05:00", t),
 	}
 	if diff := cmp.Diff(expectedCommits, commits); diff != "" {
 		t.Errorf("unexpected commits (-want +got):\n%s", diff)
@@ -852,38 +955,39 @@ func TestParseBranchesContaining(t *testing.T) {
 }
 
 func TestParseRefDescriptions(t *testing.T) {
-	refDescriptions, err := parseRefDescriptions([]string{
-		"66a7ac584740245fc523da443a3f540a52f8af72:refs/heads/bl/symbols: :2021-01-18T16:46:51-08:00",
-		"58537c06cf7ba8a562a3f5208fb7a8efbc971d0e:refs/heads/bl/symbols-2: :2021-02-24T06:21:20-08:00",
-		"a40716031ae97ee7c5cdf1dec913567a4a7c50c8:refs/heads/ef/wtf: :2021-02-10T10:50:08-06:00",
-		"e2e283fdaf6ea4a419cdbad142bbfd4b730080f8:refs/heads/garo/go-and-typescript-lsif-indexing: :2020-04-29T16:45:46+00:00",
-		"c485d92c3d2065041bf29b3fe0b55ffac7e66b2a:refs/heads/garo/index-specific-files: :2021-03-01T13:09:42-08:00",
-		"ce30aee6cc56f39d0ac6fee03c4c151c08a8cd2e:refs/heads/master:*:2021-06-16T11:51:09-07:00",
-		"ec5cfc8ab33370c698273b1a097af73ea289c92b:refs/heads/nsc/bump-go-version: :2021-03-12T22:33:17+00:00",
-		"22b2c4f734f62060cae69da856fe3854defdcc87:refs/heads/nsc/markupcontent: :2021-05-03T23:50:02+01:00",
-		"9df3358a18792fa9dbd40d506f2e0ad23fc11ee8:refs/heads/nsc/random: :2021-02-10T16:29:06+00:00",
-		"a02b85b63345a1406d7a19727f7a5472c976e053:refs/heads/sg/document-symbols: :2021-04-08T15:33:03-07:00",
-		"234b0a484519129b251164ecb0674ec27d154d2f:refs/heads/symbols: :2021-01-01T22:51:55-08:00",
-		"c165bfff52e9d4f87891bba497e3b70fea144d89:refs/tags/v0.10.0: :2020-08-04T08:23:30-05:00",
-		"f73ee8ed601efea74f3b734eeb073307e1615606:refs/tags/v0.5.1: :2020-04-16T16:06:21-04:00",
-		"6057f7ed8d331c82030c713b650fc8fd2c0c2347:refs/tags/v0.5.2: :2020-04-16T16:20:26-04:00",
-		"7886287b8758d1baf19cf7b8253856128369a2a7:refs/tags/v0.5.3: :2020-04-16T16:55:58-04:00",
-		"b69f89473bbcc04dc52cafaf6baa504e34791f5a:refs/tags/v0.6.0: :2020-04-20T12:10:49-04:00",
-		"172b7fcf8b8c49b37b231693433586c2bfd1619e:refs/tags/v0.7.0: :2020-04-20T12:37:36-04:00",
-		"5bc35c78fb5fb388891ca944cd12d85fd6dede95:refs/tags/v0.8.0: :2020-05-05T12:53:18-05:00",
-		"14faa49ef098df9488536ca3c9b26d79e6bec4d6:refs/tags/v0.9.0: :2020-07-14T14:26:40-05:00",
-		"0a82af8b6914d8c81326eee5f3a7e1d1106547f1:refs/tags/v1.0.0: :2020-08-19T19:33:39-05:00",
-		"262defb72b96261a7d56b000d438c5c7ec6d0f3e:refs/tags/v1.1.0: :2020-08-21T14:15:44-05:00",
-		"806b96eb544e7e632a617c26402eccee6d67faed:refs/tags/v1.1.1: :2020-08-21T16:02:35-05:00",
-		"5d8865d6feacb4fce3313cade2c61dc29c6271e6:refs/tags/v1.1.2: :2020-08-22T13:45:26-05:00",
-		"8c45a5635cf0a4968cc8c9dac2d61c388b53251e:refs/tags/v1.1.3: :2020-08-25T10:10:46-05:00",
-		"fc212da31ce157ef0795e934381509c5a50654f6:refs/tags/v1.1.4: :2020-08-26T14:02:47-05:00",
-		"4fd8b2c3522df32ffc8be983d42c3a504cc75fbc:refs/tags/v1.2.0: :2020-09-07T09:52:43-05:00",
-		"9741f54aa0f14be1103b00c89406393ea4d8a08a:refs/tags/v1.3.0: :2021-02-10T23:21:31+00:00",
-		"b358977103d2d66e2a3fc5f8081075c2834c4936:refs/tags/v1.3.1: :2021-02-24T20:16:45+00:00",
-		"2882ad236da4b649b4c1259d815bf1a378e3b92f:refs/tags/v1.4.0: :2021-05-13T10:41:02-05:00",
-		"340b84452286c18000afad9b140a32212a82840a:refs/tags/v1.5.0: :2021-05-20T18:41:41-05:00",
-	})
+	refDescriptions, err := parseRefDescriptions(bytes.Join([][]byte{
+		[]byte("66a7ac584740245fc523da443a3f540a52f8af72\x00refs/heads/bl/symbols\x00 \x002021-01-18T16:46:51-08:00"),
+		[]byte("58537c06cf7ba8a562a3f5208fb7a8efbc971d0e\x00refs/heads/bl/symbols-2\x00 \x002021-02-24T06:21:20-08:00"),
+		[]byte("a40716031ae97ee7c5cdf1dec913567a4a7c50c8\x00refs/heads/ef/wtf\x00 \x002021-02-10T10:50:08-06:00"),
+		[]byte("e2e283fdaf6ea4a419cdbad142bbfd4b730080f8\x00refs/heads/garo/go-and-typescript-lsif-indexing\x00 \x002020-04-29T16:45:46+00:00"),
+		[]byte("c485d92c3d2065041bf29b3fe0b55ffac7e66b2a\x00refs/heads/garo/index-specific-files\x00 \x002021-03-01T13:09:42-08:00"),
+		[]byte("ce30aee6cc56f39d0ac6fee03c4c151c08a8cd2e\x00refs/heads/master\x00*\x002021-06-16T11:51:09-07:00"),
+		[]byte("ec5cfc8ab33370c698273b1a097af73ea289c92b\x00refs/heads/nsc/bump-go-version\x00 \x002021-03-12T22:33:17+00:00"),
+		[]byte("22b2c4f734f62060cae69da856fe3854defdcc87\x00refs/heads/nsc/markupcontent\x00 \x002021-05-03T23:50:02+01:00"),
+		[]byte("9df3358a18792fa9dbd40d506f2e0ad23fc11ee8\x00refs/heads/nsc/random\x00 \x002021-02-10T16:29:06+00:00"),
+		[]byte("a02b85b63345a1406d7a19727f7a5472c976e053\x00refs/heads/sg/document-symbols\x00 \x002021-04-08T15:33:03-07:00"),
+		[]byte("234b0a484519129b251164ecb0674ec27d154d2f\x00refs/heads/symbols\x00 \x002021-01-01T22:51:55-08:00"),
+		[]byte("6b5ae2e0ce568a7641174072271d109d7d0977c7\x00refs/tags/v0.0.0\x00 \x00"),
+		[]byte("c165bfff52e9d4f87891bba497e3b70fea144d89\x00refs/tags/v0.10.0\x00 \x002020-08-04T08:23:30-05:00"),
+		[]byte("f73ee8ed601efea74f3b734eeb073307e1615606\x00refs/tags/v0.5.1\x00 \x002020-04-16T16:06:21-04:00"),
+		[]byte("6057f7ed8d331c82030c713b650fc8fd2c0c2347\x00refs/tags/v0.5.2\x00 \x002020-04-16T16:20:26-04:00"),
+		[]byte("7886287b8758d1baf19cf7b8253856128369a2a7\x00refs/tags/v0.5.3\x00 \x002020-04-16T16:55:58-04:00"),
+		[]byte("b69f89473bbcc04dc52cafaf6baa504e34791f5a\x00refs/tags/v0.6.0\x00 \x002020-04-20T12:10:49-04:00"),
+		[]byte("172b7fcf8b8c49b37b231693433586c2bfd1619e\x00refs/tags/v0.7.0\x00 \x002020-04-20T12:37:36-04:00"),
+		[]byte("5bc35c78fb5fb388891ca944cd12d85fd6dede95\x00refs/tags/v0.8.0\x00 \x002020-05-05T12:53:18-05:00"),
+		[]byte("14faa49ef098df9488536ca3c9b26d79e6bec4d6\x00refs/tags/v0.9.0\x00 \x002020-07-14T14:26:40-05:00"),
+		[]byte("0a82af8b6914d8c81326eee5f3a7e1d1106547f1\x00refs/tags/v1.0.0\x00 \x002020-08-19T19:33:39-05:00"),
+		[]byte("262defb72b96261a7d56b000d438c5c7ec6d0f3e\x00refs/tags/v1.1.0\x00 \x002020-08-21T14:15:44-05:00"),
+		[]byte("806b96eb544e7e632a617c26402eccee6d67faed\x00refs/tags/v1.1.1\x00 \x002020-08-21T16:02:35-05:00"),
+		[]byte("5d8865d6feacb4fce3313cade2c61dc29c6271e6\x00refs/tags/v1.1.2\x00 \x002020-08-22T13:45:26-05:00"),
+		[]byte("8c45a5635cf0a4968cc8c9dac2d61c388b53251e\x00refs/tags/v1.1.3\x00 \x002020-08-25T10:10:46-05:00"),
+		[]byte("fc212da31ce157ef0795e934381509c5a50654f6\x00refs/tags/v1.1.4\x00 \x002020-08-26T14:02:47-05:00"),
+		[]byte("4fd8b2c3522df32ffc8be983d42c3a504cc75fbc\x00refs/tags/v1.2.0\x00 \x002020-09-07T09:52:43-05:00"),
+		[]byte("9741f54aa0f14be1103b00c89406393ea4d8a08a\x00refs/tags/v1.3.0\x00 \x002021-02-10T23:21:31+00:00"),
+		[]byte("b358977103d2d66e2a3fc5f8081075c2834c4936\x00refs/tags/v1.3.1\x00 \x002021-02-24T20:16:45+00:00"),
+		[]byte("2882ad236da4b649b4c1259d815bf1a378e3b92f\x00refs/tags/v1.4.0\x00 \x002021-05-13T10:41:02-05:00"),
+		[]byte("340b84452286c18000afad9b140a32212a82840a\x00refs/tags/v1.5.0\x00 \x002021-05-20T18:41:41-05:00"),
+	}, []byte("\n")))
 	if err != nil {
 		t.Fatalf("unexpected error parsing ref descriptions: %s", err)
 	}
@@ -908,6 +1012,7 @@ func TestParseRefDescriptions(t *testing.T) {
 		"9df3358a18792fa9dbd40d506f2e0ad23fc11ee8": {makeBranch("nsc/random", "2021-02-10T16:29:06+00:00", false)},
 		"a02b85b63345a1406d7a19727f7a5472c976e053": {makeBranch("sg/document-symbols", "2021-04-08T15:33:03-07:00", false)},
 		"234b0a484519129b251164ecb0674ec27d154d2f": {makeBranch("symbols", "2021-01-01T22:51:55-08:00", false)},
+		"6b5ae2e0ce568a7641174072271d109d7d0977c7": {gitdomain.RefDescription{Name: "v0.0.0", Type: gitdomain.RefTypeTag, IsDefaultBranch: false}},
 		"c165bfff52e9d4f87891bba497e3b70fea144d89": {makeTag("v0.10.0", "2020-08-04T08:23:30-05:00")},
 		"f73ee8ed601efea74f3b734eeb073307e1615606": {makeTag("v0.5.1", "2020-04-16T16:06:21-04:00")},
 		"6057f7ed8d331c82030c713b650fc8fd2c0c2347": {makeTag("v0.5.2", "2020-04-16T16:20:26-04:00")},
@@ -948,7 +1053,7 @@ func TestFilterRefDescriptions(t *testing.T) {
 	}
 
 	checker := getTestSubRepoPermsChecker("file3")
-	filtered := filterRefDescriptions(ctx, repo, refDescriptions, checker)
+	filtered := filterRefDescriptions(ctx, database.NewMockDB(), repo, refDescriptions, checker)
 	expectedRefDescriptions := map[string][]gitdomain.RefDescription{
 		"d38233a79e037d2ab8170b0d0bc0aa438473e6da": {},
 		"2ba4dd2b9a27ec125fea7d72e12b9824ead18631": {},
@@ -964,6 +1069,7 @@ func TestRefDescriptions(t *testing.T) {
 	ctx := actor.WithActor(context.Background(), &actor.Actor{
 		UID: 1,
 	})
+	db := database.NewMockDB()
 	gitCommands := append(getGitCommandsWithFiles("file1", "file2"), "git checkout -b my-other-branch")
 	gitCommands = append(gitCommands, getGitCommandsWithFiles("file1-b2", "file2-b2")...)
 	gitCommands = append(gitCommands, "git checkout -b my-branch-no-access")
@@ -975,7 +1081,7 @@ func TestRefDescriptions(t *testing.T) {
 	}
 
 	t.Run("basic", func(t *testing.T) {
-		refDescriptions, err := RefDescriptions(ctx, repo, nil)
+		refDescriptions, err := RefDescriptions(ctx, db, repo, nil)
 		if err != nil {
 			t.Errorf("err calling RefDescriptions: %s", err)
 		}
@@ -991,7 +1097,7 @@ func TestRefDescriptions(t *testing.T) {
 
 	t.Run("with sub-repo enabled", func(t *testing.T) {
 		checker := getTestSubRepoPermsChecker("file-with-no-access")
-		refDescriptions, err := RefDescriptions(ctx, repo, checker)
+		refDescriptions, err := RefDescriptions(ctx, db, repo, checker)
 		if err != nil {
 			t.Errorf("err calling RefDescriptions: %s", err)
 		}
@@ -1010,20 +1116,21 @@ func TestCommitsUniqueToBranch(t *testing.T) {
 	ctx := actor.WithActor(context.Background(), &actor.Actor{
 		UID: 1,
 	})
+	db := database.NewMockDB()
 	gitCommands := append([]string{"git checkout -b my-branch"}, getGitCommandsWithFiles("file1", "file2")...)
 	gitCommands = append(gitCommands, getGitCommandsWithFiles("file3", "file-with-no-access")...)
 	repo := MakeGitRepository(t, gitCommands...)
 
 	t.Run("basic", func(t *testing.T) {
-		commits, err := CommitsUniqueToBranch(ctx, repo, "my-branch", true, &time.Time{}, nil)
+		commits, err := CommitsUniqueToBranch(ctx, db, repo, "my-branch", true, &time.Time{}, nil)
 		if err != nil {
 			t.Errorf("err calling RefDescriptions: %s", err)
 		}
 		expectedCommits := map[string]time.Time{
-			"2775e60f523d3151a2a34ffdc659f500d0e73022": mustParseDate("2006-01-02T15:04:05-00:00", t),
-			"2ba4dd2b9a27ec125fea7d72e12b9824ead18631": mustParseDate("2006-01-02T15:04:05-00:00", t),
-			"791ce7cd8ca2d855e12f47f8692a62bc42477edc": mustParseDate("2006-01-02T15:04:05-00:00", t),
-			"d38233a79e037d2ab8170b0d0bc0aa438473e6da": mustParseDate("2006-01-02T15:04:05-00:00", t),
+			"2775e60f523d3151a2a34ffdc659f500d0e73022": *mustParseDate("2006-01-02T15:04:05-00:00", t),
+			"2ba4dd2b9a27ec125fea7d72e12b9824ead18631": *mustParseDate("2006-01-02T15:04:05-00:00", t),
+			"791ce7cd8ca2d855e12f47f8692a62bc42477edc": *mustParseDate("2006-01-02T15:04:05-00:00", t),
+			"d38233a79e037d2ab8170b0d0bc0aa438473e6da": *mustParseDate("2006-01-02T15:04:05-00:00", t),
 		}
 		if diff := cmp.Diff(expectedCommits, commits); diff != "" {
 			t.Errorf("unexpected ref descriptions (-want +got):\n%s", diff)
@@ -1032,14 +1139,14 @@ func TestCommitsUniqueToBranch(t *testing.T) {
 
 	t.Run("with sub-repo enabled", func(t *testing.T) {
 		checker := getTestSubRepoPermsChecker("file-with-no-access")
-		commits, err := CommitsUniqueToBranch(ctx, repo, "my-branch", true, &time.Time{}, checker)
+		commits, err := CommitsUniqueToBranch(ctx, db, repo, "my-branch", true, &time.Time{}, checker)
 		if err != nil {
 			t.Errorf("err calling RefDescriptions: %s", err)
 		}
 		expectedCommits := map[string]time.Time{
-			"2775e60f523d3151a2a34ffdc659f500d0e73022": mustParseDate("2006-01-02T15:04:05-00:00", t),
-			"2ba4dd2b9a27ec125fea7d72e12b9824ead18631": mustParseDate("2006-01-02T15:04:05-00:00", t),
-			"d38233a79e037d2ab8170b0d0bc0aa438473e6da": mustParseDate("2006-01-02T15:04:05-00:00", t),
+			"2775e60f523d3151a2a34ffdc659f500d0e73022": *mustParseDate("2006-01-02T15:04:05-00:00", t),
+			"2ba4dd2b9a27ec125fea7d72e12b9824ead18631": *mustParseDate("2006-01-02T15:04:05-00:00", t),
+			"d38233a79e037d2ab8170b0d0bc0aa438473e6da": *mustParseDate("2006-01-02T15:04:05-00:00", t),
 		}
 		if diff := cmp.Diff(expectedCommits, commits); diff != "" {
 			t.Errorf("unexpected ref descriptions (-want +got):\n%s", diff)
@@ -1052,11 +1159,12 @@ func TestCommitDate(t *testing.T) {
 	ctx := actor.WithActor(context.Background(), &actor.Actor{
 		UID: 1,
 	})
+	db := database.NewMockDB()
 	gitCommands := getGitCommandsWithFiles("file1", "file2")
 	repo := MakeGitRepository(t, gitCommands...)
 
 	t.Run("basic", func(t *testing.T) {
-		_, date, commitExists, err := CommitDate(ctx, repo, "d38233a79e037d2ab8170b0d0bc0aa438473e6da", nil)
+		_, date, commitExists, err := CommitDate(ctx, db, repo, "d38233a79e037d2ab8170b0d0bc0aa438473e6da", nil)
 		if err != nil {
 			t.Errorf("error fetching CommitDate: %s", err)
 		}
@@ -1070,7 +1178,7 @@ func TestCommitDate(t *testing.T) {
 
 	t.Run("with sub-repo permissions enabled", func(t *testing.T) {
 		checker := getTestSubRepoPermsChecker("file1")
-		_, date, commitExists, err := CommitDate(ctx, repo, "d38233a79e037d2ab8170b0d0bc0aa438473e6da", checker)
+		_, date, commitExists, err := CommitDate(ctx, db, repo, "d38233a79e037d2ab8170b0d0bc0aa438473e6da", checker)
 		if err != nil {
 			t.Errorf("error fetching CommitDate: %s", err)
 		}
@@ -1083,15 +1191,124 @@ func TestCommitDate(t *testing.T) {
 	})
 }
 
+func TestGetCommits(t *testing.T) {
+	t.Parallel()
+	ctx := actor.WithActor(context.Background(), &actor.Actor{
+		UID: 1,
+	})
+	db := database.NewMockDB()
+
+	repo1 := MakeGitRepository(t, getGitCommandsWithFiles("file1", "file2")...)
+	repo2 := MakeGitRepository(t, getGitCommandsWithFiles("file3", "file4")...)
+	repo3 := MakeGitRepository(t, getGitCommandsWithFiles("file5", "file6")...)
+
+	repoCommits := []api.RepoCommit{
+		{Repo: repo1, CommitID: api.CommitID("HEAD")},                                     // HEAD (file2)
+		{Repo: repo1, CommitID: api.CommitID("HEAD~1")},                                   // HEAD~1 (file1)
+		{Repo: repo2, CommitID: api.CommitID("67762ad757dd26cac4145f2b744fd93ad10a48e0")}, // HEAD (file4)
+		{Repo: repo2, CommitID: api.CommitID("2b988222e844b570959a493f5b07ec020b89e122")}, // HEAD~1 (file3)
+		{Repo: repo3, CommitID: api.CommitID("01bed0a")},                                  // abbrev HEAD (file6)
+		{Repo: repo3, CommitID: api.CommitID("unresolvable")},                             // unresolvable
+		{Repo: api.RepoName("unresolvable"), CommitID: api.CommitID("deadbeef")},          // unresolvable
+	}
+
+	t.Run("basic", func(t *testing.T) {
+		expectedCommits := []*gitdomain.Commit{
+			{
+				ID:        "2ba4dd2b9a27ec125fea7d72e12b9824ead18631",
+				Author:    gitdomain.Signature{Name: "a", Email: "a@a.com", Date: *mustParseDate("2006-01-02T15:04:05Z", t)},
+				Committer: &gitdomain.Signature{Name: "a", Email: "a@a.com", Date: *mustParseDate("2006-01-02T15:04:05Z", t)},
+				Message:   "commit2",
+				Parents:   []api.CommitID{"d38233a79e037d2ab8170b0d0bc0aa438473e6da"},
+			},
+			{
+				ID:        "d38233a79e037d2ab8170b0d0bc0aa438473e6da",
+				Author:    gitdomain.Signature{Name: "a", Email: "a@a.com", Date: *mustParseDate("2006-01-02T15:04:05Z", t)},
+				Committer: &gitdomain.Signature{Name: "a", Email: "a@a.com", Date: *mustParseDate("2006-01-02T15:04:05Z", t)},
+				Message:   "commit1",
+			},
+			{
+				ID:        "67762ad757dd26cac4145f2b744fd93ad10a48e0",
+				Author:    gitdomain.Signature{Name: "a", Email: "a@a.com", Date: *mustParseDate("2006-01-02T15:04:05Z", t)},
+				Committer: &gitdomain.Signature{Name: "a", Email: "a@a.com", Date: *mustParseDate("2006-01-02T15:04:05Z", t)},
+				Message:   "commit2",
+				Parents:   []api.CommitID{"2b988222e844b570959a493f5b07ec020b89e122"},
+			},
+			{
+				ID:        "2b988222e844b570959a493f5b07ec020b89e122",
+				Author:    gitdomain.Signature{Name: "a", Email: "a@a.com", Date: *mustParseDate("2006-01-02T15:04:05Z", t)},
+				Committer: &gitdomain.Signature{Name: "a", Email: "a@a.com", Date: *mustParseDate("2006-01-02T15:04:05Z", t)},
+				Message:   "commit1",
+			},
+			{
+				ID:        "01bed0ae660668c57539cecaacb4c33d77609f43",
+				Author:    gitdomain.Signature{Name: "a", Email: "a@a.com", Date: *mustParseDate("2006-01-02T15:04:05Z", t)},
+				Committer: &gitdomain.Signature{Name: "a", Email: "a@a.com", Date: *mustParseDate("2006-01-02T15:04:05Z", t)},
+				Message:   "commit2",
+				Parents:   []api.CommitID{"d6ce2e76d171569d81c0afdc4573f461cec17d45"},
+			},
+			nil,
+			nil,
+		}
+
+		commits, err := getCommits(ctx, db, repoCommits, true, nil)
+		if err != nil {
+			t.Fatalf("unexpected error calling getCommits: %s", err)
+		}
+		if diff := cmp.Diff(expectedCommits, commits); diff != "" {
+			t.Errorf("unexpected commits (-want +got):\n%s", diff)
+		}
+	})
+
+	t.Run("with sub-repo permissions", func(t *testing.T) {
+		expectedCommits := []*gitdomain.Commit{
+			{
+				ID:        "2ba4dd2b9a27ec125fea7d72e12b9824ead18631",
+				Author:    gitdomain.Signature{Name: "a", Email: "a@a.com", Date: *mustParseDate("2006-01-02T15:04:05Z", t)},
+				Committer: &gitdomain.Signature{Name: "a", Email: "a@a.com", Date: *mustParseDate("2006-01-02T15:04:05Z", t)},
+				Message:   "commit2",
+				Parents:   []api.CommitID{"d38233a79e037d2ab8170b0d0bc0aa438473e6da"},
+			},
+			nil, // file 1
+			{
+				ID:        "67762ad757dd26cac4145f2b744fd93ad10a48e0",
+				Author:    gitdomain.Signature{Name: "a", Email: "a@a.com", Date: *mustParseDate("2006-01-02T15:04:05Z", t)},
+				Committer: &gitdomain.Signature{Name: "a", Email: "a@a.com", Date: *mustParseDate("2006-01-02T15:04:05Z", t)},
+				Message:   "commit2",
+				Parents:   []api.CommitID{"2b988222e844b570959a493f5b07ec020b89e122"},
+			},
+			nil, // file 3
+			{
+				ID:        "01bed0ae660668c57539cecaacb4c33d77609f43",
+				Author:    gitdomain.Signature{Name: "a", Email: "a@a.com", Date: *mustParseDate("2006-01-02T15:04:05Z", t)},
+				Committer: &gitdomain.Signature{Name: "a", Email: "a@a.com", Date: *mustParseDate("2006-01-02T15:04:05Z", t)},
+				Message:   "commit2",
+				Parents:   []api.CommitID{"d6ce2e76d171569d81c0afdc4573f461cec17d45"},
+			},
+			nil,
+			nil,
+		}
+
+		commits, err := getCommits(ctx, db, repoCommits, true, getTestSubRepoPermsChecker("file1", "file3"))
+		if err != nil {
+			t.Fatalf("unexpected error calling getCommits: %s", err)
+		}
+		if diff := cmp.Diff(expectedCommits, commits); diff != "" {
+			t.Errorf("unexpected commits (-want +got):\n%s", diff)
+		}
+	})
+}
+
 func testCommits(ctx context.Context, label string, repo api.RepoName, opt CommitsOptions, checker authz.SubRepoPermissionChecker, wantTotal uint, wantCommits []*gitdomain.Commit, t *testing.T) {
 	t.Helper()
-	commits, err := Commits(ctx, repo, opt, checker)
+	db := database.NewMockDB()
+	commits, err := Commits(ctx, db, repo, opt, checker)
 	if err != nil {
 		t.Errorf("%s: Commits(): %s", label, err)
 		return
 	}
 
-	total, err := commitCount(ctx, repo, opt)
+	total, err := commitCount(ctx, db, repo, opt)
 	if err != nil {
 		t.Errorf("%s: commitCount(): %s", label, err)
 		return
@@ -1149,11 +1366,11 @@ func getGitCommandsWithFiles(fileName1, fileName2 string) []string {
 	}
 }
 
-func mustParseDate(s string, t *testing.T) time.Time {
+func mustParseDate(s string, t *testing.T) *time.Time {
 	t.Helper()
 	date, err := time.Parse(time.RFC3339, s)
 	if err != nil {
 		t.Fatalf("unexpected error parsing date string: %s", err)
 	}
-	return date
+	return &date
 }

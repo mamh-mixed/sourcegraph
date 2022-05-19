@@ -1,22 +1,24 @@
-import classNames from 'classnames'
 import React, { useCallback, useState } from 'react'
+
+import classNames from 'classnames'
 import { RouteComponentProps } from 'react-router'
 
-import { Container, PageHeader } from '@sourcegraph/wildcard'
+import { Container, PageHeader, Typography } from '@sourcegraph/wildcard'
 
 import { FilteredConnection, FilteredConnectionQueryArguments } from '../../components/FilteredConnection'
 import { PageTitle } from '../../components/PageTitle'
 
 import { queryWebhookLogs as _queryWebhookLogs, SelectedExternalService } from './backend'
 import { WebhookLogNode } from './WebhookLogNode'
-import styles from './WebhookLogPage.module.scss'
 import { WebhookLogPageHeader } from './WebhookLogPageHeader'
+
+import styles from './WebhookLogPage.module.scss'
 
 export interface Props extends Pick<RouteComponentProps, 'history' | 'location'> {
     queryWebhookLogs?: typeof _queryWebhookLogs
 }
 
-export const WebhookLogPage: React.FunctionComponent<Props> = ({
+export const WebhookLogPage: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
     history,
     location,
     queryWebhookLogs = _queryWebhookLogs,
@@ -70,11 +72,11 @@ export const WebhookLogPage: React.FunctionComponent<Props> = ({
     )
 }
 
-const Header: React.FunctionComponent<{}> = () => (
+const Header: React.FunctionComponent<React.PropsWithChildren<{}>> = () => (
     <>
         <span className="d-none d-md-block" />
-        <h5 className="d-none d-md-block text-uppercase text-center text-nowrap">Status code</h5>
-        <h5 className="d-none d-md-block text-uppercase text-nowrap">External service</h5>
-        <h5 className="d-none d-md-block text-uppercase text-center text-nowrap">Received at</h5>
+        <Typography.H5 className="d-none d-md-block text-uppercase text-center text-nowrap">Status code</Typography.H5>
+        <Typography.H5 className="d-none d-md-block text-uppercase text-nowrap">External service</Typography.H5>
+        <Typography.H5 className="d-none d-md-block text-uppercase text-center text-nowrap">Received at</Typography.H5>
     </>
 )

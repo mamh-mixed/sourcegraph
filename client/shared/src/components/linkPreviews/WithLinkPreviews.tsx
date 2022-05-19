@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+
 import { from, Subscription } from 'rxjs'
 import { switchMap } from 'rxjs/operators'
 
@@ -24,7 +25,7 @@ interface Props extends ExtensionsControllerProps, ApplyLinkPreviewOptions {
  * Renders HTML in a component with link previews applied from providers registered with
  * {@link sourcegraph.content.registerLinkPreviewProvider}.
  */
-export const WithLinkPreviews: React.FunctionComponent<Props> = ({
+export const WithLinkPreviews: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
     dangerousInnerHTML,
     children,
     extensionsController,

@@ -1,16 +1,18 @@
+import React, { useMemo } from 'react'
+
 import { parseISO } from 'date-fns'
 import formatDistance from 'date-fns/formatDistance'
 import CloudDownloadIcon from 'mdi-react/CloudDownloadIcon'
-import React, { useMemo } from 'react'
 
 import { ErrorAlert } from '@sourcegraph/branded/src/components/alerts'
 import { isErrorLike } from '@sourcegraph/common'
 import { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryService'
-import { LoadingSpinner, useObservable, Link, Alert } from '@sourcegraph/wildcard'
+import { LoadingSpinner, useObservable, Link, Alert, Icon, Typography } from '@sourcegraph/wildcard'
 
 import { PageTitle } from '../components/PageTitle'
 
 import { fetchSiteUpdateCheck } from './backend'
+
 import styles from './SiteAdminUpdatesPage.module.scss'
 
 interface Props extends TelemetryProps {}
@@ -18,7 +20,7 @@ interface Props extends TelemetryProps {}
 /**
  * A page displaying information about available updates for the server.
  */
-export const SiteAdminUpdatesPage: React.FunctionComponent<Props> = ({ telemetryService }) => {
+export const SiteAdminUpdatesPage: React.FunctionComponent<React.PropsWithChildren<Props>> = ({ telemetryService }) => {
     useMemo(() => {
         telemetryService.logViewEvent('SiteAdminUpdates')
     }, [telemetryService])
@@ -35,7 +37,7 @@ export const SiteAdminUpdatesPage: React.FunctionComponent<Props> = ({ telemetry
     return (
         <div>
             <PageTitle title="Updates - Admin" />
-            <h2>Updates</h2>
+            <Typography.H2>Updates</Typography.H2>
             {isErrorLike(state) && <ErrorAlert error={state} />}
             {updateCheck && (updateCheck.pending || updateCheck.checkedAt) && (
                 <div>
@@ -47,7 +49,7 @@ export const SiteAdminUpdatesPage: React.FunctionComponent<Props> = ({ telemetry
                     {!updateCheck.errorMessage &&
                         (updateCheck.updateVersionAvailable ? (
                             <Alert className={styles.alert} variant="success">
-                                <CloudDownloadIcon className="icon-inline" /> Update available:{' '}
+                                <Icon as={CloudDownloadIcon} /> Update available:{' '}
                                 <Link to="https://about.sourcegraph.com">{updateCheck.updateVersionAvailable}</Link>
                             </Alert>
                         ) : (

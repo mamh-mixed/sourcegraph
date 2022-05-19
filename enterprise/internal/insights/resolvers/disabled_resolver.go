@@ -3,9 +3,8 @@ package resolvers
 import (
 	"context"
 
-	"github.com/cockroachdb/errors"
-
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/graphqlbackend"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 type disabledResolver struct {
@@ -77,5 +76,9 @@ func (r *disabledResolver) DeleteInsightView(ctx context.Context, args *graphqlb
 }
 
 func (r *disabledResolver) SearchInsightLivePreview(ctx context.Context, args graphqlbackend.SearchInsightLivePreviewArgs) ([]graphqlbackend.SearchInsightLivePreviewSeriesResolver, error) {
+	return nil, errors.New(r.reason)
+}
+
+func (r *disabledResolver) SearchInsightPreview(ctx context.Context, args graphqlbackend.SearchInsightPreviewArgs) ([]graphqlbackend.SearchInsightLivePreviewSeriesResolver, error) {
 	return nil, errors.New(r.reason)
 }

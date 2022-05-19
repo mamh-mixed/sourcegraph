@@ -1,10 +1,11 @@
-import classNames from 'classnames'
 import * as React from 'react'
 
+import classNames from 'classnames'
+
+import { renderMarkdown } from '@sourcegraph/common'
 import { Markdown } from '@sourcegraph/shared/src/components/Markdown'
 import { Notice, Settings } from '@sourcegraph/shared/src/schema/settings.schema'
 import { isSettingsValid, SettingsCascadeProps } from '@sourcegraph/shared/src/settings/settings'
-import { renderMarkdown } from '@sourcegraph/shared/src/util/markdown'
 import { Alert, AlertProps } from '@sourcegraph/wildcard'
 
 import { DismissibleAlert } from '../components/DismissibleAlert'
@@ -20,13 +21,17 @@ interface NoticeAlertProps {
     testId?: string
 }
 
-const NoticeAlert: React.FunctionComponent<NoticeAlertProps> = ({ notice, className = '', testId }) => {
+const NoticeAlert: React.FunctionComponent<React.PropsWithChildren<NoticeAlertProps>> = ({
+    notice,
+    className = '',
+    testId,
+}) => {
     const content = <Markdown dangerousInnerHTML={renderMarkdown(notice.message)} />
 
     const sharedProps = {
         'data-testid': testId,
         variant: getAlertVariant(notice.location),
-        className: classNames(notice.location !== 'top' && 'bg transparent border', className),
+        className: classNames(notice.location !== 'top' && 'bg transparent border p-2', className),
     }
 
     return notice.dismissible ? (
@@ -51,7 +56,7 @@ interface Props extends SettingsCascadeProps {
 /**
  * Displays notices from settings for a specific location.
  */
-export const Notices: React.FunctionComponent<Props> = ({
+export const Notices: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
     className = '',
     alertClassName,
     settingsCascade,

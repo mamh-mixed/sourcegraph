@@ -13,6 +13,15 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/extsvc"
 )
 
+// BatchChangeSource represents how a batch change can be created
+// it can either be created locally or via an executor (SSBC)
+type BatchChangeSource string
+
+const (
+	ExecutorBatchChangeSource BatchChangeSource = "executor"
+	LocalBatchChangeSource    BatchChangeSource = "local"
+)
+
 // A SourceInfo represents a source a Repo belongs to (such as an external service).
 type SourceInfo struct {
 	ID       string
@@ -62,7 +71,7 @@ type Repo struct {
 	// The key is a URN created by extsvc.URN
 	Sources map[string]*SourceInfo
 	// Metadata contains the raw source code host JSON metadata.
-	Metadata interface{}
+	Metadata any
 	// Blocked contains the reason this repository was blocked and the timestamp of when it happened.
 	Blocked *RepoBlock `json:",omitempty"`
 }
@@ -95,7 +104,7 @@ type RepoBlock struct {
 	Reason string
 }
 
-// CloneURLs returns all the clone URLs this repo is clonable from.
+// CloneURLs returns all the clone URLs this repo is cloneable from.
 func (r *Repo) CloneURLs() []string {
 	urls := make([]string, 0, len(r.Sources))
 	for _, src := range r.Sources {
@@ -460,7 +469,9 @@ type GitserverRepo struct {
 	LastFetched time.Time
 	// The last time a fetch updated the repository.
 	LastChanged time.Time
-	UpdatedAt   time.Time
+	// Size of the repository in bytes.
+	RepoSizeBytes int64
+	UpdatedAt     time.Time
 }
 
 // ExternalService is a connection to an external service.
@@ -476,9 +487,10 @@ type ExternalService struct {
 	NextSyncAt      time.Time
 	NamespaceUserID int32
 	NamespaceOrgID  int32
-	Unrestricted    bool  // Whether access to repositories belong to this external service is unrestricted.
-	CloudDefault    bool  // Whether this external service is our default public service on Cloud
-	HasWebhooks     *bool // Whether this external service has webhooks configured; calculated from Config
+	Unrestricted    bool       // Whether access to repositories belong to this external service is unrestricted.
+	CloudDefault    bool       // Whether this external service is our default public service on Cloud
+	HasWebhooks     *bool      // Whether this external service has webhooks configured; calculated from Config
+	TokenExpiresAt  *time.Time // Whether the token in this external services expires, nil indicates never expires.
 }
 
 // ExternalServiceSyncJob represents an sync job for an external service
@@ -537,7 +549,7 @@ func (e *ExternalService) Update(n *ExternalService) (modified bool) {
 }
 
 // Configuration returns the external service config.
-func (e *ExternalService) Configuration() (cfg interface{}, _ error) {
+func (e *ExternalService) Configuration() (cfg any, _ error) {
 	return extsvc.ParseConfig(e.Kind, e.Config)
 }
 
@@ -565,8 +577,26 @@ func (e *ExternalService) With(opts ...func(*ExternalService)) *ExternalService 
 	return clone
 }
 
-// ExternalServices is an utility type with
-// convenience methods for operating on lists of ExternalServices.
+func (e *ExternalService) ToAPIService() api.ExternalService {
+	return api.ExternalService{
+		ID:              e.ID,
+		Kind:            e.Kind,
+		DisplayName:     e.DisplayName,
+		Config:          e.Config,
+		CreatedAt:       e.CreatedAt,
+		UpdatedAt:       e.UpdatedAt,
+		DeletedAt:       e.DeletedAt,
+		LastSyncAt:      e.LastSyncAt,
+		NextSyncAt:      e.NextSyncAt,
+		NamespaceUserID: e.NamespaceUserID,
+		NamespaceOrgID:  e.NamespaceOrgID,
+		Unrestricted:    e.Unrestricted,
+		CloudDefault:    e.CloudDefault,
+	}
+}
+
+// ExternalServices is a utility type with convenience methods for operating on
+// lists of ExternalServices.
 type ExternalServices []*ExternalService
 
 // IDs returns the list of ids from all ExternalServices.
@@ -661,6 +691,15 @@ type User struct {
 	Tags                  []string
 	InvalidatedSessionsAt time.Time
 	TosAccepted           bool
+	Searchable            bool
+}
+
+type OrgMemberAutocompleteSearchItem struct {
+	ID          int32
+	Username    string
+	DisplayName string
+	AvatarURL   string
+	InOrg       int32
 }
 
 type Org struct {
@@ -833,6 +872,93 @@ type BatchChangesUsageStatistics struct {
 	CurrentMonthUsersCount int64
 
 	BatchChangesCohorts []*BatchChangesCohort
+
+	// ActiveExecutorsCount is the count of executors that have had a heartbeat in the last
+	// 15 seconds.
+	ActiveExecutorsCount int32
+
+	// BulkOperationsCount is the count of bulk operations used to manage changesets
+	BulkOperationsCount []*BulkOperationsCount
+
+	// ChangesetDistribution is the distribution of batch changes per source and the amount of
+	// changesets created via the different sources
+	ChangesetDistribution []*ChangesetDistribution
+
+	// BatchChangeStatsBySource is the distribution of batch change x changesets statistics
+	// across multiple sources
+	BatchChangeStatsBySource []*BatchChangeStatsBySource
+
+	// MonthlyBatchChangesExecutorUsage is the number of users who ran a job on an
+	// executor in a given month
+	MonthlyBatchChangesExecutorUsage []*MonthlyBatchChangesExecutorUsage
+
+	WeeklyBulkOperationStats []*WeeklyBulkOperationStats
+}
+
+// NOTE: DO NOT alter this struct without making a symmetric change
+// to the updatecheck handler. This struct is marshalled and sent to
+// BigQuery, which requires the input match its schema exactly.
+type BulkOperationsCount struct {
+	Name  string
+	Count int32
+}
+
+// NOTE: DO NOT alter this struct without making a symmetric change
+// to the updatecheck handler. This struct is marshalled and sent to
+// BigQuery, which requires the input match its schema exactly.
+type WeeklyBulkOperationStats struct {
+	// Week is the week of this cohort and is used to group batch changes by
+	// their creation date.
+	Week string
+
+	// Count is the number of bulk operations carried out in a particular week.
+	Count int32
+
+	BulkOperation string
+}
+
+// NOTE: DO NOT alter this struct without making a symmetric change
+// to the updatecheck handler. This struct is marshalled and sent to
+// BigQuery, which requires the input match its schema exactly.
+type MonthlyBatchChangesExecutorUsage struct {
+	// Month of the year corresponding to this executor usage data.
+	Month string
+
+	// The number of unique users who ran a job on an executor this month.
+	Count int32
+
+	// The cumulative number of minutes of executor usage for batch changes this month.
+	Minutes int64
+}
+
+// NOTE: DO NOT alter this struct without making a symmetric change
+// to the updatecheck handler. This struct is marshalled and sent to
+// BigQuery, which requires the input match its schema exactly.
+type BatchChangeStatsBySource struct {
+	// the source of the changesets belonging to the batch changes
+	// indicating whether the changeset was created via an executor or locally.
+	Source BatchChangeSource
+
+	// the amount of changesets published using this batch change source.
+	PublishedChangesetsCount int32
+
+	// the amount of batch changes created from this source.
+	BatchChangesCount int32
+}
+
+// NOTE: DO NOT alter this struct without making a symmetric change
+// to the updatecheck handler. This struct is marshalled and sent to
+// BigQuery, which requires the input match its schema exactly.
+type ChangesetDistribution struct {
+	// the source of the changesets belonging to the batch changes
+	// indicating whether the changeset was created via an executor or locally
+	Source BatchChangeSource
+
+	// range of changeset distribution per batch_change
+	Range string
+
+	// number of batch changes with the range of changesets defined
+	BatchChangesCount int32
 }
 
 // NOTE: DO NOT alter this struct without making a symmetric change
@@ -902,6 +1028,7 @@ type SearchUsagePeriod struct {
 	RepoContainsFile        *SearchCountStatistics
 	RepoContainsContent     *SearchCountStatistics
 	RepoContainsCommitAfter *SearchCountStatistics
+	RepoDependencies        *SearchCountStatistics
 	CountAll                *SearchCountStatistics
 	NonGlobalContext        *SearchCountStatistics
 	OnlyPatterns            *SearchCountStatistics
@@ -1035,6 +1162,97 @@ type GrowthStatistics struct {
 	RetainedUsers    int32
 }
 
+// IDEExtensionsUsage represents the daily, weekly and monthly numbers
+// of search performed and user state events from all IDE extensions,
+// and all inbound traffic from the extension to Sourcegraph instance
+type IDEExtensionsUsage struct {
+	IDEs []*IDEExtensionsUsageStatistics
+}
+
+// Usage statistics from each IDE extension
+type IDEExtensionsUsageStatistics struct {
+	IdeKind string
+	Month   IDEExtensionsUsageRegularPeriod
+	Week    IDEExtensionsUsageRegularPeriod
+	Day     IDEExtensionsUsageDailyPeriod
+}
+
+// Monthly and Weekly usage from each IDE extension
+type IDEExtensionsUsageRegularPeriod struct {
+	StartTime         time.Time
+	SearchesPerformed IDEExtensionsUsageSearchesPerformed
+}
+
+// Daily usage from each IDE extension
+type IDEExtensionsUsageDailyPeriod struct {
+	StartTime         time.Time
+	SearchesPerformed IDEExtensionsUsageSearchesPerformed
+	UserState         IDEExtensionsUsageUserState
+	RedirectsCount    int32
+}
+
+// Count of unique users who performed searches & total searches performed
+type IDEExtensionsUsageSearchesPerformed struct {
+	UniquesCount int32
+	TotalCount   int32
+}
+
+// Count of unique users who installed & uninstalled each extension
+type IDEExtensionsUsageUserState struct {
+	Installs   int32
+	Uninstalls int32
+}
+
+// CodeHostIntegrationUsage represents the daily, weekly and monthly
+// number of unique users and events for code host integration usage
+// and inbound traffic from code host integration to Sourcegraph instance
+type CodeHostIntegrationUsage struct {
+	Month CodeHostIntegrationUsagePeriod
+	Week  CodeHostIntegrationUsagePeriod
+	Day   CodeHostIntegrationUsagePeriod
+}
+
+type CodeHostIntegrationUsagePeriod struct {
+	StartTime         time.Time
+	BrowserExtension  CodeHostIntegrationUsageType
+	NativeIntegration CodeHostIntegrationUsageType
+}
+
+type CodeHostIntegrationUsageType struct {
+	UniquesCount        int32
+	TotalCount          int32
+	InboundTrafficToWeb CodeHostIntegrationUsageInboundTrafficToWeb
+}
+
+type CodeHostIntegrationUsageInboundTrafficToWeb struct {
+	UniquesCount int32
+	TotalCount   int32
+}
+
+// UserAndEventCount represents the number of events triggered in a given
+// time frame per user and overall.
+type UserAndEventCount struct {
+	UserCount  int32
+	EventCount int32
+}
+
+// FileAndSearchPageUserAndEventCounts represents the number of events triggered
+// on the "search result" and "file" pages in a given time frame.
+type FileAndSearchPageUserAndEventCounts struct {
+	StartTime             time.Time
+	DisplayedOnFilePage   UserAndEventCount
+	DisplayedOnSearchPage UserAndEventCount
+	ClickedOnFilePage     UserAndEventCount
+	ClickedOnSearchPage   UserAndEventCount
+}
+
+// CTAUsage represents the total number of CTAs displayed and clicked
+// on the "search result" and "file" pages over the current month.
+type CTAUsage struct {
+	DailyBrowserExtensionCTA FileAndSearchPageUserAndEventCounts
+	DailyIDEExtensionCTA     FileAndSearchPageUserAndEventCounts
+}
+
 // SavedSearches represents the total number of saved searches, users
 // using saved searches, and usage of saved searches.
 type SavedSearches struct {
@@ -1116,18 +1334,29 @@ type ExtensionUsageStatistics struct {
 }
 
 type CodeInsightsUsageStatistics struct {
-	WeeklyUsageStatisticsByInsight []*InsightUsageStatistics
-	WeeklyInsightsPageViews        *int32
-	WeeklyInsightsUniquePageViews  *int32
-	WeeklyInsightConfigureClick    *int32
-	WeeklyInsightAddMoreClick      *int32
-	WeekStart                      time.Time
-	WeeklyInsightCreators          *int32
-	WeeklyFirstTimeInsightCreators *int32
-	WeeklyAggregatedUsage          []AggregatedPingStats
-	InsightTimeIntervals           []InsightTimeIntervalPing
-	InsightOrgVisible              []OrgVisibleInsightPing
-	InsightTotalCounts             InsightTotalCounts
+	WeeklyUsageStatisticsByInsight          []*InsightUsageStatistics
+	WeeklyInsightsPageViews                 *int32
+	WeeklyInsightsGetStartedPageViews       *int32
+	WeeklyInsightsUniquePageViews           *int32
+	WeeklyInsightsGetStartedUniquePageViews *int32
+	WeeklyInsightConfigureClick             *int32
+	WeeklyInsightAddMoreClick               *int32
+	WeekStart                               time.Time
+	WeeklyInsightCreators                   *int32
+	WeeklyFirstTimeInsightCreators          *int32
+	WeeklyAggregatedUsage                   []AggregatedPingStats
+	WeeklyGetStartedTabClickByTab           []InsightGetStartedTabClickPing
+	WeeklyGetStartedTabMoreClickByTab       []InsightGetStartedTabClickPing
+	InsightTimeIntervals                    []InsightTimeIntervalPing
+	InsightOrgVisible                       []OrgVisibleInsightPing
+	InsightTotalCounts                      InsightTotalCounts
+	TotalOrgsWithDashboard                  *int32
+	TotalDashboardCount                     *int32
+	InsightsPerDashboard                    InsightsPerDashboardPing
+}
+
+type CodeInsightsCriticalTelemetry struct {
+	TotalInsights int32
 }
 
 // Usage statistics for a type of code insight
@@ -1176,10 +1405,23 @@ type InsightViewSeriesCountPing struct {
 	TotalCount     int
 }
 
+type InsightGetStartedTabClickPing struct {
+	TabName    string
+	TotalCount int
+}
+
 type InsightTotalCounts struct {
 	ViewCounts       []InsightViewsCountPing
 	SeriesCounts     []InsightSeriesCountPing
 	ViewSeriesCounts []InsightViewSeriesCountPing
+}
+
+type InsightsPerDashboardPing struct {
+	Avg    float32
+	Max    int
+	Min    int
+	StdDev float32
+	Median float32
 }
 
 type CodeMonitoringUsageStatistics struct {
@@ -1189,6 +1431,19 @@ type CodeMonitoringUsageStatistics struct {
 	CreateCodeMonitorPageViewsWithoutTriggerQuery *int32
 	ManageCodeMonitorPageViews                    *int32
 	CodeMonitorEmailLinkClicks                    *int32
+}
+
+type NotebooksUsageStatistics struct {
+	NotebookPageViews                *int32
+	EmbeddedNotebookPageViews        *int32
+	NotebooksListPageViews           *int32
+	NotebooksCreatedCount            *int32
+	NotebookAddedStarsCount          *int32
+	NotebookAddedMarkdownBlocksCount *int32
+	NotebookAddedQueryBlocksCount    *int32
+	NotebookAddedFileBlocksCount     *int32
+	NotebookAddedSymbolBlocksCount   *int32
+	NotebookAddedComputeBlocksCount  *int32
 }
 
 // Secret represents the secrets table

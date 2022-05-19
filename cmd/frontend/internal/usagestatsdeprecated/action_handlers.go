@@ -6,11 +6,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/cockroachdb/errors"
 	"github.com/inconshreveable/log15"
 
 	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/featureflag"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 var (
@@ -177,5 +177,5 @@ func LogEvent(ctx context.Context, db database.DB, name, url string, userID int3
 		Argument:        argument,
 		FeatureFlags:    featureFlags,
 	}
-	return database.EventLogs(db).Insert(ctx, info)
+	return db.EventLogs().Insert(ctx, info)
 }

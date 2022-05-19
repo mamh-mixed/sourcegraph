@@ -1,9 +1,10 @@
 import { Meta, Story } from '@storybook/react'
-import React from 'react'
 
 import { BrandedStory } from '@sourcegraph/branded/src/components/BrandedStory'
 import webStyles from '@sourcegraph/web/src/SourcegraphWebApp.scss'
-import { PRODUCT_STATUSES } from '@sourcegraph/wildcard/src/components/Badge/constants'
+import { PRODUCT_STATUSES } from '@sourcegraph/wildcard'
+
+import { Typography } from '../..'
 
 import { FeedbackBadge } from '.'
 
@@ -19,7 +20,21 @@ const config: Meta = {
         component: FeedbackBadge,
         chromatic: {
             enableDarkMode: true,
+            disableSnapshot: false,
         },
+        design: [
+            {
+                type: 'figma',
+                name: 'Figma Light',
+                url: 'https://www.figma.com/file/NIsN34NH7lPu04olBzddTw/Wildcard-Design-System?node-id=908%3A6149',
+            },
+
+            {
+                type: 'figma',
+                name: 'Figma Dark',
+                url: 'https://www.figma.com/file/NIsN34NH7lPu04olBzddTw/Wildcard-Design-System?node-id=908%3A6447',
+            },
+        ],
     },
 }
 
@@ -27,7 +42,7 @@ export default config
 
 export const FeedbackBadgeExample: Story = () => (
     <>
-        <h1>FeedbackBadges</h1>
+        <Typography.H1>FeedbackBadges</Typography.H1>
         <p>Our badges come in different status.</p>
         {PRODUCT_STATUSES.map(status => (
             <FeedbackBadge

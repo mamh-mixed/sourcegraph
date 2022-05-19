@@ -1,5 +1,6 @@
-import ExternalLinkIcon from 'mdi-react/ExternalLinkIcon'
 import React from 'react'
+
+import ExternalLinkIcon from 'mdi-react/ExternalLinkIcon'
 
 import { LinkOrSpan } from '@sourcegraph/shared/src/components/LinkOrSpan'
 
@@ -10,7 +11,7 @@ interface Props extends Pick<ExternalChangesetFields, 'externalID' | 'externalUR
     className?: string
 }
 
-export const ExternalChangesetTitle: React.FunctionComponent<Props> = ({
+export const ExternalChangesetTitle: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
     className,
     externalID,
     externalURL,

@@ -3,12 +3,12 @@
 exports[`QuickLink should have correct links when quicklinks present 1`] = `
 <DocumentFragment>
   <a
-    class="sidebarSectionListItem"
+    class="anchorLink sidebarSectionListItem"
     data-placement="right"
     href="/"
   >
     <svg
-      class="mdi-icon icon-inline pr-1 flex-shrink-0"
+      class="mdi-icon iconInline pr-1 flex-shrink-0"
       fill="currentColor"
       height="24"
       viewBox="0 0 24 24"
@@ -21,13 +21,13 @@ exports[`QuickLink should have correct links when quicklinks present 1`] = `
     Home
   </a>
   <a
-    class="sidebarSectionListItem"
+    class="anchorLink sidebarSectionListItem"
     data-placement="right"
     data-tooltip="Example QuickLink"
     href="http://example.com"
   >
     <svg
-      class="mdi-icon icon-inline pr-1 flex-shrink-0"
+      class="mdi-icon iconInline pr-1 flex-shrink-0"
       fill="currentColor"
       height="24"
       viewBox="0 0 24 24"

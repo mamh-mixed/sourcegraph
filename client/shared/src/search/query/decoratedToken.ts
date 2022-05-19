@@ -944,6 +944,16 @@ const decoratePredicateBody = (path: string[], body: string, offset: number): De
                 value: body,
                 kind: PatternKind.Regexp,
             })
+        case 'dependencies':
+        case 'deps':
+        case 'dependents':
+        case 'revdeps':
+            return mapRegexpMetaSucceed({
+                type: 'pattern',
+                range: { start: offset, end: body.length },
+                value: body,
+                kind: PatternKind.Regexp,
+            })
     }
     decorated.push({
         type: 'literal',

@@ -1,8 +1,10 @@
-import classNames from 'classnames'
 import React from 'react'
+
+import classNames from 'classnames'
 
 import { BadgeProps, Badge } from './Badge'
 import { BADGE_VARIANTS, PRODUCT_STATUSES } from './constants'
+
 import styles from './ProductStatusBadge.module.scss'
 
 export type ProductStatusType = typeof PRODUCT_STATUSES[number]
@@ -13,7 +15,7 @@ export type ProductStatusType = typeof PRODUCT_STATUSES[number]
 const STATUS_VARIANT_MAPPING: Record<ProductStatusType, typeof BADGE_VARIANTS[number]> = {
     prototype: 'warning',
     wip: 'warning',
-    experimental: 'info',
+    experimental: 'warning',
     beta: 'info',
     new: 'info',
 }
@@ -51,7 +53,7 @@ export type ProductStatusBadgeProps = BaseProductStatusBadgeProps | PossibleLink
  * A specific Badge component wrapper to describe a product status.
  * Can also be used to link to the relevant docs page for that status.
  */
-export const ProductStatusBadge: React.FunctionComponent<ProductStatusBadgeProps> = props => {
+export const ProductStatusBadge: React.FunctionComponent<React.PropsWithChildren<ProductStatusBadgeProps>> = props => {
     const variant = STATUS_VARIANT_MAPPING[props.status]
     const className = classNames(styles.productStatusBadge, props.className)
 

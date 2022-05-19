@@ -1,3 +1,6 @@
+# Temporary directory for whatever you want
+.tmp/
+
 # Vim
 *.swp
 
@@ -114,9 +117,13 @@ sourcegraph-webapp-*.tgz
 graphql-operations.ts
 *.module.scss.d.ts
 dll-bundle
+elm-stuff
 
 # Extensions
 /client/extension-api/dist
+
+# Compute Component
+/client/web/src/notebooks/blocks/compute/component/public/dist
 
 # Direnv
 .envrc
@@ -156,5 +163,16 @@ sitemap_query.db
 # Trivy security vulnerability reports
 *-security-report.html
 
-# CI annotations lock
+# CI annotations
+.annotate
 .annotate.lock
+annotations/
+
+# Buildkite analytics files
+test-reports/
+
+# go workspace files shouldn't be committed
+go.work
+
+# binary
+/sg

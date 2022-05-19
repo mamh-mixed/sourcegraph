@@ -24,7 +24,6 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/conf/conftypes"
 	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/database/basestore"
-	"github.com/sourcegraph/sourcegraph/internal/database/dbutil"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc"
 	"github.com/sourcegraph/sourcegraph/internal/observation"
 	"github.com/sourcegraph/sourcegraph/internal/timeutil"
@@ -33,22 +32,26 @@ import (
 var clock = timeutil.Now
 
 func Init(ctx context.Context, db database.DB, _ conftypes.UnifiedWatchable, enterpriseServices *enterprise.Services, observationContext *observation.Context) error {
-	database.ExternalServices = edb.NewExternalServicesStore
-	database.Authz = func(db dbutil.DB) database.AuthzStore {
-		return edb.NewAuthzStore(db, clock)
-	}
+	database.ValidateExternalServiceConfig = edb.ValidateExternalServiceConfig
 	database.AuthzWith = func(other basestore.ShareableStore) database.AuthzStore {
 		return edb.NewAuthzStore(db, clock)
 	}
 
-	extsvcStore := database.ExternalServices(db)
+	extsvcStore := db.ExternalServices()
 
 	// TODO(nsc): use c
 	// Report any authz provider problems in external configs.
 	conf.ContributeWarning(func(cfg conftypes.SiteConfigQuerier) (problems conf.Problems) {
-		_, _, seriousProblems, warnings :=
-			eiauthz.ProvidersFromConfig(context.Background(), cfg, extsvcStore)
+		_, providers, seriousProblems, warnings :=
+			eiauthz.ProvidersFromConfig(ctx, cfg, extsvcStore, db)
 		problems = append(problems, conf.NewExternalServiceProblems(seriousProblems...)...)
+
+		// Add connection validation issue
+		for _, p := range providers {
+			for _, problem := range p.ValidateConnection(ctx) {
+				warnings = append(warnings, fmt.Sprintf("%s provider %q: %s", p.ServiceType(), p.ServiceID(), problem))
+			}
+		}
 		problems = append(problems, conf.NewExternalServiceProblems(warnings...)...)
 		return problems
 	})
@@ -65,7 +68,7 @@ func Init(ctx context.Context, db database.DB, _ conftypes.UnifiedWatchable, ent
 		}
 
 		// We can ignore problems returned here because they would have been surfaced in other places.
-		_, providers, _, _ := eiauthz.ProvidersFromConfig(context.Background(), conf.Get(), extsvcStore)
+		_, providers, _, _ := eiauthz.ProvidersFromConfig(ctx, conf.Get(), extsvcStore, db)
 		if len(providers) == 0 {
 			return nil
 		}
@@ -175,7 +178,7 @@ func Init(ctx context.Context, db database.DB, _ conftypes.UnifiedWatchable, ent
 		t := time.NewTicker(5 * time.Second)
 		for range t.C {
 			allowAccessByDefault, authzProviders, _, _ :=
-				eiauthz.ProvidersFromConfig(ctx, conf.Get(), extsvcStore)
+				eiauthz.ProvidersFromConfig(ctx, conf.Get(), extsvcStore, db)
 			authz.SetProviders(allowAccessByDefault, authzProviders)
 		}
 	}()

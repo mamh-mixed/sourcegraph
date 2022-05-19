@@ -1,12 +1,14 @@
+import React, { useEffect, useMemo, useReducer } from 'react'
+
 import classNames from 'classnames'
 import { upperFirst } from 'lodash'
-import React, { useEffect, useMemo, useReducer } from 'react'
 
 import { StepsContext, useStepsContext, StepListContext, useStepListContext, Steps as StepsInterface } from './context'
 import { initialState, reducer } from './reducer'
+
 import stepsStyles from './Steps.module.scss'
 
-type Color = 'orange' | 'blue' | 'purple'
+type Color = 'orange' | 'blue' | 'purple' | 'green'
 
 export interface StepProps {
     borderColor: Color
@@ -22,16 +24,21 @@ interface StepListProps {
 export interface StepsProps {
     children: React.ReactElement<StepProps> | React.ReactElement<StepProps>[]
     initialStep: number
+    totalSteps: number
 }
 
-export const Steps: React.FunctionComponent<StepsProps> = ({ initialStep = 1, children }) => {
-    const [state, dispatch] = useReducer(reducer, initialState(initialStep))
+export const Steps: React.FunctionComponent<React.PropsWithChildren<StepsProps>> = ({
+    initialStep = 1,
+    totalSteps,
+    children,
+}) => {
+    const [state, dispatch] = useReducer(reducer, initialState(initialStep, totalSteps))
 
     if (!children) {
         throw new Error('Steps must include at least one child')
     }
 
-    if (initialStep < 1 || initialStep > React.Children.count(children)) {
+    if (initialStep < 1 || initialStep > totalSteps) {
         throw new Error('Current step is out of limits')
     }
 
@@ -40,13 +47,17 @@ export const Steps: React.FunctionComponent<StepsProps> = ({ initialStep = 1, ch
     return <StepsContext.Provider value={contextValue}>{children}</StepsContext.Provider>
 }
 
-export const Step: React.FunctionComponent<StepProps> = ({ children, borderColor }) => {
+export const Step: React.FunctionComponent<React.PropsWithChildren<StepProps>> = ({ children, borderColor }) => {
     const { state } = useStepsContext()
     const { setCurrent, stepIndex } = useStepListContext()
-
     const { current, steps } = state
-    const disabled = !steps[stepIndex]?.isVisited && current !== steps[stepIndex]?.index
-    const active = current === steps[stepIndex]?.index || steps[stepIndex]?.isVisited
+
+    // Marking all previous steps active helps when we using the debug option to start the flow in
+    // the middle.
+    const didSeeStep = steps[stepIndex]?.isVisited || stepIndex <= current
+
+    const disabled = !didSeeStep
+    const active = didSeeStep
 
     return (
         <li
@@ -71,12 +82,20 @@ export const Step: React.FunctionComponent<StepProps> = ({ children, borderColor
     )
 }
 
-export const StepList: React.FunctionComponent<StepListProps> = ({ children, numeric, className }) => {
+export const StepList: React.FunctionComponent<React.PropsWithChildren<StepListProps>> = ({
+    children,
+    numeric,
+    className,
+}) => {
     const { state, dispatch } = useStepsContext()
 
     const { initialStep } = state
 
     const childrenArray = React.Children.toArray(children)
+
+    if (childrenArray.length !== state.totalSteps) {
+        throw new Error('StepList must include as many steps as defined by totalSteps')
+    }
 
     useEffect(() => {
         const steps = childrenArray.reduce((accumulator: StepsInterface, _current, index) => {
@@ -115,7 +134,7 @@ export const StepList: React.FunctionComponent<StepListProps> = ({ children, num
     )
 }
 
-export const StepPanels: React.FunctionComponent = ({ children }) => {
+export const StepPanels: React.FunctionComponent<React.PropsWithChildren<unknown>> = ({ children }) => {
     const { state } = useStepsContext()
     const { current } = state
 
@@ -124,6 +143,10 @@ export const StepPanels: React.FunctionComponent = ({ children }) => {
 
     if (!children) {
         throw new Error('StepPanels must include at least one child')
+    }
+
+    if (childrenArray.length !== state.totalSteps) {
+        throw new Error('StepPanels must include as many steps as defined by totalSteps')
     }
 
     if (indexArray < 0 || current > childrenArray.length) {
@@ -135,6 +158,4 @@ export const StepPanels: React.FunctionComponent = ({ children }) => {
     return <div className="mt-4 pb-3">{childrenArray[indexArray]}</div>
 }
 
-export const StepPanel: React.FunctionComponent = ({ children }) => <>{children}</>
-
-export const StepActions: React.FunctionComponent = ({ children }) => <>{children}</>
+export const StepPanel: React.FunctionComponent<React.PropsWithChildren<unknown>> = ({ children }) => <>{children}</>

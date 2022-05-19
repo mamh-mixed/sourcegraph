@@ -3,6 +3,12 @@ import { SharedGraphQlOperations } from '@sourcegraph/shared/src/graphql-operati
 import { testUserID, sharedGraphQlResults } from '@sourcegraph/shared/src/testing/integration/graphQlResults'
 
 import { WebGraphQlOperations } from '../graphql-operations'
+import {
+    collaboratorsPayload,
+    recentFilesPayload,
+    recentSearchesPayload,
+    savedSearchesPayload,
+} from '../search/panels/utils'
 
 import { builtinAuthProvider, siteGQLID, siteID } from './jscontext'
 
@@ -30,6 +36,7 @@ export const commonWebGraphQlResults: Partial<
             organizations: { nodes: [] },
             session: { canSignOut: true },
             viewerCanAdminister: true,
+            searchable: true,
         },
     }),
     ViewerSettings: () => ({
@@ -229,6 +236,9 @@ export const commonWebGraphQlResults: Partial<
     OrgFeatureFlagValue: () => ({
         organizationFeatureFlagValue: false,
     }),
+    OrgFeatureFlagOverrides: () => ({
+        organizationFeatureFlagOverrides: [],
+    }),
     GetTemporarySettings: () => ({
         temporarySettings: {
             __typename: 'TemporarySettings',
@@ -243,5 +253,15 @@ export const commonWebGraphQlResults: Partial<
         editTemporarySettings: {
             alwaysNil: null,
         },
+    }),
+    HomePanelsQuery: () => ({
+        node: {
+            __typename: 'User',
+            recentlySearchedRepositoriesLogs: recentSearchesPayload(),
+            recentSearchesLogs: recentSearchesPayload(),
+            recentFilesLogs: recentFilesPayload(),
+            collaborators: collaboratorsPayload(),
+        },
+        savedSearches: savedSearchesPayload(),
     }),
 }

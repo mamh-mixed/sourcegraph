@@ -1,6 +1,7 @@
+import React, { ChangeEvent, FormEvent, useCallback, useEffect, useState, useRef } from 'react'
+
 import classNames from 'classnames'
 import { isEqual, capitalize } from 'lodash'
-import React, { ChangeEvent, FormEvent, useCallback, useEffect, useState, useRef } from 'react'
 import { useHistory } from 'react-router'
 import { Subscription } from 'rxjs'
 
@@ -13,9 +14,12 @@ import {
     PageSelector,
     RadioButton,
     TextArea,
+    Select,
     Button,
     Alert,
     Link,
+    Checkbox,
+    Typography,
 } from '@sourcegraph/wildcard'
 
 import { ALLOW_NAVIGATION, AwayPrompt } from '../../../components/AwayPrompt'
@@ -52,6 +56,7 @@ import {
     UserSettingReposContainer,
 } from './components'
 import { CheckboxRepositoryNode } from './RepositoryNode'
+
 import styles from './UserSettingsManageRepositoriesPage.module.scss'
 
 interface Props
@@ -118,7 +123,7 @@ type affiliateRepoProblemType = undefined | string | ErrorLike | ErrorLike[]
 
 const displayWarning = (warning: string, hint?: JSX.Element): JSX.Element => (
     <Alert className="my-3" role="alert" key={warning} variant="warning">
-        <h4 className="align-middle mb-1">{capitalize(warning)}</h4>
+        <Typography.H4 className="align-middle mb-1">{capitalize(warning)}</Typography.H4>
         <p className="align-middle mb-0">
             {hint} {hint ? 'for more details.' : null}
         </p>
@@ -127,7 +132,7 @@ const displayWarning = (warning: string, hint?: JSX.Element): JSX.Element => (
 
 const displayError = (error: ErrorLike, hint?: JSX.Element): JSX.Element => (
     <Alert className="my-3" role="alert" key={error.message} variant="danger">
-        <h4 className="align-middle mb-1">{capitalize(error.message)}</h4>
+        <Typography.H4 className="align-middle mb-1">{capitalize(error.message)}</Typography.H4>
         <p className="align-middle mb-0">
             {hint} {hint ? 'for more details.' : null}
         </p>
@@ -156,7 +161,7 @@ const displayAffiliateRepoProblems = (
 /**
  * A page to manage the repositories a user syncs from their connected code hosts.
  */
-export const UserSettingsManageRepositoriesPage: React.FunctionComponent<Props> = ({
+export const UserSettingsManageRepositoriesPage: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
     owner,
     routingPrefix,
     telemetryService,
@@ -182,7 +187,7 @@ export const UserSettingsManageRepositoriesPage: React.FunctionComponent<Props> 
     const [onloadRadioValue, setOnloadRadioValue] = useState('')
     const [selectionState, setSelectionState] = useState(initialSelectionState)
     const [currentPage, setPage] = useState(1)
-    const [query, setQuery] = useState('')
+    const [query, setQuery] = useState(new URLSearchParams(window.location.search).get('filter') || '')
     const [codeHostFilter, setCodeHostFilter] = useState('')
     const [filteredRepos, setFilteredRepos] = useState<Repo[]>([])
     const [fetchingRepos, setFetchingRepos] = useState<initialFetchingReposState>()
@@ -218,14 +223,14 @@ export const UserSettingsManageRepositoriesPage: React.FunctionComponent<Props> 
     )
 
     const fetchAffiliatedRepos = useCallback(
-        async (): Promise<AffiliatedRepositoriesResult['affiliatedRepositories']['nodes']> =>
+        async (): Promise<AffiliatedRepositoriesResult['affiliatedRepositories']> =>
             listAffiliatedRepositories({
                 namespace: owner.id,
                 codeHost: null,
                 query: null,
             })
                 .toPromise()
-                .then(({ affiliatedRepositories: { nodes } }) => nodes),
+                .then(data => data.affiliatedRepositories),
 
         [owner.id]
     )
@@ -261,8 +266,7 @@ export const UserSettingsManageRepositoriesPage: React.FunctionComponent<Props> 
 
         const codeHostsHaveSyncAllQuery = []
 
-        // if external services may return code hosts with errors or warnings -
-        // we can't safely continue
+        // if external services return errors or warnings, we can display the errors from one code host along with the repos from another.
         const codeHostProblems = []
 
         for (const host of externalServices) {
@@ -279,7 +283,7 @@ export const UserSettingsManageRepositoriesPage: React.FunctionComponent<Props> 
             }
 
             if (hostHasProblems) {
-                // skip this code hots
+                // skip this code host
                 continue
             }
 
@@ -309,18 +313,26 @@ export const UserSettingsManageRepositoriesPage: React.FunctionComponent<Props> 
             }
         }
 
-        if (codeHostProblems.length > 0) {
-            setAffiliateRepoProblems(codeHostProblems)
-        }
-
         const [affiliatedRepos, selectedRepos] = await Promise.all([
             fetchAffiliatedRepos(),
             fetchSelectedRepositories(),
         ])
 
+        if (codeHostProblems.length > 0) {
+            setAffiliateRepoProblems(codeHostProblems)
+        }
+
+        // If the external services call doen't return any errors, we can get them from the affiliated repos call.
+        if (codeHostProblems.length === 0 && affiliatedRepos.codeHostErrors !== []) {
+            for (const codeHostError of affiliatedRepos.codeHostErrors) {
+                codeHostProblems.push(asError(codeHostError))
+            }
+            setAffiliateRepoProblems(codeHostProblems)
+        }
+
         const selectedAffiliatedRepos = new Map<string, Repo>()
 
-        const affiliatedReposWithMirrorInfo = affiliatedRepos.map(affiliatedRepo => {
+        const affiliatedReposWithMirrorInfo = affiliatedRepos.nodes.map(affiliatedRepo => {
             const foundInSelected = selectedRepos.find(
                 ({ name, externalRepository: { serviceType: selectedRepoServiceType } }) => {
                     // selected repo names formatted: code-host/owner/repository
@@ -571,11 +583,8 @@ export const UserSettingsManageRepositoriesPage: React.FunctionComponent<Props> 
         })
     }
 
-    const hasProblems = affiliateRepoProblems !== undefined
     // code hosts were loaded and some were configured
     const hasCodeHosts = codeHosts.loaded && codeHosts.hosts.length !== 0
-    const noCodeHostsOrErrors = !hasCodeHosts || hasProblems
-    const hasCodeHostsNoErrors = hasCodeHosts && !hasProblems
 
     const modeSelect: JSX.Element = (
         <Form className="mt-4">
@@ -585,7 +594,7 @@ export const UserSettingsManageRepositoriesPage: React.FunctionComponent<Props> 
                         name="all_repositories"
                         id="sync_all_repositories"
                         value="all"
-                        disabled={noCodeHostsOrErrors}
+                        disabled={!hasCodeHosts}
                         checked={selectionState.radio === 'all'}
                         onChange={handleRadioSelect}
                         label={
@@ -606,11 +615,11 @@ export const UserSettingsManageRepositoriesPage: React.FunctionComponent<Props> 
                     id="sync_selected_repositories"
                     value="selected"
                     checked={selectionState.radio === 'selected'}
-                    disabled={noCodeHostsOrErrors}
+                    disabled={!hasCodeHosts}
                     onChange={handleRadioSelect}
                     label={
                         <div className="d-flex flex-column ml-2">
-                            <p className={classNames('mb-0', noCodeHostsOrErrors && styles.textDisabled)}>
+                            <p className={classNames('mb-0', !hasCodeHosts && styles.textDisabled)}>
                                 Sync selected repositories
                             </p>
                         </div>
@@ -626,8 +635,7 @@ export const UserSettingsManageRepositoriesPage: React.FunctionComponent<Props> 
         <Form onSubmit={preventSubmit} className="w-100 d-inline-flex justify-content-between flex-row mt-3">
             <div className="d-inline-flex flex-row mr-3 align-items-baseline">
                 <p className="text-xl-center text-nowrap mr-2">Code Host:</p>
-                <select
-                    className="form-control"
+                <Select
                     name="code-host"
                     aria-label="select code host type"
                     onChange={event => setCodeHostFilter(event.target.value)}
@@ -636,7 +644,7 @@ export const UserSettingsManageRepositoriesPage: React.FunctionComponent<Props> 
                     {codeHosts.hosts.map(value => (
                         <option key={value.id} value={value.id} label={value.displayName} />
                     ))}
-                </select>
+                </Select>
             </div>
             <FilterInput
                 className="form-control"
@@ -647,6 +655,7 @@ export const UserSettingsManageRepositoriesPage: React.FunctionComponent<Props> 
                 autoCorrect="off"
                 autoCapitalize="off"
                 spellCheck={false}
+                defaultValue={query}
                 onChange={event => {
                     setQuery(event.target.value)
                 }}
@@ -707,28 +716,28 @@ export const UserSettingsManageRepositoriesPage: React.FunctionComponent<Props> 
                     as="td"
                     className="p-2 w-100 d-flex align-items-center border-top-0 border-bottom"
                 >
-                    <input
+                    <Checkbox
                         id="select-all-repos"
                         className="mr-3"
-                        type="checkbox"
                         checked={areAllFilteredReposSelected()}
                         onChange={toggleAll}
                         disabled={filteredRepos.length === 0}
+                        label={
+                            <small
+                                className={classNames({
+                                    'text-muted': selectionState.repos.size === 0,
+                                    'text-body': selectionState.repos.size !== 0,
+                                    'mb-0': true,
+                                })}
+                            >
+                                {selectionState.repos.size === 0
+                                    ? 'Select all'
+                                    : `${selectionState.repos.size} ${
+                                          selectionState.repos.size === 1 ? 'repository' : 'repositories'
+                                      } selected`}
+                            </small>
+                        }
                     />
-                    <label
-                        htmlFor="select-all-repos"
-                        className={classNames({
-                            'text-muted': selectionState.repos.size === 0,
-                            'text-body': selectionState.repos.size !== 0,
-                            'mb-0': true,
-                        })}
-                    >
-                        {(selectionState.repos.size > 0 && (
-                            <small>{`${selectionState.repos.size} ${
-                                selectionState.repos.size === 1 ? 'repository' : 'repositories'
-                            } selected`}</small>
-                        )) || <small>Select all</small>}
-                    </label>
                 </RepositoryNodeContainer>
             </tr>
             {filteredRepos.map((repo, index) => {
@@ -780,9 +789,9 @@ export const UserSettingsManageRepositoriesPage: React.FunctionComponent<Props> 
     return (
         <UserSettingReposContainer>
             <PageTitle title="Manage Repositories" />
-            <h2 className="d-flex mb-2">
+            <Typography.H2 className="d-flex mb-2">
                 Manage Repositories <ProductStatusBadge status="beta" className="ml-2" linkToDocs={true} />
-            </h2>
+            </Typography.H2>
             <p className="text-muted">
                 Choose repositories to sync with Sourcegraph.
                 <Link
@@ -799,7 +808,7 @@ export const UserSettingsManageRepositoriesPage: React.FunctionComponent<Props> 
                 <ul className="list-group">
                     <ListItemContainer key="from-code-hosts">
                         <div>
-                            <h3>{owner.name ? `${owner.name}'s` : 'Your'} repositories</h3>
+                            <Typography.H3>{owner.name ? `${owner.name}'s` : 'Your'} repositories</Typography.H3>
 
                             <p className="text-muted">
                                 Repositories{' '}
@@ -831,14 +840,14 @@ export const UserSettingsManageRepositoriesPage: React.FunctionComponent<Props> 
                             {displayAffiliateRepoProblems(affiliateRepoProblems, ExternalServiceProblemHint)}
 
                             {/* display radio buttons shimmer only when user has code hosts */}
-                            {hasCodeHostsNoErrors && !selectionState.loaded && modeSelectShimmer}
+                            {hasCodeHosts && !selectionState.loaded && modeSelectShimmer}
 
                             {/* display type of repo sync radio buttons */}
-                            {hasCodeHostsNoErrors && selectionState.loaded && modeSelect}
+                            {hasCodeHosts && selectionState.loaded && modeSelect}
 
                             {
                                 // if we're in 'selected' mode, show a list of all the repos on the code hosts to select from
-                                hasCodeHostsNoErrors && selectionState.radio === 'selected' && (
+                                hasCodeHosts && selectionState.radio === 'selected' && (
                                     <div className="ml-4">
                                         {filterControls}
                                         <table role="grid" className="table">
@@ -863,16 +872,15 @@ export const UserSettingsManageRepositoriesPage: React.FunctionComponent<Props> 
                     {window.context.sourcegraphDotComMode && !isOrgOwner && (
                         <ListItemContainer key="add-textarea">
                             <div>
-                                <h3>Other public repositories</h3>
+                                <Typography.H3>Other public repositories</Typography.H3>
                                 <p className="text-muted">Public repositories on GitHub and GitLab</p>
-                                <input
+                                <Checkbox
                                     id="add-public-repos"
                                     className="mr-2 mt-2"
-                                    type="checkbox"
+                                    label="Sync specific public repositories by URL"
                                     onChange={toggleTextArea}
                                     checked={publicRepoState.enabled}
                                 />
-                                <label htmlFor="add-public-repos">Sync specific public repositories by URL</label>
 
                                 {publicRepoState.enabled && (
                                     <div className="form-group ml-4 mt-3">

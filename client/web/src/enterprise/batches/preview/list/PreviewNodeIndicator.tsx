@@ -1,5 +1,6 @@
-import classNames from 'classnames'
 import React from 'react'
+
+import classNames from 'classnames'
 
 import { ChangesetApplyPreviewFields } from '../../../../graphql-operations'
 import { ChangesetAddedIcon, ChangesetModifiedIcon, ChangesetRemovedIcon } from '../icons'
@@ -15,7 +16,9 @@ export interface PreviewNodeIndicatorProps {
     node: ChangesetApplyPreviewFields
 }
 
-export const PreviewNodeIndicator: React.FunctionComponent<PreviewNodeIndicatorProps> = ({ node }) => {
+export const PreviewNodeIndicator: React.FunctionComponent<React.PropsWithChildren<PreviewNodeIndicatorProps>> = ({
+    node,
+}) => {
     switch (node.targets.__typename) {
         case 'HiddenApplyPreviewTargetsAttach':
         case 'VisibleApplyPreviewTargetsAttach':

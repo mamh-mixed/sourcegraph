@@ -5,10 +5,10 @@ import (
 	"flag"
 	"net/url"
 	"os"
-	"regexp"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/grafana/regexp"
 
 	"github.com/sourcegraph/sourcegraph/internal/httptestutil"
 )
@@ -37,7 +37,7 @@ func createTestProvider(t *testing.T) *ClientProvider {
 		t.Fatal(err)
 	}
 	baseURL, _ := url.Parse("https://gitlab.com/")
-	provider := NewClientProvider(baseURL, doer)
+	provider := NewClientProvider("Test", baseURL, doer)
 	return provider
 }
 

@@ -13,14 +13,13 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/cockroachdb/errors"
-
 	"github.com/google/go-cmp/cmp"
 	"github.com/inconshreveable/log15"
 
 	"github.com/sourcegraph/sourcegraph/lib/codeintel/lsif/conversion"
 	"github.com/sourcegraph/sourcegraph/lib/codeintel/lsif/validation"
 	"github.com/sourcegraph/sourcegraph/lib/codeintel/precise"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 type projectResult struct {
@@ -67,7 +66,7 @@ var debug bool
 // TODO: Do more monitoring of the process.
 // var monitor bool
 
-func logFatal(msg string, args ...interface{}) {
+func logFatal(msg string, args ...any) {
 	log15.Error(msg, args...)
 	os.Exit(1)
 }
@@ -223,7 +222,7 @@ func runIndexer(ctx context.Context, indexer []string, directory, name string) (
 	args := indexer[1:]
 
 	log15.Debug("... Generating dump.lsif")
-	cmd := exec.Command(command, args...)
+	cmd := exec.CommandContext(ctx, command, args...)
 	cmd.Dir = directory
 
 	output, err := cmd.CombinedOutput()

@@ -1,8 +1,9 @@
-import * as H from 'history'
 import React from 'react'
 
+import * as H from 'history'
+
+import { pluralize } from '@sourcegraph/common'
 import { BulkOperationState } from '@sourcegraph/shared/src/graphql-operations'
-import { pluralize } from '@sourcegraph/shared/src/util/strings'
 import { Link } from '@sourcegraph/wildcard'
 
 import { DismissibleAlert, isAlertDismissed } from '../../../components/DismissibleAlert'
@@ -25,7 +26,7 @@ export interface BulkOperationsAlertsProps {
  * If neither of the two above, and at least one completed operation is in the list and the alert has not yet been dismissed, a
  * "something recently completed" alert is shown.
  */
-export const BulkOperationsAlerts: React.FunctionComponent<BulkOperationsAlertsProps> = ({
+export const BulkOperationsAlerts: React.FunctionComponent<React.PropsWithChildren<BulkOperationsAlertsProps>> = ({
     bulkOperations,
     location,
 }) => {

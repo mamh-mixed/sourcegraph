@@ -1,23 +1,24 @@
+import React, { useState, useCallback, useEffect } from 'react'
+
 import classNames from 'classnames'
 import * as H from 'history'
 import ChevronDownIcon from 'mdi-react/ChevronDownIcon'
 import ChevronRightIcon from 'mdi-react/ChevronRightIcon'
 import SyncIcon from 'mdi-react/SyncIcon'
-import React, { useState, useCallback, useEffect } from 'react'
 
 import { ErrorAlert, ErrorMessage } from '@sourcegraph/branded/src/components/alerts'
+import { HoverMerged } from '@sourcegraph/client-api'
 import { Hoverifier } from '@sourcegraph/codeintellify'
 import { asError, isErrorLike } from '@sourcegraph/common'
 import { ActionItemAction } from '@sourcegraph/shared/src/actions/ActionItem'
-import { HoverMerged } from '@sourcegraph/shared/src/api/client/types/hover'
 import { ExtensionsControllerProps } from '@sourcegraph/shared/src/extensions/controller'
 import { ChangesetState } from '@sourcegraph/shared/src/graphql-operations'
 import { ThemeProps } from '@sourcegraph/shared/src/theme'
 import { RepoSpec, RevisionSpec, FileSpec, ResolvedRevisionSpec } from '@sourcegraph/shared/src/util/url'
-import { InputTooltip } from '@sourcegraph/web/src/components/InputTooltip'
-import { Button, Alert } from '@sourcegraph/wildcard'
+import { Button, Alert, Icon, Typography } from '@sourcegraph/wildcard'
 
 import { DiffStatStack } from '../../../../components/diff/DiffStat'
+import { InputTooltip } from '../../../../components/InputTooltip'
 import { ChangesetSpecType, ExternalChangesetFields } from '../../../../graphql-operations'
 import {
     queryExternalChangesetWithFileDiffs as _queryExternalChangesetWithFileDiffs,
@@ -30,6 +31,7 @@ import { ChangesetReviewStatusCell } from './ChangesetReviewStatusCell'
 import { ChangesetStatusCell } from './ChangesetStatusCell'
 import { DownloadDiffButton } from './DownloadDiffButton'
 import { ExternalChangesetInfoCell } from './ExternalChangesetInfoCell'
+
 import styles from './ExternalChangesetNode.module.scss'
 
 export interface ExternalChangesetNodeProps extends ThemeProps {
@@ -50,7 +52,7 @@ export interface ExternalChangesetNodeProps extends ThemeProps {
     expandByDefault?: boolean
 }
 
-export const ExternalChangesetNode: React.FunctionComponent<ExternalChangesetNodeProps> = ({
+export const ExternalChangesetNode: React.FunctionComponent<React.PropsWithChildren<ExternalChangesetNodeProps>> = ({
     node: initialNode,
     viewerCanAdminister,
     selectable,
@@ -79,6 +81,10 @@ export const ExternalChangesetNode: React.FunctionComponent<ExternalChangesetNod
         selectable?.onSelect(node.id)
     }, [selectable, node.id])
 
+    const tooltipLabel = viewerCanAdminister
+        ? 'Click to select changeset for bulk operation'
+        : 'You do not have permission to perform this operation'
+
     return (
         <>
             <Button
@@ -88,9 +94,9 @@ export const ExternalChangesetNode: React.FunctionComponent<ExternalChangesetNod
                 onClick={toggleIsExpanded}
             >
                 {isExpanded ? (
-                    <ChevronDownIcon className="icon-inline" aria-label="Close section" />
+                    <Icon aria-label="Close section" as={ChevronDownIcon} />
                 ) : (
-                    <ChevronRightIcon className="icon-inline" aria-label="Expand section" />
+                    <Icon aria-label="Expand section" as={ChevronRightIcon} />
                 )}
             </Button>
             {selectable ? (
@@ -101,11 +107,8 @@ export const ExternalChangesetNode: React.FunctionComponent<ExternalChangesetNod
                         checked={selected}
                         onChange={toggleSelected}
                         disabled={!viewerCanAdminister}
-                        tooltip={
-                            viewerCanAdminister
-                                ? 'Click to select changeset for bulk operation'
-                                : 'You do not have permission to perform this operation'
-                        }
+                        tooltip={tooltipLabel}
+                        aria-label={tooltipLabel}
                     />
                 </div>
             ) : (
@@ -173,9 +176,9 @@ export const ExternalChangesetNode: React.FunctionComponent<ExternalChangesetNod
                 variant="secondary"
             >
                 {isExpanded ? (
-                    <ChevronDownIcon className="icon-inline" aria-label="Close section" />
+                    <Icon aria-label="Close section" as={ChevronDownIcon} />
                 ) : (
-                    <ChevronRightIcon className="icon-inline" aria-label="Expand section" />
+                    <Icon aria-label="Expand section" as={ChevronRightIcon} />
                 )}{' '}
                 {isExpanded ? 'Hide' : 'Show'} details
             </Button>
@@ -221,11 +224,11 @@ export const ExternalChangesetNode: React.FunctionComponent<ExternalChangesetNod
     )
 }
 
-const SyncerError: React.FunctionComponent<{ syncerError: string }> = ({ syncerError }) => (
+const SyncerError: React.FunctionComponent<React.PropsWithChildren<{ syncerError: string }>> = ({ syncerError }) => (
     <Alert role="alert" variant="danger">
-        <h4 className={classNames(styles.alertHeading)}>
+        <Typography.H4 className={classNames(styles.alertHeading)}>
             Encountered error during last attempt to sync changeset data from code host
-        </h4>
+        </Typography.H4>
         <ErrorMessage error={syncerError} />
         <hr className="my-2" />
         <p className="mb-0">
@@ -234,26 +237,32 @@ const SyncerError: React.FunctionComponent<{ syncerError: string }> = ({ syncerE
     </Alert>
 )
 
-const ChangesetError: React.FunctionComponent<{
-    node: ExternalChangesetFields
-}> = ({ node }) => {
+const ChangesetError: React.FunctionComponent<
+    React.PropsWithChildren<{
+        node: ExternalChangesetFields
+    }>
+> = ({ node }) => {
     if (!node.error) {
         return null
     }
 
     return (
         <Alert role="alert" variant="danger">
-            <h4 className={classNames(styles.alertHeading)}>Failed to run operations on changeset</h4>
+            <Typography.H4 className={classNames(styles.alertHeading)}>
+                Failed to run operations on changeset
+            </Typography.H4>
             <ErrorMessage error={node.error} />
         </Alert>
     )
 }
 
-const RetryChangesetButton: React.FunctionComponent<{
-    node: ExternalChangesetFields
-    setNode: (node: ExternalChangesetFields) => void
-    viewerCanAdminister: boolean
-}> = ({ node, setNode }) => {
+const RetryChangesetButton: React.FunctionComponent<
+    React.PropsWithChildren<{
+        node: ExternalChangesetFields
+        setNode: (node: ExternalChangesetFields) => void
+        viewerCanAdminister: boolean
+    }>
+> = ({ node, setNode }) => {
     const [isLoading, setIsLoading] = useState<boolean | Error>(false)
     const onRetry = useCallback(async () => {
         setIsLoading(true)
@@ -272,11 +281,9 @@ const RetryChangesetButton: React.FunctionComponent<{
         <>
             {isErrorLike(isLoading) && <ErrorAlert error={isLoading} prefix="Error re-enqueueing changeset" />}
             <Button className="mb-1" onClick={onRetry} disabled={isLoading === true} variant="link">
-                <SyncIcon
-                    className={classNames(
-                        'icon-inline',
-                        isLoading === true && styles.externalChangesetNodeRetrySpinning
-                    )}
+                <Icon
+                    className={classNames(isLoading === true && styles.externalChangesetNodeRetrySpinning)}
+                    as={SyncIcon}
                 />{' '}
                 Retry
             </Button>

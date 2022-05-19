@@ -11,7 +11,7 @@ import (
 // GetAggregatedSearchStats queries the database for search usage and returns
 // the aggregates statistics in the format of our BigQuery schema.
 func GetAggregatedSearchStats(ctx context.Context, db database.DB) (*types.SearchUsageStatistics, error) {
-	events, err := database.EventLogs(db).AggregatedSearchEvents(ctx, time.Now().UTC())
+	events, err := db.EventLogs().AggregatedSearchEvents(ctx, time.Now().UTC())
 	if err != nil {
 		return nil, err
 	}
@@ -65,6 +65,7 @@ var searchFilterCountExtractors = map[string]func(p *types.SearchUsagePeriod) *t
 	"count_repo_contains_file":          func(p *types.SearchUsagePeriod) *types.SearchCountStatistics { return p.RepoContainsFile },
 	"count_repo_contains_content":       func(p *types.SearchUsagePeriod) *types.SearchCountStatistics { return p.RepoContainsContent },
 	"count_repo_contains_commit_after":  func(p *types.SearchUsagePeriod) *types.SearchCountStatistics { return p.RepoContainsCommitAfter },
+	"count_repo_dependencies":           func(p *types.SearchUsagePeriod) *types.SearchCountStatistics { return p.RepoDependencies },
 	"count_count_all":                   func(p *types.SearchUsagePeriod) *types.SearchCountStatistics { return p.CountAll },
 	"count_non_global_context":          func(p *types.SearchUsagePeriod) *types.SearchCountStatistics { return p.NonGlobalContext },
 	"count_only_patterns":               func(p *types.SearchUsagePeriod) *types.SearchCountStatistics { return p.OnlyPatterns },
@@ -165,6 +166,7 @@ func newSearchEventPeriod() *types.SearchUsagePeriod {
 		RepoContainsFile:        newSearchCountStatistics(),
 		RepoContainsContent:     newSearchCountStatistics(),
 		RepoContainsCommitAfter: newSearchCountStatistics(),
+		RepoDependencies:        newSearchCountStatistics(),
 		CountAll:                newSearchCountStatistics(),
 		NonGlobalContext:        newSearchCountStatistics(),
 		OnlyPatterns:            newSearchCountStatistics(),

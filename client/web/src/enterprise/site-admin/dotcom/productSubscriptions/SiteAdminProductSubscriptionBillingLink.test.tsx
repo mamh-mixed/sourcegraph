@@ -1,5 +1,4 @@
-import { render } from '@testing-library/react'
-import React from 'react'
+import { renderWithBrandedContext } from '@sourcegraph/shared/src/testing'
 
 import { SiteAdminProductSubscriptionBillingLink } from './SiteAdminProductSubscriptionBillingLink'
 
@@ -8,7 +7,7 @@ jest.mock('mdi-react/ExternalLinkIcon', () => 'ExternalLinkIcon')
 describe('SiteAdminProductSubscriptionBillingLink', () => {
     test('linked billing', () => {
         expect(
-            render(
+            renderWithBrandedContext(
                 <SiteAdminProductSubscriptionBillingLink
                     productSubscription={{ id: 'u', urlForSiteAdminBilling: 'https://example.com' }}
                     onDidUpdate={() => undefined}
@@ -19,7 +18,7 @@ describe('SiteAdminProductSubscriptionBillingLink', () => {
 
     test('no linked billing', () => {
         expect(
-            render(
+            renderWithBrandedContext(
                 <SiteAdminProductSubscriptionBillingLink
                     productSubscription={{ id: 'u', urlForSiteAdminBilling: null }}
                     onDidUpdate={() => undefined}

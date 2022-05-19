@@ -1,17 +1,17 @@
+import React, { useCallback, useMemo, useState, useEffect } from 'react'
+
 import classNames from 'classnames'
 import * as H from 'history'
-import React, { useCallback, useMemo, useState, useEffect } from 'react'
 import { combineLatest, from, NEVER, Observable, of, ReplaySubject, Subscription } from 'rxjs'
 import { distinctUntilKeyChanged, filter, first, map, switchMap, tap } from 'rxjs/operators'
 import { useDeepCompareEffectNoCheck } from 'use-deep-compare-effect'
 
 import { findPositionsFromEvents } from '@sourcegraph/codeintellify'
-import { isDefined } from '@sourcegraph/common'
+import { isDefined, property } from '@sourcegraph/common'
 import { wrapRemoteObservable } from '@sourcegraph/shared/src/api/client/api/common'
 import { DecorationMapByLine, groupDecorationsByLine } from '@sourcegraph/shared/src/api/extension/api/decorations'
 import { ViewerId } from '@sourcegraph/shared/src/api/viewerTypes'
 import { ThemeProps } from '@sourcegraph/shared/src/theme'
-import { property } from '@sourcegraph/shared/src/util/types'
 import { toURIWithPath } from '@sourcegraph/shared/src/util/url'
 import { useObservable } from '@sourcegraph/wildcard'
 
@@ -23,6 +23,7 @@ import { diffDomFunctions } from '../../repo/compare/dom-functions'
 import { DiffHunk } from './DiffHunk'
 import { DiffSplitHunk } from './DiffSplitHunk'
 import { ExtensionInfo } from './FileDiffConnection'
+
 import styles from './FileDiffHunks.module.scss'
 
 export interface FileHunksProps extends ThemeProps {
@@ -60,7 +61,7 @@ export interface FileHunksProps extends ThemeProps {
 }
 
 /** Displays hunks in a unified file diff. */
-export const FileDiffHunks: React.FunctionComponent<FileHunksProps> = ({
+export const FileDiffHunks: React.FunctionComponent<React.PropsWithChildren<FileHunksProps>> = ({
     className,
     fileDiffAnchor,
     hunks,

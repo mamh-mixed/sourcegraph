@@ -1,13 +1,14 @@
-import { encodeURIPathComponent } from '@sourcegraph/shared/src/util/url'
+import { encodeURIPathComponent } from '@sourcegraph/common'
+import { TreeEntriesResult } from '@sourcegraph/shared/src/graphql-operations'
 
 import {
-    TreeEntriesResult,
     BlobResult,
     FileExternalLinksResult,
     RepositoryRedirectResult,
     ResolveRevResult,
     ExternalServiceKind,
     RepoChangesetsStatsResult,
+    FileNamesResult,
 } from '../graphql-operations'
 
 export const createTreeEntriesResult = (url: string, toplevelFiles: string[]): TreeEntriesResult => ({
@@ -41,6 +42,7 @@ export const createBlobContentResult = (
                 highlight: {
                     aborted: false,
                     html,
+                    lsif: '',
                 },
             },
         },
@@ -94,5 +96,13 @@ export const createResolveRevisionResult = (treeUrl: string, oid = '1'.repeat(40
             tree: { url: '/' + treeUrl },
         },
         defaultBranch: { abbrevName: 'master' },
+    },
+})
+
+export const createFileNamesResult = (): FileNamesResult => ({
+    repository: {
+        id: 'repo-123',
+        __typename: 'Repository',
+        commit: { id: 'c0ff33', __typename: 'GitCommit', fileNames: ['README.md'] },
     },
 })

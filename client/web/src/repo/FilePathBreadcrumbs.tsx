@@ -1,5 +1,6 @@
-import classNames from 'classnames'
 import * as React from 'react'
+
+import classNames from 'classnames'
 
 import { LinkOrSpan } from '@sourcegraph/shared/src/components/LinkOrSpan'
 import { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryService'
@@ -19,7 +20,7 @@ interface Props extends RepoRevision, TelemetryProps {
  * Displays a file path in a repository in breadcrumb style, with ancestor path
  * links.
  */
-export const FilePathBreadcrumbs: React.FunctionComponent<Props> = ({
+export const FilePathBreadcrumbs: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
     repoName,
     revision,
     filePath,

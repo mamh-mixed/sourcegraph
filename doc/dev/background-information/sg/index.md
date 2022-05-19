@@ -60,21 +60,19 @@ curl --proto '=https' --tlsv1.2 -sSLf https://install.sg.dev | sh
 
 That will download the latest release of `sg` from [here](https://github.com/sourcegraph/sg/releases), put it in a temporary location and run `sg install` to install it to a permanent location in your `$PATH`.
 
-### Using install script
+### Manually building the binary
 
 > NOTE: **This method requires that Go has already been installed according to the [development quickstart guide](../../setup/quickstart.md).**
 
-Run the following in the root of `sourcegraph/sourcegraph`:
+If you want full control over where the `sg` binary ends up, use this option.
+
+In the root of `sourcegraph/sourcegraph`, run:
 
 ```sh
-./dev/sg/install.sh
+go build -o ~/my/path/sg ./dev/sg
 ```
 
-That builds the `sg` binary and moves it to the standard installation location for Go binaries.
-
-If you don't have a `$GOPATH` set (or don't know what that is), that location is `$HOME/go/bin`. If you do use `$GOPATH` the location is `$GOPATH/bin`.
-
-Make sure that location is in your `$PATH`. (If you use `$GOPATH` then `$GOPATH/bin` needs to be in the `$PATH`)
+Then make sure that `~/my/path` is in your `$PATH`.
 
 > NOTE: **For Linux users:** A command called [sg](https://www.man7.org/linux/man-pages/man1/sg.1.html) is already available at `/usr/bin/sg`. To use the Sourcegraph `sg` CLI, you need to make sure that its location comes first in `PATH`. For example, by prepending `$GOPATH/bin`:
 >
@@ -88,21 +86,61 @@ Make sure that location is in your `$PATH`. (If you use `$GOPATH` then `$GOPATH/
 >
 > `alias sg=$HOME/go/bin/sg`
 
-### Manually building the binary
+## Updates
 
-If you want full control over where the `sg` binary ends up, use this option.
+Once set up, `sg` will automatically check for updates and update itself if a change is detected in your local copy of `origin/main`.
 
-In the root of `sourcegraph/sourcegraph`, run:
+To force a manual update of `sg`, run:
 
 ```sh
-go build -o ~/my/path/sg ./dev/sg
+sg update
 ```
 
-Then make sure that `~/my/path` is in your `$PATH`.
+In order to temporarily turn off automatic updates, run your commands with the `-skip-auto-update` flag: 
+
+```sh
+sg -skip-auto-update [cmds ...]
+```
+
+On the next command run, if a new version is detected, `sg` will auto update before running.
+
+> NOTE: This feature requires that Go has already been installed according to the [development quickstart guide](../../setup/quickstart.md).
 
 ## Usage
 
 See [configuration](#configuration) to learn more about configuring `sg` behaviour.
+
+### Help
+
+You can get help about commands in a variety of ways:
+
+```sh
+sg help # show all available commands
+
+# learn about a specific command or subcommand
+sg <command> -h
+sg <command> --help
+```
+
+### Autocompletion
+
+If you have used `sg setup`, you should have autocompletions set up for `sg`. To enable it, type out a partial command and press the <kbd>Tab</kbd> key twice. For example:
+
+```none
+sg start<tab><tab>
+```
+
+To get autocompletions for the available flags for a command, type out a command and `-` and press the <kbd>Tab</kbd> key twice. For example:
+
+```none
+sg start -<tab><tab>
+```
+
+Both of the above work if you provide partial values as well to narrow down the suggestions. For example, the following will suggest run sets that start with `web-`:
+
+```none
+sg start web-<tab><tab>
+```
 
 ### `sg start` - Start dev environments
 
@@ -205,7 +243,7 @@ sg rfc open 420
 
 ### `sg ci` - Interact with Sourcegraph's continuous integration
 
-Interact with Sourcegraph's [continuous integration](https://docs.sourcegraph.com/dev/background-information/continuous_integration) pipelines on [Buildkite](https://buildkite.com/sourcegraph).
+Interact with Sourcegraph's [continuous integration](https://docs.sourcegraph.com/dev/background-information/ci) pipelines on [Buildkite](https://buildkite.com/sourcegraph).
 
 ```bash
 # Preview what a CI run for your current changes will look like
@@ -232,6 +270,13 @@ sg ci logs --build 123456
 sg ci build 
 # Manually trigger a build on the CI on the current branch, but with a specific commit
 sg ci build --commit my-commit
+# Manually trigger a main-dry-run build of the HEAD commit on the current branch
+sg ci build main-dry-run
+sg ci build --force main-dry-run
+# Manually trigger a main-dry-run build of a specified commit on the current ranch
+sg ci build --force --commit my-commit main-dry-run
+# View the available special build types
+sg ci build --help
 ```
 
 ### `sg teammate` - Get current time or open their handbook page
@@ -258,23 +303,23 @@ sg secret reset buildkite
 
 ```
 
-### `sg check` - Run checks against local code
+### `sg lint` - Run linters against local code
 
 ```bash
 # Run all possible checks 
-sg check
+sg lint
 
 # Run only go related checks
-sg check go
+sg lint go
 
 # Run only shell related checks
-sg check shell
+sg lint shell
 
 # Run only client related checks
-sg check client 
+sg lint client
 
 # List all available check groups 
-sg check --help
+sg lint --help
 ```
 
 ### `sg db` - Interact with your local Sourcegraph database(s)
@@ -294,6 +339,13 @@ sg db reset-redis
 
 # Create a site-admin user whose email and password are foo@sourcegraph.com and sourcegraph.
 sg db add-user -name=foo
+```
+
+### `sg update` - Update sg itself
+
+```bash 
+# Manually update sg
+sg update
 ```
 
 ## Configuration
@@ -390,6 +442,16 @@ The `-config` can be anything you want, of course.
 Have questions or need help? Feel free to [open a discussion](https://github.com/sourcegraph/sourcegraph/discussions/categories/developer-experience)! Sourcegraph teammates can also leave a message in [#dev-experience](https://sourcegraph.slack.com/archives/C01N83PS4TU).
 
 > NOTE: For Sourcegraph teammates, we have a weekly [`sg` hack hour](https://handbook.sourcegraph.com/departments/product-engineering/engineering/enablement/dev-experience#sg-hack-hour) you can hop in to if you're interested in contributing!
+
+## Dockerized sg
+
+A `sourcegraph/sg` Docker image is available: 
+
+```
+# ... 
+COPY --from us.gcr.io/sourcegraph-dev/sg:insiders /usr/local/bin/sg ./sg
+# ...
+```
 
 ### Development tips
 

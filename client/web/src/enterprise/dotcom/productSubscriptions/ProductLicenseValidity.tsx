@@ -1,7 +1,8 @@
+import React from 'react'
+
 import classNames from 'classnames'
 import { parseISO } from 'date-fns'
 import format from 'date-fns/format'
-import React from 'react'
 
 import * as GQL from '@sourcegraph/shared/src/schema'
 import { Alert } from '@sourcegraph/wildcard'
@@ -11,11 +12,13 @@ import { formatRelativeExpirationDate, isProductLicenseExpired } from '../../../
 /**
  * Displays an alert indicating the validity of a product license.
  */
-export const ProductLicenseValidity: React.FunctionComponent<{
-    licenseInfo: GQL.IProductLicenseInfo
-    primary: boolean
-    className?: string
-}> = ({ licenseInfo: { expiresAt }, primary, className = '' }) => {
+export const ProductLicenseValidity: React.FunctionComponent<
+    React.PropsWithChildren<{
+        licenseInfo: GQL.IProductLicenseInfo
+        primary: boolean
+        className?: string
+    }>
+> = ({ licenseInfo: { expiresAt }, primary, className = '' }) => {
     const isExpired = isProductLicenseExpired(expiresAt)
     const tooltip = format(parseISO(expiresAt), 'PPpp')
     const validityClass = isExpired ? 'danger' : 'success'

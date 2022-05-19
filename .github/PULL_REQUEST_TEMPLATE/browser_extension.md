@@ -1,20 +1,26 @@
 
 Closes https://github.com/sourcegraph/sourcegraph/issues/TODO.
 
-#### Description
+## Description
 
 TODO: Add a brief description of what PR includes.
 
-#### How to test
+## Test plan
 
-TODO: Describe how to test for PR reviewers.
+<!--
+  As part of SOC2/GN-104 and SOC2/GN-105 requirements, all pull requests are REQUIRED to
+  provide a "test plan". A test plan is a loose explanation of what you have done or
+  implemented to test this, as outlined in our Testing principles and guidelines:
+  https://docs.sourcegraph.com/dev/background-information/testing_principles
+  Write your test plan here after the "## Test plan" header.
+-->
 
-#### Screenshots (TODO: if applicable)
-| Before | After |
-| -: | :- |
-| | |
+## Screenshots (TODO: if applicable)
+| BEFORE             | AFTER             |
+:-------------------------:|:-------------------------:
+Insert image here | Insert image here  
 
-#### Before merging
+## Before merging
 
 - [ ] Test on different code hosts (if applicable)
     - [ ] GitHub

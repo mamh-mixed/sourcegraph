@@ -1,13 +1,14 @@
+import React, { useEffect, useMemo } from 'react'
+
 import { isEmpty, noop } from 'lodash'
 import * as Monaco from 'monaco-editor'
-import React, { useEffect, useMemo } from 'react'
 import { RouteComponentProps } from 'react-router-dom'
 import { fromFetch } from 'rxjs/fetch'
 
 import { checkOk } from '@sourcegraph/http-client'
 import { MonacoEditor } from '@sourcegraph/shared/src/components/MonacoEditor'
 import { ThemeProps } from '@sourcegraph/shared/src/theme'
-import { LoadingSpinner, useObservable } from '@sourcegraph/wildcard'
+import { LoadingSpinner, Typography, useObservable } from '@sourcegraph/wildcard'
 
 import { PageTitle } from '../components/PageTitle'
 import { eventLogger } from '../tracking/eventLogger'
@@ -17,7 +18,7 @@ interface Props extends RouteComponentProps, ThemeProps {}
 /**
  * A page displaying information about telemetry pings for the site.
  */
-export const SiteAdminPingsPage: React.FunctionComponent<Props> = props => {
+export const SiteAdminPingsPage: React.FunctionComponent<React.PropsWithChildren<Props>> = props => {
     const latestPing = useObservable(
         useMemo(
             () => fromFetch<{}>('/site-admin/pings/latest', { selector: response => checkOk(response).json() }),
@@ -55,13 +56,13 @@ export const SiteAdminPingsPage: React.FunctionComponent<Props> = props => {
     return (
         <div className="site-admin-pings-page">
             <PageTitle title="Pings - Admin" />
-            <h2>Pings</h2>
+            <Typography.H2>Pings</Typography.H2>
             <p>
                 Sourcegraph periodically sends a ping to Sourcegraph.com to help our product and customer teams. It
                 sends only the high-level data below. It never sends code, repository names, usernames, or any other
                 specific data.
             </p>
-            <h3>Most recent ping</h3>
+            <Typography.H3>Most recent ping</Typography.H3>
             {latestPing === undefined ? (
                 <p>
                     <LoadingSpinner />
@@ -79,7 +80,7 @@ export const SiteAdminPingsPage: React.FunctionComponent<Props> = props => {
                     className="mb-3"
                 />
             )}
-            <h3>Critical telemetry</h3>
+            <Typography.H3>Critical telemetry</Typography.H3>
             <p>
                 Critical telemetry includes only the high-level data below required for billing, support, updates, and
                 security notices. This cannot be disabled.
@@ -93,13 +94,15 @@ export const SiteAdminPingsPage: React.FunctionComponent<Props> = props => {
                 <li>Sourcegraph version string (e.g. "vX.X.X")</li>
                 <li>Dependency versions (e.g. "6.0.9" for Redis, or "13.0" for Postgres)</li>
                 <li>
-                    Deployment type (single Docker image, Docker Compose, Kubernetes cluster, or pure Docker cluster)
+                    Deployment type (single Docker image, Docker Compose, Kubernetes cluster, Helm, or pure Docker
+                    cluster)
                 </li>
                 <li>License key associated with your Sourcegraph subscription</li>
                 <li>Aggregate count of current monthly users</li>
                 <li>Total count of existing user accounts</li>
+                <li>Code Insights: total count of insights</li>
             </ul>
-            <h3>Other telemetry</h3>
+            <Typography.H3>Other telemetry</Typography.H3>
             <p>
                 By default, Sourcegraph also aggregates usage and performance metrics for some product features. No
                 personal or specific information is ever included.
@@ -176,13 +179,30 @@ export const SiteAdminPingsPage: React.FunctionComponent<Props> = props => {
                         <li>
                             Aggregate counts of unique monthly users, by:
                             <ul>
-                                <li>Whether they are contributed to batch changes</li>
+                                <li>Whether they have contributed to batch changes</li>
                                 <li>Whether they only viewed batch changes</li>
+                                <li>Whether they have performed a bulk operation</li>
                             </ul>
                         </li>
                         <li>
                             Weekly batch change (open, closed) and changesets counts (imported, published, unpublished,
                             open, draft, merged, closed) for batch change cohorts created in the last 12 months
+                        </li>
+                        <li>Weekly bulk operations count (grouped by operation)</li>
+                        <li>Total count of executors connected</li>
+                        <li>Cumulative executor runtime monthly</li>
+                        <li>Total count of publish bulk operation</li>
+                        <li>Total count of bulk operations (grouped by operation type)</li>
+                        <li>
+                            Changeset distribution for batch change (grouped by batch change source: local or executor)
+                        </li>
+                        <li>Total count of users that ran a job on an executor monthly</li>
+                        <li>
+                            Total count of published changesets and batch changes created via:
+                            <ul>
+                                <li>executor</li>
+                                <li>local (using src-cli)</li>
+                            </ul>
                         </li>
                     </ul>
                 </li>
@@ -292,6 +312,80 @@ export const SiteAdminPingsPage: React.FunctionComponent<Props> = props => {
                         <li>Total number of views of the manage code monitor page</li>
                         <li>Total number of clicks on the code monitor email search link</li>
                     </ul>
+                </li>
+                <li>
+                    Notebooks usage data
+                    <ul>
+                        <li>Total number of views of the notebook page</li>
+                        <li>Total number of views of the notebooks list page</li>
+                        <li>Total number of views of the embedded notebook page</li>
+                        <li>Total number of created notebooks</li>
+                        <li>Total number of added notebook stars</li>
+                        <li>Total number of added notebook markdown blocks</li>
+                        <li>Total number of added notebook query blocks</li>
+                        <li>Total number of added notebook file blocks</li>
+                        <li>Total number of added notebook symbol blocks</li>
+                        <li>Total number of added notebook compute blocks</li>
+                    </ul>
+                </li>
+                <li>
+                    CTA usage data
+                    <ul>
+                        <li>
+                            Browser extension
+                            <ul>
+                                <li>
+                                    Number of users who viewed / clicked the "install browser extension" CTA on the file
+                                    / search pages today
+                                </li>
+                                <li>
+                                    Number of views / clicks on the "install browser extension" CTA on the file / search
+                                    pages today
+                                </li>
+                            </ul>
+                        </li>
+                        <li>
+                            IDE extension
+                            <ul>
+                                <li>
+                                    Number of users who viewed / clicked the "install IDE extension" CTA on the file /
+                                    search pages today
+                                </li>
+                                <li>
+                                    Number of views / clicks on the "install IDE extension" CTA on the file / search
+                                    pages today
+                                </li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+                <li>
+                    Code Host integration usage data (Browser extension / Native Integration)
+                    <ul>
+                        <li>Aggregate counts of current daily, weekly, and monthly unique users and total events</li>
+                        <li>
+                            Aggregate counts of current daily, weekly, and monthly unique users and total events who
+                            visited Sourcegraph instance from browser extension
+                        </li>
+                    </ul>
+                </li>
+                <li>
+                    IDE extensions data
+                    <ul>
+                        Aggregate counts of current daily, weekly, and monthly searches performed:
+                        <li>
+                            <ul>Count of unique users who performed searches</ul>
+                            <ul>Count of total searches performed</ul>
+                        </li>
+                    </ul>
+                    <ul>
+                        Aggregate counts of daily user state:
+                        <li>
+                            <ul>Count of unique users who installed the extension</ul>
+                            <ul>Count of unique users who uninstalled the extension</ul>
+                        </li>
+                    </ul>
+                    <ul>Aggregate count of daily redirects from extension to Sourcegraph instance</ul>
                 </li>
             </ul>
             {updatesDisabled ? (

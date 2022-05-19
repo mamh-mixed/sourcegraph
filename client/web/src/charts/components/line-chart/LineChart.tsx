@@ -1,3 +1,5 @@
+import { ReactElement, useMemo, useState, SVGProps } from 'react'
+
 import { curveLinear } from '@visx/curve'
 import { Group } from '@visx/group'
 import { scaleTime, scaleLinear } from '@visx/scale'
@@ -5,54 +7,53 @@ import { LinePath } from '@visx/shape'
 import { voronoi } from '@visx/voronoi'
 import classNames from 'classnames'
 import { noop } from 'lodash'
-import React, { ReactElement, useMemo, useRef, useState } from 'react'
 
-import { AxisBottom, AxisLeft } from './components/axis/Axis'
-import { NonActiveBackground } from './components/NonActiveBackground'
-import { PointGlyph } from './components/PointGlyph'
-import { Tooltip, TooltipContent } from './components/tooltip/Tooltip'
+import { SeriesLikeChart } from '../../types'
+
+import { AxisBottom, AxisLeft, Tooltip, TooltipContent, PointGlyph } from './components'
+import { StackedArea } from './components/stacked-area/StackedArea'
 import { useChartEventHandlers } from './hooks/event-listeners'
-import styles from './LineChart.module.scss'
-import { LineChartSeries, Point } from './types'
-import { isValidNumber } from './utils/data-guards'
-import { getSeriesWithData } from './utils/data-series-processing'
-import { generatePointsField } from './utils/generate-points-field'
-import { getChartContentSizes } from './utils/get-chart-content-sizes'
-import { getMinMaxBoundaries } from './utils/get-min-max-boundary'
+import { Point } from './types'
+import {
+    SeriesDatum,
+    getDatumValue,
+    isDatumWithValidNumber,
+    getSeriesData,
+    generatePointsField,
+    getChartContentSizes,
+    getMinMaxBoundaries,
+} from './utils'
 
-export interface LineChartContentProps<D extends object> {
+import styles from './LineChart.module.scss'
+
+export interface LineChartContentProps<Datum> extends SeriesLikeChart<Datum>, SVGProps<SVGSVGElement> {
     width: number
     height: number
-
-    /** An array of data objects, with one element for each step on the X axis. */
-    data: D[]
-
-    /** The series (lines) of the chart. */
-    series: LineChartSeries<D>[]
-
-    /**
-     * The key in each data object for the X value this line should be
-     * calculated from.
-     */
-    xAxisKey: keyof D
-
-    /**
-     * Callback runs whenever a point-zone (zone around point) and point itself
-     * on the chart is clicked.
-     */
-    onDatumClick?: (event: React.MouseEvent) => void
+    zeroYAxisMin?: boolean
 }
+
+const sortByDataKey = (dataKey: string | number | symbol, activeDataKey: string): number =>
+    dataKey === activeDataKey ? 1 : -1
 
 /**
  * Visual component that renders svg line chart with pre-defined sizes, tooltip,
  * voronoi area distribution.
  */
-export function LineChart<D extends object>(props: LineChartContentProps<D>): ReactElement | null {
-    const { width: outerWidth, height: outerHeight, data, series, xAxisKey, onDatumClick = noop } = props
+export function LineChart<D>(props: LineChartContentProps<D>): ReactElement | null {
+    const {
+        width: outerWidth,
+        height: outerHeight,
+        series,
+        stacked = false,
+        zeroYAxisMin = false,
+        onDatumClick = noop,
+        className,
+        ...attributes
+    } = props
 
-    const [activePoint, setActivePoint] = useState<Point & { element?: Element }>()
-    const yAxisReference = useRef<SVGGElement>(null)
-    const xAxisReference = useRef<SVGGElement>(null)
+    const [activePoint, setActivePoint] = useState<Point<D> & { element?: Element }>()
+    const [yAxisElement, setYAxisElement] = useState<SVGGElement | null>(null)
+    const [xAxisReference, setXAxisElement] = useState<SVGGElement | null>(null)
 
     const { width, height, margin } = useMemo(
         () =>
@@ -61,28 +62,30 @@ export function LineChart<D extends object>(props: LineChartContentProps<D>): Re
                 height: outerHeight,
                 margin: {
                     top: 10,
-                    right: 10,
-                    left: yAxisReference.current?.getBoundingClientRect().width ?? 30,
-                    bottom: xAxisReference.current?.getBoundingClientRect().height ?? 30,
+                    right: 20,
+                    left: yAxisElement?.getBBox().width,
+                    bottom: xAxisReference?.getBBox().height,
                 },
             }),
-        [outerWidth, outerHeight, yAxisReference]
+        [yAxisElement, xAxisReference, outerWidth, outerHeight]
     )
 
-    const { minX, maxX, minY, maxY } = useMemo(() => getMinMaxBoundaries({ data, series, xAxisKey }), [
-        data,
-        series,
-        xAxisKey,
+    const dataSeries = useMemo(() => getSeriesData({ series, stacked }), [series, stacked])
+
+    const { minX, maxX, minY, maxY } = useMemo(() => getMinMaxBoundaries({ dataSeries, zeroYAxisMin }), [
+        dataSeries,
+        zeroYAxisMin,
     ])
 
     const xScale = useMemo(
         () =>
             scaleTime({
                 domain: [minX, maxX],
-                range: [margin.left, width],
+                range: [margin.left, outerWidth - margin.right],
                 nice: true,
+                clamp: true,
             }),
-        [minX, maxX, margin.left, width]
+        [minX, maxX, margin.left, margin.right, outerWidth]
     )
 
     const yScale = useMemo(
@@ -91,29 +94,22 @@ export function LineChart<D extends object>(props: LineChartContentProps<D>): Re
                 domain: [minY, maxY],
                 range: [height, margin.top],
                 nice: true,
+                clamp: true,
             }),
         [minY, maxY, margin.top, height]
     )
 
-    const points = useMemo(() => generatePointsField({ data, series, xAxisKey, yScale, xScale }), [
-        data,
-        series,
-        xAxisKey,
-        yScale,
-        xScale,
-    ])
-
-    const dataSeries = useMemo(() => getSeriesWithData({ data, series }), [data, series])
+    const points = useMemo(() => generatePointsField({ dataSeries, yScale, xScale }), [dataSeries, yScale, xScale])
 
     const voronoiLayout = useMemo(
         () =>
-            voronoi<Point>({
+            voronoi<Point<D>>({
                 x: point => point.x,
                 y: point => point.y,
-                width,
-                height,
+                width: outerWidth,
+                height: outerHeight,
             })(points),
-        [width, height, points]
+        [outerWidth, outerHeight, points]
     )
 
     const handlers = useChartEventHandlers({
@@ -137,11 +133,12 @@ export function LineChart<D extends object>(props: LineChartContentProps<D>): Re
         <svg
             width={outerWidth}
             height={outerHeight}
-            className={classNames(styles.root, { [styles.rootWithHoveredLinkPoint]: activePoint?.linkUrl })}
+            className={classNames(styles.root, className, { [styles.rootWithHoveredLinkPoint]: activePoint?.linkUrl })}
+            {...attributes}
             {...handlers}
         >
             <AxisLeft
-                ref={yAxisReference}
+                ref={setYAxisElement}
                 scale={yScale}
                 width={width}
                 height={height}
@@ -149,52 +146,47 @@ export function LineChart<D extends object>(props: LineChartContentProps<D>): Re
                 left={margin.left}
             />
 
-            <AxisBottom ref={xAxisReference} scale={xScale} top={margin.top + height} width={width} />
-
-            <NonActiveBackground
-                data={data}
-                series={series}
-                xAxisKey={xAxisKey}
-                width={width}
-                height={height}
-                top={margin.top}
-                left={margin.left}
-                xScale={xScale}
-            />
+            <AxisBottom ref={setXAxisElement} scale={xScale} top={margin.top + height} width={width} />
 
             <Group top={margin.top}>
-                {dataSeries.map(line => (
-                    <LinePath
-                        key={line.dataKey as string}
-                        data={line.data}
-                        curve={curveLinear}
-                        defined={datum => isValidNumber(datum[line.dataKey])}
-                        x={datum => xScale(+datum[xAxisKey])}
-                        y={datum => yScale(+datum[line.dataKey])}
-                        stroke={line.color}
-                        strokeWidth={2}
-                        strokeLinecap="round"
-                    />
-                ))}
+                {stacked && <StackedArea dataSeries={dataSeries} xScale={xScale} yScale={yScale} />}
 
-                {points.map(point => (
-                    <PointGlyph
-                        key={point.id}
-                        left={point.x}
-                        top={point.y}
-                        active={activePoint?.id === point.id}
-                        color={point.color}
-                        linkURL={point.linkUrl}
-                        onClick={onDatumClick}
-                        onFocus={event => setActivePoint({ ...point, element: event.target })}
-                        onBlur={() => setActivePoint(undefined)}
-                    />
-                ))}
+                {[...dataSeries]
+                    .sort(series => sortByDataKey(series.id, activePoint?.seriesId || ''))
+                    .map(line => (
+                        <LinePath
+                            key={line.id}
+                            data={line.data as SeriesDatum<D>[]}
+                            defined={isDatumWithValidNumber}
+                            x={data => xScale(data.x)}
+                            y={data => yScale(getDatumValue(data))}
+                            stroke={line.color}
+                            curve={curveLinear}
+                            strokeLinecap="round"
+                            strokeWidth={2}
+                        />
+                    ))}
+
+                {[...points]
+                    .sort(point => sortByDataKey(point.seriesId, activePoint?.seriesId || ''))
+                    .map(point => (
+                        <PointGlyph
+                            key={point.id}
+                            left={point.x}
+                            top={point.y}
+                            active={activePoint?.id === point.id}
+                            color={point.color}
+                            linkURL={point.linkUrl}
+                            onClick={onDatumClick}
+                            onFocus={event => setActivePoint({ ...point, element: event.target })}
+                            onBlur={() => setActivePoint(undefined)}
+                        />
+                    ))}
             </Group>
 
             {activePoint && (
-                <Tooltip reference={activePoint.element}>
-                    <TooltipContent data={data} series={series} xAxisKey={xAxisKey} activePoint={activePoint} />
+                <Tooltip>
+                    <TooltipContent series={series} activePoint={activePoint} stacked={stacked} />
                 </Tooltip>
             )}
         </svg>

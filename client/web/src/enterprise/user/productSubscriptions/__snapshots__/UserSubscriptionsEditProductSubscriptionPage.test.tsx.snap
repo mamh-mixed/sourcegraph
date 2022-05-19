@@ -6,15 +6,17 @@ exports[`UserSubscriptionsEditProductSubscriptionPage renders 1`] = `
     class="user-subscriptions-edit-product-subscription-page"
   >
     <a
-      class="btn btnLink btnSm mb-3"
+      class="anchorLink btn btnLink btnSm mb-3"
       href="/s"
     >
       <arrowlefticon
-        class="icon-inline"
+        class="iconInline"
       />
        Subscription
     </a>
-    <h2>
+    <h2
+      class="h2"
+    >
       Upgrade or change subscription L-123
     </h2>
   </div>

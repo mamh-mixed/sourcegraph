@@ -1,14 +1,20 @@
-import MapSearchIcon from 'mdi-react/MapSearchIcon'
 import React, { useContext, useMemo } from 'react'
 
-import { Badge, LoadingSpinner, useObservable, Link } from '@sourcegraph/wildcard'
+import MapSearchIcon from 'mdi-react/MapSearchIcon'
+
+import { Badge, LoadingSpinner, useObservable, Link, PageHeader } from '@sourcegraph/wildcard'
 
 import { AuthenticatedUser } from '../../../../../auth'
 import { HeroPage } from '../../../../../components/HeroPage'
-import { Page } from '../../../../../components/Page'
 import { PageTitle } from '../../../../../components/PageTitle'
-import { CodeInsightsBackendContext } from '../../../core/backend/code-insights-backend-context'
-import { isCaptureGroupInsight, isLangStatsInsight, isSearchBasedInsight } from '../../../core/types'
+import { CodeInsightsIcon } from '../../../../../insights/Icons'
+import { CodeInsightsPage } from '../../../components/code-insights-page/CodeInsightsPage'
+import {
+    CodeInsightsBackendContext,
+    isCaptureGroupInsight,
+    isLangStatsInsight,
+    isSearchBasedInsight,
+} from '../../../core'
 
 import { EditCaptureGroupInsight } from './components/EditCaptureGroupInsight'
 import { EditLangStatsInsight } from './components/EditLangStatsInsight'
@@ -20,23 +26,21 @@ export interface EditInsightPageProps {
     insightID: string
 
     /**
-     * Authenticated user info, Used to decide where code insight will appears
+     * Authenticated user info, Used to decide where code insight will appear
      * in personal dashboard (private) or in organisation dashboard (public)
      */
     authenticatedUser: Pick<AuthenticatedUser, 'id' | 'organizations' | 'username'>
 }
 
-export const EditInsightPage: React.FunctionComponent<EditInsightPageProps> = props => {
+export const EditInsightPage: React.FunctionComponent<React.PropsWithChildren<EditInsightPageProps>> = props => {
     const { insightID, authenticatedUser } = props
 
-    const { getInsightSubjects, getInsightById } = useContext(CodeInsightsBackendContext)
+    const { getInsightById } = useContext(CodeInsightsBackendContext)
 
-    const subjects = useObservable(useMemo(() => getInsightSubjects(), [getInsightSubjects]))
     const insight = useObservable(useMemo(() => getInsightById(insightID), [getInsightById, insightID]))
+    const { handleSubmit, handleCancel } = useEditPageHandlers({ id: insight?.id })
 
-    const { handleSubmit, handleCancel } = useEditPageHandlers({ originalInsight: insight })
-
-    if (insight === undefined || subjects === undefined) {
+    if (insight === undefined) {
         return <LoadingSpinner inline={false} />
     }
 
@@ -59,27 +63,24 @@ export const EditInsightPage: React.FunctionComponent<EditInsightPageProps> = pr
     }
 
     return (
-        <Page className="container">
-            <PageTitle title="Edit code insight" />
+        <CodeInsightsPage>
+            <PageTitle title="Edit insight - Code Insights" />
 
-            <div className="mb-5">
-                <h2>Edit insight</h2>
-
-                <p className="text-muted">
-                    Insights analyze your code based on any search query.{' '}
-                    <Link to="/help/code_insights" target="_blank" rel="noopener">
-                        Learn more.
-                    </Link>
-                </p>
-            </div>
+            <PageHeader
+                className="mb-3"
+                path={[{ icon: CodeInsightsIcon }, { text: 'Edit insight' }]}
+                description={
+                    <p className="text-muted">
+                        Insights analyze your code based on any search query.{' '}
+                        <Link to="/help/code_insights" target="_blank" rel="noopener">
+                            Learn more.
+                        </Link>
+                    </p>
+                }
+            />
 
             {isSearchBasedInsight(insight) && (
-                <EditSearchBasedInsight
-                    insight={insight}
-                    subjects={subjects}
-                    onSubmit={handleSubmit}
-                    onCancel={handleCancel}
-                />
+                <EditSearchBasedInsight insight={insight} onSubmit={handleSubmit} onCancel={handleCancel} />
             )}
 
             {isCaptureGroupInsight(insight) && (
@@ -87,13 +88,8 @@ export const EditInsightPage: React.FunctionComponent<EditInsightPageProps> = pr
             )}
 
             {isLangStatsInsight(insight) && (
-                <EditLangStatsInsight
-                    insight={insight}
-                    subjects={subjects}
-                    onSubmit={handleSubmit}
-                    onCancel={handleCancel}
-                />
+                <EditLangStatsInsight insight={insight} onSubmit={handleSubmit} onCancel={handleCancel} />
             )}
-        </Page>
+        </CodeInsightsPage>
     )
 }

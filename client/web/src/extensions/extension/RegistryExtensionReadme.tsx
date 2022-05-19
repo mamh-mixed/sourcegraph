@@ -1,19 +1,20 @@
 import * as React from 'react'
 
-import { isErrorLike } from '@sourcegraph/common'
+import { isErrorLike, renderMarkdown } from '@sourcegraph/common'
 import { Markdown } from '@sourcegraph/shared/src/components/Markdown'
 import { ConfiguredRegistryExtension } from '@sourcegraph/shared/src/extensions/extension'
-import { renderMarkdown } from '@sourcegraph/shared/src/util/markdown'
 import { Button, Link, Alert } from '@sourcegraph/wildcard'
 
 import { ExtensionNoManifestAlert } from './RegistryExtensionManifestPage'
 
-const PublishNewManifestAlert: React.FunctionComponent<{
-    extension: ConfiguredRegistryExtension
-    text: string
-    buttonLabel: string
-    alertVariant: 'info' | 'danger'
-}> = ({ extension, text, buttonLabel, alertVariant }) => (
+const PublishNewManifestAlert: React.FunctionComponent<
+    React.PropsWithChildren<{
+        extension: ConfiguredRegistryExtension
+        text: string
+        buttonLabel: string
+        alertVariant: 'info' | 'danger'
+    }>
+> = ({ extension, text, buttonLabel, alertVariant }) => (
     <Alert variant={alertVariant}>
         {text}
         {extension.registryExtension?.viewerCanAdminister && (
@@ -32,9 +33,11 @@ const PublishNewManifestAlert: React.FunctionComponent<{
     </Alert>
 )
 
-export const ExtensionReadme: React.FunctionComponent<{
-    extension: ConfiguredRegistryExtension
-}> = ({ extension }) => {
+export const ExtensionReadme: React.FunctionComponent<
+    React.PropsWithChildren<{
+        extension: ConfiguredRegistryExtension
+    }>
+> = ({ extension }) => {
     if (!extension.rawManifest) {
         return <ExtensionNoManifestAlert extension={extension} />
     }
@@ -66,7 +69,7 @@ export const ExtensionReadme: React.FunctionComponent<{
 
     try {
         const html = renderMarkdown(manifest.readme)
-        return <Markdown dangerousInnerHTML={html} />
+        return <Markdown testId="registry-extension-overview" dangerousInnerHTML={html} />
     } catch {
         return (
             <PublishNewManifestAlert

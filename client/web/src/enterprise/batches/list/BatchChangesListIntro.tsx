@@ -1,24 +1,29 @@
-import classNames from 'classnames'
 import React from 'react'
 
-import { CardBody, Card, Link } from '@sourcegraph/wildcard'
+import classNames from 'classnames'
+
+import { CardBody, Card, Link, Typography } from '@sourcegraph/wildcard'
 
 import { SourcegraphIcon } from '../../../auth/icons'
 
 import { BatchChangesChangelogAlert } from './BatchChangesChangelogAlert'
+
 import styles from './BatchChangesListIntro.module.scss'
 
 export interface BatchChangesListIntroProps {
-    licensed: boolean | undefined
+    isLicensed: boolean | undefined
 }
 
-export const BatchChangesListIntro: React.FunctionComponent<BatchChangesListIntroProps> = ({ licensed }) => {
-    if (licensed === undefined) {
+export const BatchChangesListIntro: React.FunctionComponent<React.PropsWithChildren<BatchChangesListIntroProps>> = ({
+    isLicensed,
+}) => {
+    if (isLicensed === undefined) {
         return null
     }
+
     return (
         <div className="row">
-            {licensed === true ? (
+            {isLicensed === true ? (
                 <div className="col-12">
                     <BatchChangesChangelogAlert />
                 </div>
@@ -36,14 +41,14 @@ export const BatchChangesListIntro: React.FunctionComponent<BatchChangesListIntr
     )
 }
 
-const BatchChangesUnlicensedAlert: React.FunctionComponent = () => (
+const BatchChangesUnlicensedAlert: React.FunctionComponent<React.PropsWithChildren<unknown>> = () => (
     <div className={classNames(styles.batchChangesListIntroAlert, 'h-100')}>
         <Card className={classNames(styles.batchChangesListIntroCard, 'h-100')}>
             <CardBody className="d-flex align-items-start">
                 {/* d-none d-sm-block ensure that we hide the icon on XS displays. */}
                 <SourcegraphIcon className="mr-3 col-2 mt-2 d-none d-sm-block" />
                 <div>
-                    <h4>Batch changes trial</h4>
+                    <Typography.H4>Batch changes trial</Typography.H4>
                     <p>
                         Batch changes is a paid feature of Sourcegraph. All users can create sample batch changes with
                         up to five changesets without a license.

@@ -1,3 +1,5 @@
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+
 import classNames from 'classnames'
 import * as H from 'history'
 import { escapeRegExp } from 'lodash'
@@ -5,14 +7,12 @@ import AlertCircleIcon from 'mdi-react/AlertCircleIcon'
 import ChevronDownIcon from 'mdi-react/ChevronDownIcon'
 import MapSearchIcon from 'mdi-react/MapSearchIcon'
 import SourceRepositoryIcon from 'mdi-react/SourceRepositoryIcon'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Route, RouteComponentProps, Switch } from 'react-router'
-import { UncontrolledPopover } from 'reactstrap'
 import { NEVER, ObservableInput, of } from 'rxjs'
 import { catchError, switchMap } from 'rxjs/operators'
 
 import { ErrorMessage } from '@sourcegraph/branded/src/components/alerts'
-import { asError, ErrorLike, isErrorLike } from '@sourcegraph/common'
+import { asError, ErrorLike, isErrorLike, encodeURIPathComponent, repeatUntil } from '@sourcegraph/common'
 import { SearchContextProps } from '@sourcegraph/search'
 import { StreamingSearchResultsListProps } from '@sourcegraph/search-ui'
 import {
@@ -29,9 +29,19 @@ import { escapeSpaces } from '@sourcegraph/shared/src/search/query/filters'
 import { SettingsCascadeProps } from '@sourcegraph/shared/src/settings/settings'
 import { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryService'
 import { ThemeProps } from '@sourcegraph/shared/src/theme'
-import { repeatUntil } from '@sourcegraph/shared/src/util/rxjs/repeatUntil'
-import { encodeURIPathComponent, makeRepoURI } from '@sourcegraph/shared/src/util/url'
-import { Button, ButtonGroup, useLocalStorage, useObservable, Link } from '@sourcegraph/wildcard'
+import { makeRepoURI } from '@sourcegraph/shared/src/util/url'
+import {
+    Icon,
+    Button,
+    ButtonGroup,
+    useLocalStorage,
+    useObservable,
+    Link,
+    Popover,
+    PopoverContent,
+    Position,
+    PopoverTrigger,
+} from '@sourcegraph/wildcard'
 
 import { AuthenticatedUser } from '../auth'
 import { BatchChangesProps } from '../batches'
@@ -40,19 +50,17 @@ import { BreadcrumbSetters, BreadcrumbsProps } from '../components/Breadcrumbs'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { HeroPage } from '../components/HeroPage'
 import { ActionItemsBarProps, useWebActionItems } from '../extensions/components/ActionItemsBar'
-import { FeatureFlagProps } from '../featureFlags/featureFlags'
 import { ExternalLinkFields, RepositoryFields } from '../graphql-operations'
 import { CodeInsightsProps } from '../insights/types'
 import { searchQueryForRepoRevision, SearchStreamingProps } from '../search'
 import { useNavbarQueryState } from '../stores'
-import { browserExtensionInstalled } from '../tracking/analyticsUtils'
+import { useIsBrowserExtensionActiveUser } from '../tracking/BrowserExtensionTracker'
 import { RouteDescriptor } from '../util/contributions'
 import { parseBrowserRepoURL } from '../util/url'
 
 import { GoToCodeHostAction } from './actions/GoToCodeHostAction'
 import type { ExtensionAlertProps } from './actions/InstallIntegrationsAlert'
 import { fetchFileExternalLinks, fetchRepository, resolveRevision } from './backend'
-import styles from './RepoContainer.module.scss'
 import { RepoHeader, RepoHeaderActionButton, RepoHeaderContributionsLifecycleProps } from './RepoHeader'
 import { RepoHeaderContributionPortal } from './RepoHeaderContributionPortal'
 import { RepoRevisionContainer, RepoRevisionContainerRoute } from './RepoRevisionContainer'
@@ -62,6 +70,8 @@ import { RepoSettingsAreaRoute } from './settings/RepoSettingsArea'
 import { RepoSettingsSideBarGroup } from './settings/RepoSettingsSidebar'
 
 import { redirectToExternalHost } from '.'
+
+import styles from './RepoContainer.module.scss'
 
 /**
  * Props passed to sub-routes of {@link RepoContainer}.
@@ -83,8 +93,7 @@ export interface RepoContainerContext
         CodeIntelligenceProps,
         BatchChangesProps,
         CodeInsightsProps,
-        ExtensionAlertProps,
-        FeatureFlagProps {
+        ExtensionAlertProps {
     repo: RepositoryFields
     authenticatedUser: AuthenticatedUser | null
     repoSettingsAreaRoutes: readonly RepoSettingsAreaRoute[]
@@ -105,7 +114,7 @@ export interface RepoContainerContext
 /** A sub-route of {@link RepoContainer}. */
 export interface RepoContainerRoute extends RouteDescriptor<RepoContainerContext> {}
 
-const RepoPageNotFound: React.FunctionComponent = () => (
+const RepoPageNotFound: React.FunctionComponent<React.PropsWithChildren<unknown>> = () => (
     <HeroPage icon={MapSearchIcon} title="404: Not Found" subtitle="The repository page was not found." />
 )
 
@@ -125,8 +134,7 @@ interface RepoContainerProps
         Pick<StreamingSearchResultsListProps, 'fetchHighlightedFileLineRanges'>,
         CodeIntelligenceProps,
         BatchChangesProps,
-        CodeInsightsProps,
-        FeatureFlagProps {
+        CodeInsightsProps {
     repoContainerRoutes: readonly RepoContainerRoute[]
     repoRevisionContainerRoutes: readonly RepoRevisionContainerRoute[]
     repoHeaderActionButtons: readonly RepoHeaderActionButton[]
@@ -153,7 +161,7 @@ export interface HoverThresholdProps {
 /**
  * Renders a horizontal bar and content for a repository page.
  */
-export const RepoContainer: React.FunctionComponent<RepoContainerProps> = props => {
+export const RepoContainer: React.FunctionComponent<React.PropsWithChildren<RepoContainerProps>> = props => {
     const { repoName, revision, rawRevision, filePath, commitRange, position, range } = parseBrowserRepoURL(
         location.pathname + location.search + location.hash
     )
@@ -223,7 +231,7 @@ export const RepoContainer: React.FunctionComponent<RepoContainerProps> = props 
             return {
                 key: 'repository',
                 element: (
-                    <>
+                    <Popover>
                         <ButtonGroup className="d-inline-flex">
                             <Button
                                 to={
@@ -237,33 +245,26 @@ export const RepoContainer: React.FunctionComponent<RepoContainerProps> = props 
                                 size="sm"
                                 as={Link}
                             >
-                                <SourceRepositoryIcon className="icon-inline" /> {displayRepoName(repoOrError.name)}
+                                <Icon as={SourceRepositoryIcon} /> {displayRepoName(repoOrError.name)}
                             </Button>
-                            <Button
-                                id="repo-popover"
+                            <PopoverTrigger
+                                as={Button}
                                 className={styles.repoChange}
                                 aria-label="Change repository"
                                 outline={true}
                                 variant="secondary"
                                 size="sm"
                             >
-                                <ChevronDownIcon className="icon-inline" />
-                            </Button>
+                                <Icon as={ChevronDownIcon} />
+                            </PopoverTrigger>
                         </ButtonGroup>
-                        <UncontrolledPopover
-                            placement="bottom-start"
-                            target="repo-popover"
-                            trigger="legacy"
-                            hideArrow={true}
-                            fade={false}
-                            popperClassName="border-0"
-                        >
+                        <PopoverContent position={Position.bottomStart} className="pt-0 pb-0">
                             <RepositoriesPopover
                                 currentRepo={repoOrError.id}
                                 telemetryService={props.telemetryService}
                             />
-                        </UncontrolledPopover>
-                    </>
+                        </PopoverContent>
+                    </Popover>
                 ),
             }
         }, [repoOrError, resolvedRevisionOrError, props.telemetryService])
@@ -323,13 +324,13 @@ export const RepoContainer: React.FunctionComponent<RepoContainerProps> = props 
         (!isErrorLike(props.settingsCascade.final) &&
             props.settingsCascade.final?.['alerts.codeHostIntegrationMessaging']) ||
         'browser-extension'
-    const isBrowserExtensionInstalled = useObservable(browserExtensionInstalled)
+    const isBrowserExtensionActiveUser = useIsBrowserExtensionActiveUser()
     // Browser extension discoverability features (alert, popover for `GoToCodeHostAction)
     const [hasDismissedPopover, setHasDismissedPopover] = useState(false)
     const [hoverCount, setHoverCount] = useLocalStorage(HOVER_COUNT_KEY, 0)
     const canShowPopover =
         !hasDismissedPopover &&
-        isBrowserExtensionInstalled === false &&
+        isBrowserExtensionActiveUser === false &&
         codeHostIntegrationMessaging === 'browser-extension' &&
         hoverCount >= HOVER_THRESHOLD
 
@@ -366,6 +367,21 @@ export const RepoContainer: React.FunctionComponent<RepoContainerProps> = props 
         }
         return <HeroPage icon={AlertCircleIcon} title="Error" subtitle={<ErrorMessage error={repoOrError} />} />
     }
+
+    const isCodeIntelRepositoryBadgeEnabled =
+        !isErrorLike(props.settingsCascade.final) &&
+        props.settingsCascade.final?.experimentalFeatures?.codeIntelRepositoryBadge?.enabled === true
+
+    // Remove leading repository name and possible leading revision, then compare the remaining routes to
+    // see if we should display the code intelligence badge for this route. We want this to be visible on
+    // the repo root page, as well as directory and code views, but not administrative/non-code views.
+    const matchRevisionAndRest = props.match.params.repoRevAndRest.slice(repoName.length)
+    const matchOnlyRest =
+        revision && matchRevisionAndRest.startsWith(`@${revision || ''}`)
+            ? matchRevisionAndRest.slice(revision.length + 1)
+            : matchRevisionAndRest
+    const isCodeIntelRepositoryBadgeVisibleOnRoute =
+        matchOnlyRest === '' || matchOnlyRest.startsWith('/-/tree') || matchOnlyRest.startsWith('/-/blob')
 
     const repoMatchURL = '/' + encodeURIPathComponent(repoName)
 
@@ -422,6 +438,30 @@ export const RepoContainer: React.FunctionComponent<RepoContainerProps> = props 
                     />
                 )}
             </RepoHeaderContributionPortal>
+
+            {isCodeIntelRepositoryBadgeEnabled && isCodeIntelRepositoryBadgeVisibleOnRoute && (
+                <RepoHeaderContributionPortal
+                    position="right"
+                    priority={110}
+                    id="code-intelligence-status"
+                    {...repoHeaderContributionsLifecycleProps}
+                >
+                    {({ actionType }) =>
+                        props.codeIntelligenceBadgeMenu && actionType === 'nav' ? (
+                            <props.codeIntelligenceBadgeMenu
+                                key="code-intelligence-status"
+                                repoName={repoName}
+                                revision={rawRevision || 'HEAD'}
+                                filePath={filePath || ''}
+                                settingsCascade={props.settingsCascade}
+                            />
+                        ) : (
+                            <></>
+                        )
+                    }
+                </RepoHeaderContributionPortal>
+            )}
+
             <ErrorBoundary location={props.location}>
                 <Switch>
                     {[
@@ -431,6 +471,11 @@ export const RepoContainer: React.FunctionComponent<RepoContainerProps> = props 
                         '/-/tree',
                         '/-/commits',
                         '/-/docs',
+                        '/-/branch',
+                        '/-/contributors',
+                        '/-/compare',
+                        '/-/tag',
+                        '/-/home',
                     ].map(routePath => (
                         <Route
                             path={`${repoMatchURL}${routePath}`}

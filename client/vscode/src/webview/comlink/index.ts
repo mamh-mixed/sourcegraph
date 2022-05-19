@@ -1,7 +1,7 @@
 import * as Comlink from 'comlink'
 import { isObject } from 'lodash'
 
-import { hasProperty } from '@sourcegraph/shared/src/util/types'
+import { hasProperty } from '@sourcegraph/common'
 
 // Sourcegraph VS Code extension Comlink "communication layer" documentation
 // -----
@@ -49,4 +49,8 @@ export function isNestedConnection(value: unknown): value is NestedConnectionDat
 
 export function isProxyMarked(value: unknown): value is Comlink.ProxyMarked {
     return isObject(value) && (value as Comlink.ProxyMarked)[Comlink.proxyMarker]
+}
+
+export function isUnsubscribable(value: object): value is { unsubscribe: () => unknown } {
+    return hasProperty('unsubscribe')(value) && typeof value.unsubscribe === 'function'
 }

@@ -1,19 +1,22 @@
 import React, { useMemo } from 'react'
 
 import { SubmissionErrors } from '../../../../components/form/hooks/useForm'
+import { MinimalCaptureGroupInsightData } from '../../../../core/backend/code-insights-backend-types'
 import { CaptureGroupInsight } from '../../../../core/types'
+import { CaptureGroupFormFields } from '../../creation/capture-group'
 import { CaptureGroupCreationContent } from '../../creation/capture-group/components/CaptureGroupCreationContent'
-import { CaptureGroupFormFields } from '../../creation/capture-group/types'
 import { getSanitizedCaptureGroupInsight } from '../../creation/capture-group/utils/capture-group-insight-sanitizer'
-import { InsightStep } from '../../creation/search-insight/types'
+import { InsightStep } from '../../creation/search-insight'
 
 interface EditCaptureGroupInsightProps {
     insight: CaptureGroupInsight
-    onSubmit: (insight: CaptureGroupInsight) => SubmissionErrors | Promise<SubmissionErrors> | void
+    onSubmit: (insight: MinimalCaptureGroupInsightData) => SubmissionErrors | Promise<SubmissionErrors> | void
     onCancel: () => void
 }
 
-export const EditCaptureGroupInsight: React.FunctionComponent<EditCaptureGroupInsightProps> = props => {
+export const EditCaptureGroupInsight: React.FunctionComponent<
+    React.PropsWithChildren<EditCaptureGroupInsightProps>
+> = props => {
     const { insight, onSubmit, onCancel } = props
 
     const insightFormValues = useMemo<CaptureGroupFormFields>(
@@ -24,6 +27,7 @@ export const EditCaptureGroupInsight: React.FunctionComponent<EditCaptureGroupIn
             stepValue: Object.values(insight.step)[0]?.toString() ?? '3',
             step: Object.keys(insight.step)[0] as InsightStep,
             allRepos: insight.repositories.length === 0,
+            dashboardReferenceCount: insight.dashboardReferenceCount,
         }),
         [insight]
     )
@@ -40,6 +44,8 @@ export const EditCaptureGroupInsight: React.FunctionComponent<EditCaptureGroupIn
         <CaptureGroupCreationContent
             mode="edit"
             initialValues={insightFormValues}
+            className="pb-5"
+            insight={insight}
             onSubmit={handleSubmit}
             onCancel={onCancel}
         />

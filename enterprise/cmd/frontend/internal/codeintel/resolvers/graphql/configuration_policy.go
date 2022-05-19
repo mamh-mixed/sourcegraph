@@ -4,16 +4,16 @@ import (
 	"context"
 	"time"
 
-	"github.com/cockroachdb/errors"
 	"github.com/graph-gophers/graphql-go"
 	"github.com/opentracing/opentracing-go/log"
 
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/backend"
 	gql "github.com/sourcegraph/sourcegraph/cmd/frontend/graphqlbackend"
-	store "github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/stores/dbstore"
 	"github.com/sourcegraph/sourcegraph/internal/api"
+	store "github.com/sourcegraph/sourcegraph/internal/codeintel/stores/dbstore"
 	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/observation"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 type configurationPolicyResolver struct {
@@ -49,7 +49,7 @@ func (r *configurationPolicyResolver) Repository(ctx context.Context) (_ *gql.Re
 		log.Int("repoID", *r.configurationPolicy.RepositoryID),
 	)
 
-	repo, err := backend.NewRepos(r.db.Repos()).Get(ctx, api.RepoID(*r.configurationPolicy.RepositoryID))
+	repo, err := backend.NewRepos(r.db).Get(ctx, api.RepoID(*r.configurationPolicy.RepositoryID))
 	if err != nil {
 		return nil, err
 	}

@@ -51,6 +51,7 @@ Sourcegraph code search helps developers perform these tasks more quickly and ef
   - Curate [saved searches](explanations/features.md#saved-searches) for yourself or your org.
   - Use [Code monitoring](../code_monitoring/index.md) to set up notifications for code changes that match a query.
   - View [language statistics](explanations/features.md#statistics) for search results.
+  - Search through [your dependencies](how-to/dependencies_search.md).
 - [Search details](explanations/search_details.md)
 - [Sourcegraph Cloud](explanations/sourcegraph_cloud.md)
 - [Search tips](explanations/tips.md)
@@ -59,7 +60,7 @@ Sourcegraph code search helps developers perform these tasks more quickly and ef
 
 - [Switch from Oracle OpenGrok to Sourcegraph](how-to/opengrok.md)
 - [Create a saved search](how-to/saved_searches.md)
-- [Create a custom search scope](how-to/scopes.md)
+- [Create a custom search snippet](how-to/snippets.md)
 
 ## [Tutorials](tutorials/index.md)
 

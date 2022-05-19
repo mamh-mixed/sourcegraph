@@ -4,13 +4,13 @@ import (
 	"context"
 	"testing"
 
-	"github.com/cockroachdb/errors"
 	mockrequire "github.com/derision-test/go-mockgen/testutil/require"
 	gqlerrors "github.com/graph-gophers/graphql-go/errors"
 
 	"github.com/sourcegraph/sourcegraph/internal/actor"
 	"github.com/sourcegraph/sourcegraph/internal/database"
 	ts "github.com/sourcegraph/sourcegraph/internal/temporarysettings"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 func TestTemporarySettingsNotSignedIn(t *testing.T) {
@@ -37,7 +37,7 @@ func TestTemporarySettingsNotSignedIn(t *testing.T) {
 			ExpectedResult: "null",
 			ExpectedErrors: []*gqlerrors.QueryError{
 				{
-					Path:          []interface{}{"temporarySettings"},
+					Path:          []any{"temporarySettings"},
 					Message:       wantErr.Error(),
 					ResolverError: wantErr,
 				},
@@ -111,7 +111,7 @@ func TestOverwriteTemporarySettingsNotSignedIn(t *testing.T) {
 			ExpectedResult: "null",
 			ExpectedErrors: []*gqlerrors.QueryError{
 				{
-					Path:          []interface{}{"overwriteTemporarySettings"},
+					Path:          []any{"overwriteTemporarySettings"},
 					Message:       wantErr.Error(),
 					ResolverError: wantErr,
 				},

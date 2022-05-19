@@ -1,13 +1,13 @@
-import { parseISO } from 'date-fns'
 import React, { useMemo } from 'react'
+
+import { parseISO } from 'date-fns'
 import { Observable } from 'rxjs'
 import { catchError, map } from 'rxjs/operators'
 
 import { ErrorAlert } from '@sourcegraph/branded/src/components/alerts'
-import { asError, ErrorLike, isErrorLike } from '@sourcegraph/common'
+import { asError, ErrorLike, isErrorLike, numberWithCommas } from '@sourcegraph/common'
 import { gql, dataOrThrowErrors } from '@sourcegraph/http-client'
 import * as GQL from '@sourcegraph/shared/src/schema'
-import { numberWithCommas } from '@sourcegraph/shared/src/util/strings'
 import { LoadingSpinner, useObservable, Link, CardFooter, Alert, ButtonLink } from '@sourcegraph/wildcard'
 
 import { queryGraphQL } from '../../../backend/graphql'
@@ -62,7 +62,10 @@ interface Props {
 /**
  * A component displaying information about and the status of the product subscription.
  */
-export const ProductSubscriptionStatus: React.FunctionComponent<Props> = ({ className, showTrueUpStatus }) => {
+export const ProductSubscriptionStatus: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
+    className,
+    showTrueUpStatus,
+}) => {
     /** The product subscription status, or an error, or undefined while loading. */
     const statusOrError = useObservable(
         useMemo(() => queryProductLicenseInfo().pipe(catchError((error): [ErrorLike] => [asError(error)])), [])

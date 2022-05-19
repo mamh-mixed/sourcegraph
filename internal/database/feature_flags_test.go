@@ -32,26 +32,29 @@ func TestFeatureFlagStore(t *testing.T) {
 }
 
 func errorContains(s string) require.ErrorAssertionFunc {
-	return func(t require.TestingT, err error, msg ...interface{}) {
+	return func(t require.TestingT, err error, msg ...any) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), s, msg)
 	}
 }
 
-func cleanup(t *testing.T, db *sql.DB) func() {
+func cleanup(t *testing.T, db DB) func() {
 	return func() {
 		if t.Failed() {
 			// Retain content on failed tests
 			return
 		}
-		_, err := db.Exec(`truncate feature_flags, feature_flag_overrides, users, orgs, org_members cascade;`)
+		_, err := db.Handle().DB().ExecContext(
+			context.Background(),
+			`truncate feature_flags, feature_flag_overrides, users, orgs, org_members cascade;`,
+		)
 		require.NoError(t, err)
 	}
 }
 
 func testNewFeatureFlagRoundtrip(t *testing.T) {
 	t.Parallel()
-	flagStore := FeatureFlags(dbtest.NewDB(t))
+	flagStore := NewDB(dbtest.NewDB(t)).FeatureFlags()
 	ctx := actor.WithInternalActor(context.Background())
 
 	cases := []struct {
@@ -141,8 +144,8 @@ func testListFeatureFlags(t *testing.T) {
 
 func testNewOverrideRoundtrip(t *testing.T) {
 	t.Parallel()
-	db := dbtest.NewDB(t)
-	flagStore := FeatureFlags(db)
+	db := NewDB(dbtest.NewDB(t))
+	flagStore := db.FeatureFlags()
 	users := Users(db)
 	ctx := actor.WithInternalActor(context.Background())
 
@@ -190,7 +193,7 @@ func testNewOverrideRoundtrip(t *testing.T) {
 
 func testListUserOverrides(t *testing.T) {
 	t.Parallel()
-	db := dbtest.NewDB(t)
+	db := NewDB(dbtest.NewDB(t))
 	flagStore := &featureFlagStore{Store: basestore.NewWithDB(db, sql.TxOptions{})}
 	users := Users(db)
 	ctx := actor.WithInternalActor(context.Background())
@@ -269,11 +272,11 @@ func testListUserOverrides(t *testing.T) {
 
 func testListOrgOverrides(t *testing.T) {
 	t.Parallel()
-	db := dbtest.NewDB(t)
+	db := NewDB(dbtest.NewDB(t))
 	flagStore := &featureFlagStore{Store: basestore.NewWithDB(db, sql.TxOptions{})}
 	users := Users(db)
 	orgs := Orgs(db)
-	orgMembers := OrgMembers(db)
+	orgMembers := db.OrgMembers()
 	ctx := actor.WithInternalActor(context.Background())
 
 	mkUser := func(name string, orgIDs ...int32) *types.User {
@@ -354,11 +357,11 @@ func testListOrgOverrides(t *testing.T) {
 
 func testUserFlags(t *testing.T) {
 	t.Parallel()
-	db := dbtest.NewDB(t)
-	flagStore := FeatureFlags(db)
+	db := NewDB(dbtest.NewDB(t))
+	flagStore := db.FeatureFlags()
 	users := Users(db)
 	orgs := Orgs(db)
-	orgMembers := OrgMembers(db)
+	orgMembers := db.OrgMembers()
 	ctx := actor.WithInternalActor(context.Background())
 
 	mkUser := func(name string, orgIDs ...int32) *types.User {
@@ -493,12 +496,27 @@ func testUserFlags(t *testing.T) {
 		expected := map[string]bool{"f1": true, "f2": false}
 		require.Equal(t, expected, got)
 	})
+
+	t.Run("delete flag with override", func(t *testing.T) {
+		t.Cleanup(cleanup(t, db))
+		o1 := mkOrg("o1")
+		u1 := mkUser("u", o1.ID)
+		f1 := mkFFBool("f1", true)
+		mkUserOverride(u1.ID, "f1", false)
+
+		err := flagStore.DeleteFeatureFlag(ctx, f1.Name)
+		require.NoError(t, err)
+
+		flags, err := flagStore.GetFeatureFlags(ctx)
+		require.NoError(t, err)
+		require.Len(t, flags, 0)
+	})
 }
 
 func testAnonymousUserFlags(t *testing.T) {
 	t.Parallel()
-	db := dbtest.NewDB(t)
-	flagStore := FeatureFlags(db)
+	db := NewDB(dbtest.NewDB(t))
+	flagStore := db.FeatureFlags()
 	ctx := actor.WithInternalActor(context.Background())
 
 	mkFFBool := func(name string, val bool) *ff.FeatureFlag {
@@ -541,8 +559,8 @@ func testAnonymousUserFlags(t *testing.T) {
 
 func testUserlessFeatureFlags(t *testing.T) {
 	t.Parallel()
-	db := dbtest.NewDB(t)
-	flagStore := FeatureFlags(db)
+	db := NewDB(dbtest.NewDB(t))
+	flagStore := db.FeatureFlags()
 	ctx := actor.WithInternalActor(context.Background())
 
 	mkFFBool := func(name string, val bool) *ff.FeatureFlag {
@@ -589,8 +607,8 @@ func testUserlessFeatureFlags(t *testing.T) {
 
 func testOrgFeatureFlag(t *testing.T) {
 	t.Parallel()
-	db := dbtest.NewDB(t)
-	flagStore := FeatureFlags(db)
+	db := NewDB(dbtest.NewDB(t))
+	flagStore := db.FeatureFlags()
 	orgs := Orgs(db)
 	ctx := actor.WithInternalActor(context.Background())
 

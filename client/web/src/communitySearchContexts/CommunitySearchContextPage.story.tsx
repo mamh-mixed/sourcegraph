@@ -1,9 +1,9 @@
 import { action } from '@storybook/addon-actions'
 import { storiesOf } from '@storybook/react'
 import { subDays } from 'date-fns'
-import React from 'react'
 import { EMPTY, NEVER, Observable, of } from 'rxjs'
 
+import { subtypeOf } from '@sourcegraph/common'
 import { ActionItemComponentProps } from '@sourcegraph/shared/src/actions/ActionItem'
 import * as GQL from '@sourcegraph/shared/src/schema'
 import { IRepository, ISearchContext, ISearchContextRepositoryRevisions } from '@sourcegraph/shared/src/schema'
@@ -13,10 +13,9 @@ import {
     mockGetUserSearchContextNamespaces,
 } from '@sourcegraph/shared/src/testing/searchContexts/testHelpers'
 import { NOOP_SETTINGS_CASCADE } from '@sourcegraph/shared/src/testing/searchTestHelpers'
-import { subtypeOf } from '@sourcegraph/shared/src/util/types'
-import { WebStory } from '@sourcegraph/web/src/components/WebStory'
 
 import { AuthenticatedUser } from '../auth'
+import { WebStory } from '../components/WebStory'
 import { SearchPatternType } from '../graphql-operations'
 import { useExperimentalFeatures } from '../stores'
 import { ThemePreference } from '../stores/themeState'
@@ -70,6 +69,7 @@ const authUser: AuthenticatedUser = {
     viewerCanAdminister: true,
     databaseID: 0,
     tosAccepted: true,
+    searchable: true,
 }
 
 const repositories: ISearchContextRepositoryRevisions[] = [

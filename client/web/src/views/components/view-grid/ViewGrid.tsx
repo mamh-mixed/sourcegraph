@@ -1,6 +1,7 @@
+import React, { PropsWithChildren, useCallback, useMemo } from 'react'
+
 import classNames from 'classnames'
 import { noop } from 'lodash'
-import React, { PropsWithChildren, useCallback, useMemo } from 'react'
 import {
     Layout,
     Layout as ReactGridLayout,
@@ -10,7 +11,7 @@ import {
     WidthProvider,
 } from 'react-grid-layout'
 
-import { isFirefox } from '@sourcegraph/shared/src/util/browserDetection'
+import { isFirefox } from '@sourcegraph/common'
 
 import styles from './ViewGrid.module.scss'
 
@@ -83,7 +84,9 @@ interface ViewGridCommonProps {
 /**
  * Renders drag and drop and resizable views grid.
  */
-export const ViewGrid: React.FunctionComponent<PropsWithChildren<ViewGridProps & ViewGridCommonProps>> = props => {
+export const ViewGrid: React.FunctionComponent<
+    React.PropsWithChildren<PropsWithChildren<ViewGridProps & ViewGridCommonProps>>
+> = props => {
     const {
         layouts,
         viewIds = [],

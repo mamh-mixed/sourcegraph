@@ -10,7 +10,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/cockroachdb/errors"
 	"github.com/gomodule/oauth1/oauth"
 	"github.com/google/go-cmp/cmp"
 	"github.com/keegancsmith/sqlf"
@@ -24,6 +23,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/extsvc/bitbucketserver"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc/gitlab"
 	"github.com/sourcegraph/sourcegraph/internal/types"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 func TestUserCredential_Authenticator(t *testing.T) {
@@ -363,7 +363,7 @@ func TestUserCredentials_GetByScope(t *testing.T) {
 		if !errors.As(err, &e) {
 			t.Errorf("error is not a userCredentialNotFoundError; got %T: %v", err, err)
 		}
-		if diff := cmp.Diff(e.args, []interface{}{scope}); diff != "" {
+		if diff := cmp.Diff(e.args, []any{scope}); diff != "" {
 			t.Errorf("unexpected args:\n%s", diff)
 		}
 	})

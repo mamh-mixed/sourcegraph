@@ -6,12 +6,12 @@ import (
 	"io"
 	"strings"
 
-	"github.com/cockroachdb/errors"
 	"github.com/gobwas/glob"
 	"github.com/inconshreveable/log15"
 
 	"github.com/sourcegraph/sourcegraph/internal/authz"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 // p4ProtectLine is a parsed line from `p4 protects`. See:
@@ -69,14 +69,14 @@ func (p *p4ProtectLine) affectsReadAccess() bool {
 		(!p.isExclusion && p.grantsReadAccess())
 }
 
-// Perforce wildcards file match syntax.
+// Perforce wildcards file match syntax, specifically Helix server wildcards. This is the format
+// we expect to get back from p4 protects.
 //
-// See: https://www.perforce.com/manuals/cmdref/Content/CmdRef/filespecs.html
+// See: https://www.perforce.com/manuals/p4guide/Content/P4Guide/syntax.syntax.wildcards.html
 const (
-	// Matches all characters except slashes within one directory.
+	// Matches anything including slashes. Matches recursively (everything in and below the specified directory).
 	perforceWildcardMatchAll = "..."
-	// Matches all files under the current working directory and all subdirectories.
-	// Matches anything, including slashes, and does so across subdirectories.
+	// Matches anything except slashes. Matches only within a single directory. Case sensitivity depends on your platform.
 	perforceWildcardMatchDirectory = "*"
 )
 
@@ -424,6 +424,20 @@ func fullRepoPermsScanner(perms *authz.ExternalUserPermissions, configuredDepots
 					// Depots with no inclusions can just be dropped
 					delete(perms.SubRepoPermissions, depot)
 					continue
+				}
+
+				// Rules should not include the depot name. We want them to be relative so that
+				// we can match even if repo name transformations have occurred, for example a
+				// repositoryPathPattern has been used. We also need to remove any `//` prefixes
+				// which are included in all Helix server rules.
+				depotString := string(depot)
+				for i := range srp.PathIncludes {
+					srp.PathIncludes[i] = strings.TrimPrefix(srp.PathIncludes[i], depotString)
+					srp.PathIncludes[i] = strings.TrimPrefix(srp.PathIncludes[i], "//")
+				}
+				for i := range srp.PathExcludes {
+					srp.PathExcludes[i] = strings.TrimPrefix(srp.PathExcludes[i], depotString)
+					srp.PathExcludes[i] = strings.TrimPrefix(srp.PathExcludes[i], "//")
 				}
 
 				// Add to repos users can access

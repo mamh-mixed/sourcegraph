@@ -1,17 +1,17 @@
 import React, { useCallback, useEffect, useMemo } from 'react'
+
 import { EMPTY, from, combineLatest, ReplaySubject, BehaviorSubject, Observable } from 'rxjs'
 import { concatMap, distinctUntilChanged, filter, map, mapTo, switchMap } from 'rxjs/operators'
 import { useDeepCompareEffectNoCheck } from 'use-deep-compare-effect'
 import { Omit } from 'utility-types'
 
+import { HoverMerged } from '@sourcegraph/client-api'
 import { Hoverifier } from '@sourcegraph/codeintellify'
-import { ErrorLike, isErrorLike, isDefined } from '@sourcegraph/common'
+import { ErrorLike, isDefined, isErrorLike, property } from '@sourcegraph/common'
 import { ActionItemAction } from '@sourcegraph/shared/src/actions/ActionItem'
-import { HoverMerged } from '@sourcegraph/shared/src/api/client/types/hover'
 import { TextDocumentData, ViewerData, ViewerId } from '@sourcegraph/shared/src/api/viewerTypes'
 import { Controller as ExtensionsController } from '@sourcegraph/shared/src/extensions/controller'
 import { getModeFromPath } from '@sourcegraph/shared/src/languages'
-import { property } from '@sourcegraph/shared/src/util/types'
 import { FileSpec, RepoSpec, ResolvedRevisionSpec, RevisionSpec, toURIWithPath } from '@sourcegraph/shared/src/util/url'
 import { useObservable } from '@sourcegraph/wildcard'
 
@@ -59,7 +59,7 @@ export type PartInfo<ExtraData extends object = {}> = {
 /**
  * Displays a list of file diffs.
  */
-export const FileDiffConnection: React.FunctionComponent<FileDiffConnectionProps> = props => {
+export const FileDiffConnection: React.FunctionComponent<React.PropsWithChildren<FileDiffConnectionProps>> = props => {
     const { observeViewerId, setViewerIds, getCurrentViewerIdByUri } = useMemo(() => {
         const viewerIdByUris = new BehaviorSubject<Map<string, ViewerId | undefined>>(new Map())
 

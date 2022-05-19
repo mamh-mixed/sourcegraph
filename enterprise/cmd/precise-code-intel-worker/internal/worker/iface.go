@@ -4,12 +4,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/gitserver"
-	"github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/stores/dbstore"
-	"github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/stores/lsifstore"
 	"github.com/sourcegraph/sourcegraph/internal/api"
+	"github.com/sourcegraph/sourcegraph/internal/codeintel/stores/dbstore"
+	"github.com/sourcegraph/sourcegraph/internal/codeintel/stores/gitserver"
+	"github.com/sourcegraph/sourcegraph/internal/codeintel/stores/lsifstore"
 	"github.com/sourcegraph/sourcegraph/internal/database/basestore"
-	"github.com/sourcegraph/sourcegraph/internal/types"
 	"github.com/sourcegraph/sourcegraph/lib/codeintel/precise"
 )
 
@@ -21,6 +20,7 @@ type DBStore interface {
 	Transact(ctx context.Context) (DBStore, error)
 	Done(err error) error
 
+	RepoName(ctx context.Context, id int) (string, error)
 	UpdatePackages(ctx context.Context, dumpID int, packages []precise.Package) error
 	UpdatePackageReferences(ctx context.Context, dumpID int, packageReferences []precise.PackageReference) error
 	UpdateReferenceCounts(ctx context.Context, ids []int, dependencyUpdateType dbstore.DependencyReferenceCountUpdateType) (updatedUploads int, err error)
@@ -57,10 +57,6 @@ type LSIFStore interface {
 	WriteDefinitions(ctx context.Context, bundleID int, monikerLocations chan precise.MonikerLocations) (count uint32, err error)
 	WriteReferences(ctx context.Context, bundleID int, monikerLocations chan precise.MonikerLocations) (count uint32, err error)
 	WriteImplementations(ctx context.Context, bundleID int, monikerLocations chan precise.MonikerLocations) (count uint32, err error)
-	WriteDocumentationPages(ctx context.Context, upload dbstore.Upload, repo *types.Repo, isDefaultBranch bool, documentation chan *precise.DocumentationPageData, repositoryNameID int, languageNameID int) (count uint32, err error)
-	WriteDocumentationPathInfo(ctx context.Context, bundleID int, documentation chan *precise.DocumentationPathInfoData) (count uint32, err error)
-	WriteDocumentationMappings(ctx context.Context, bundleID int, mappings chan precise.DocumentationMapping) (count uint32, err error)
-	WriteDocumentationSearchPrework(ctx context.Context, upload dbstore.Upload, repo *types.Repo, isDefaultBranch bool) (int, int, error)
 }
 
 type LSIFStoreShim struct {

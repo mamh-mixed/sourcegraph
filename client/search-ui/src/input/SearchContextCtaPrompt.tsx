@@ -1,5 +1,6 @@
-import classNames from 'classnames'
 import React from 'react'
+
+import classNames from 'classnames'
 
 import { AuthenticatedUser } from '@sourcegraph/shared/src/auth'
 import { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryService'
@@ -16,7 +17,7 @@ export interface SearchContextCtaPromptProps extends TelemetryProps {
     isExternalServicesUserModeAll?: boolean
 }
 
-export const SearchContextCtaPrompt: React.FunctionComponent<SearchContextCtaPromptProps> = ({
+export const SearchContextCtaPrompt: React.FunctionComponent<React.PropsWithChildren<SearchContextCtaPromptProps>> = ({
     authenticatedUser,
     hasUserAddedExternalServices,
     telemetryService,

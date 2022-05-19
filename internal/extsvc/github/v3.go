@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/errors"
 	"github.com/google/go-github/v41/github"
+	"github.com/inconshreveable/log15"
 	"golang.org/x/time/rate"
 
 	"github.com/sourcegraph/sourcegraph/internal/conf"
@@ -20,6 +20,8 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/httpcli"
 	"github.com/sourcegraph/sourcegraph/internal/ratelimit"
 	"github.com/sourcegraph/sourcegraph/internal/rcache"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
+	"github.com/sourcegraph/sourcegraph/lib/log"
 )
 
 // V3Client is a caching GitHub API client for GitHub's REST API v3.
@@ -29,6 +31,11 @@ import (
 // same Redis cache entries (provided they were computed with the same API URL and access
 // token). The cache keys are agnostic of the http.RoundTripper transport.
 type V3Client struct {
+	log log.Logger
+
+	// The URN of the external service that the client is derived from.
+	urn string
+
 	// apiURL is the base URL of a GitHub API. It must point to the base URL of the GitHub API. This
 	// is https://api.github.com for GitHub.com and http[s]://[github-enterprise-hostname]/api for
 	// GitHub Enterprise.
@@ -47,9 +54,6 @@ type V3Client struct {
 	// httpClient is the HTTP client used to make requests to the GitHub API.
 	httpClient httpcli.Doer
 
-	// repoCache is the repository cache associated with the token.
-	repoCache *rcache.Cache
-
 	// rateLimitMonitor is the API rate limit monitor.
 	rateLimitMonitor *ratelimit.Monitor
 
@@ -66,8 +70,8 @@ type V3Client struct {
 //
 // apiURL must point to the base URL of the GitHub API. See the docstring for
 // V3Client.apiURL.
-func NewV3Client(apiURL *url.URL, a auth.Authenticator, cli httpcli.Doer) *V3Client {
-	return newV3Client(apiURL, a, "rest", cli)
+func NewV3Client(logger log.Logger, urn string, apiURL *url.URL, a auth.Authenticator, cli httpcli.Doer) *V3Client {
+	return newV3Client(logger, urn, apiURL, a, "rest", cli)
 }
 
 // NewV3SearchClient creates a new GitHub API client intended for use with the
@@ -75,11 +79,11 @@ func NewV3Client(apiURL *url.URL, a auth.Authenticator, cli httpcli.Doer) *V3Cli
 //
 // apiURL must point to the base URL of the GitHub API. See the docstring for
 // V3Client.apiURL.
-func NewV3SearchClient(apiURL *url.URL, a auth.Authenticator, cli httpcli.Doer) *V3Client {
-	return newV3Client(apiURL, a, "search", cli)
+func NewV3SearchClient(logger log.Logger, urn string, apiURL *url.URL, a auth.Authenticator, cli httpcli.Doer) *V3Client {
+	return newV3Client(logger, urn, apiURL, a, "search", cli)
 }
 
-func newV3Client(apiURL *url.URL, a auth.Authenticator, resource string, cli httpcli.Doer) *V3Client {
+func newV3Client(logger log.Logger, urn string, apiURL *url.URL, a auth.Authenticator, resource string, cli httpcli.Doer) *V3Client {
 	apiURL = canonicalizedURL(apiURL)
 	if gitHubDisable {
 		cli = disabledClient{}
@@ -104,17 +108,18 @@ func newV3Client(apiURL *url.URL, a auth.Authenticator, resource string, cli htt
 		tokenHash = a.Hash()
 	}
 
-	rl := ratelimit.DefaultRegistry.Get(apiURL.String())
+	rl := ratelimit.DefaultRegistry.Get(urn)
 	rlm := ratelimit.DefaultMonitorRegistry.GetOrSet(apiURL.String(), tokenHash, resource, &ratelimit.Monitor{HeaderPrefix: "X-"})
 
 	return &V3Client{
+		log:              logger,
+		urn:              urn,
 		apiURL:           apiURL,
 		githubDotCom:     urlIsGitHubDotCom(apiURL),
 		auth:             a,
 		httpClient:       cli,
 		rateLimit:        rl,
 		rateLimitMonitor: rlm,
-		repoCache:        newRepoCache(apiURL, a),
 		resource:         resource,
 	}
 }
@@ -123,7 +128,7 @@ func newV3Client(apiURL *url.URL, a auth.Authenticator, resource string, cli htt
 // the current V3Client, except authenticated as the GitHub user with the given
 // authenticator instance (most likely a token).
 func (c *V3Client) WithAuthenticator(a auth.Authenticator) *V3Client {
-	return newV3Client(c.apiURL, a, c.resource, c.httpClient)
+	return newV3Client(c.log, c.urn, c.apiURL, a, c.resource, c.httpClient)
 }
 
 // RateLimitMonitor exposes the rate limit monitor.
@@ -131,16 +136,7 @@ func (c *V3Client) RateLimitMonitor() *ratelimit.Monitor {
 	return c.rateLimitMonitor
 }
 
-func (c *V3Client) requestGet(ctx context.Context, requestURI string, result interface{}) error {
-	_, err := c.get(ctx, requestURI, result)
-	return err
-}
-
-func (c *V3Client) requestGetWithHeader(ctx context.Context, requestURI string, result interface{}) (http.Header, error) {
-	return c.get(ctx, requestURI, result)
-}
-
-func (c *V3Client) get(ctx context.Context, requestURI string, result interface{}) (http.Header, error) {
+func (c *V3Client) get(ctx context.Context, requestURI string, result any) (*httpResponseState, error) {
 	req, err := http.NewRequest("GET", requestURI, nil)
 	if err != nil {
 		return nil, err
@@ -149,12 +145,8 @@ func (c *V3Client) get(ctx context.Context, requestURI string, result interface{
 	return c.request(ctx, req, result)
 }
 
-func (c *V3Client) requestPost(ctx context.Context, requestURI string, payload, result interface{}) error {
-	_, err := c.post(ctx, requestURI, payload, result)
-	return err
-}
-
-func (c *V3Client) post(ctx context.Context, requestURI string, payload, result interface{}) (http.Header, error) {
+//nolint:unparam // Return *httpResponseState for consistency with other methods
+func (c *V3Client) post(ctx context.Context, requestURI string, payload, result any) (*httpResponseState, error) {
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return nil, errors.Wrap(err, "marshalling payload")
@@ -170,7 +162,7 @@ func (c *V3Client) post(ctx context.Context, requestURI string, payload, result 
 	return c.request(ctx, req, result)
 }
 
-func (c *V3Client) request(ctx context.Context, req *http.Request, result interface{}) (http.Header, error) {
+func (c *V3Client) request(ctx context.Context, req *http.Request, result any) (*httpResponseState, error) {
 	// Include node_id (GraphQL ID) in response. See
 	// https://developer.github.com/changes/2017-12-19-graphql-node-id/.
 	//
@@ -196,6 +188,7 @@ func (c *V3Client) request(ctx context.Context, req *http.Request, result interf
 			return nil, ctx.Err()
 		}
 
+		log15.Warn("internal rate limiter error", "error", err, "urn", c.urn)
 		return nil, errInternalRateLimitExceeded
 	}
 
@@ -243,6 +236,10 @@ func (e *APIError) AccountSuspended() bool {
 	return e.Code == http.StatusForbidden && strings.Contains(e.Message, "account was suspended")
 }
 
+func (e *APIError) UnavailableForLegalReasons() bool {
+	return e.Code == http.StatusUnavailableForLegalReasons
+}
+
 func (e *APIError) Temporary() bool { return IsRateLimitExceeded(e) }
 
 // HTTPErrorCode returns err's HTTP status code, if it is an HTTP error from
@@ -261,19 +258,19 @@ func (c *V3Client) GetVersion(ctx context.Context) (string, error) {
 		return "unknown", nil
 	}
 
-	var empty interface{}
+	var empty any
 
-	header, err := c.requestGetWithHeader(ctx, "/", &empty)
+	respState, err := c.get(ctx, "/", &empty)
 	if err != nil {
 		return "", err
 	}
-	v := header.Get("X-GitHub-Enterprise-Version")
+	v := respState.headers.Get("X-GitHub-Enterprise-Version")
 	return v, nil
 }
 
 func (c *V3Client) GetAuthenticatedUser(ctx context.Context) (*User, error) {
 	var u User
-	err := c.requestGet(ctx, "/user", &u)
+	_, err := c.get(ctx, "/user", &u)
 	if err != nil {
 		return nil, err
 	}
@@ -290,7 +287,7 @@ func (c *V3Client) GetAuthenticatedUserEmails(ctx context.Context) ([]*UserEmail
 	}
 
 	var emails []*UserEmail
-	err := c.requestGet(ctx, "/user/emails?per_page=100", &emails)
+	_, err := c.get(ctx, "/user/emails?per_page=100", &emails)
 	if err != nil {
 		return nil, err
 	}
@@ -303,7 +300,7 @@ func (c *V3Client) getAuthenticatedUserOrgs(ctx context.Context, page int) (
 	rateLimitCost int,
 	err error,
 ) {
-	err = c.requestGet(ctx, fmt.Sprintf("/user/orgs?per_page=100&page=%d", page), &orgs)
+	_, err = c.get(ctx, fmt.Sprintf("/user/orgs?per_page=100&page=%d", page), &orgs)
 	if err != nil {
 		return
 	}
@@ -345,10 +342,10 @@ func (c *V3Client) GetAuthenticatedUserOrgsDetailsAndMembership(ctx context.Cont
 	}
 	orgs = make([]OrgDetailsAndMembership, len(orgNames))
 	for i, org := range orgNames {
-		if err = c.requestGet(ctx, "/orgs/"+org.Login, &orgs[i].OrgDetails); err != nil {
+		if _, err = c.get(ctx, "/orgs/"+org.Login, &orgs[i].OrgDetails); err != nil {
 			return nil, false, cost + 2*i, err
 		}
-		if err = c.requestGet(ctx, "/user/memberships/orgs/"+org.Login, &orgs[i].OrgMembership); err != nil {
+		if _, err = c.get(ctx, "/user/memberships/orgs/"+org.Login, &orgs[i].OrgMembership); err != nil {
 			return nil, false, cost + 2*i, err
 		}
 	}
@@ -377,6 +374,8 @@ func (t *restTeam) convert() *Team {
 	}
 }
 
+var MockGetAuthenticatedUserTeams func(ctx context.Context, page int) ([]*Team, bool, int, error)
+
 // GetAuthenticatedUserTeams lists GitHub teams affiliated with the client token.
 //
 // The page is the page of results to return, and is 1-indexed (so the first call should
@@ -387,15 +386,21 @@ func (c *V3Client) GetAuthenticatedUserTeams(ctx context.Context, page int) (
 	rateLimitCost int,
 	err error,
 ) {
+	if MockGetAuthenticatedUserTeams != nil {
+		return MockGetAuthenticatedUserTeams(ctx, 1)
+	}
+
 	var restTeams []*restTeam
-	err = c.requestGet(ctx, fmt.Sprintf("/user/teams?per_page=100&page=%d", page), &restTeams)
+	_, err = c.get(ctx, fmt.Sprintf("/user/teams?per_page=100&page=%d", page), &restTeams)
 	if err != nil {
 		return
 	}
+
 	teams = make([]*Team, len(restTeams))
 	for i, t := range restTeams {
 		teams[i] = t.convert()
 	}
+
 	return teams, len(teams) > 0, 1, err
 }
 
@@ -408,11 +413,11 @@ func (c *V3Client) GetAuthenticatedOAuthScopes(ctx context.Context) ([]string, e
 	}
 	// We only care about headers
 	var dest struct{}
-	header, err := c.requestGetWithHeader(ctx, "/", &dest)
+	respState, err := c.get(ctx, "/", &dest)
 	if err != nil {
 		return nil, err
 	}
-	scope := header.Get("x-oauth-scopes")
+	scope := respState.headers.Get("x-oauth-scopes")
 	if scope == "" {
 		return []string{}, nil
 	}
@@ -429,7 +434,7 @@ func (c *V3Client) ListRepositoryCollaborators(ctx context.Context, owner, repo 
 	if len(affiliation) > 0 {
 		path = fmt.Sprintf("%s&affiliation=%s", path, affiliation)
 	}
-	err := c.requestGet(ctx, path, &users)
+	_, err := c.get(ctx, path, &users)
 	if err != nil {
 		return nil, false, err
 	}
@@ -443,7 +448,7 @@ func (c *V3Client) ListRepositoryCollaborators(ctx context.Context, owner, repo 
 func (c *V3Client) ListRepositoryTeams(ctx context.Context, owner, repo string, page int) (teams []*Team, hasNextPage bool, _ error) {
 	path := fmt.Sprintf("/repos/%s/%s/teams?page=%d&per_page=100", owner, repo, page)
 	var restTeams []*restTeam
-	err := c.requestGet(ctx, path, &restTeams)
+	_, err := c.get(ctx, path, &restTeams)
 	if err != nil {
 		return nil, false, err
 	}
@@ -456,31 +461,55 @@ func (c *V3Client) ListRepositoryTeams(ctx context.Context, owner, repo string, 
 
 // GetRepository gets a repository from GitHub by owner and repository name.
 func (c *V3Client) GetRepository(ctx context.Context, owner, name string) (*Repository, error) {
-	if GetRepositoryMock != nil {
-		return GetRepositoryMock(ctx, owner, name)
-	}
-
-	key := ownerNameCacheKey(owner, name)
-
-	getRepoFromAPI := func(ctx context.Context) (repo *Repository, keys []string, err error) {
-		keys = append(keys, key)
-		repo, err = c.getRepositoryFromAPI(ctx, owner, name)
-		if repo != nil {
-			keys = append(keys, nodeIDCacheKey(repo.ID)) // also cache under GraphQL node ID
-		}
-		return repo, keys, err
-	}
-
-	return c.cachedGetRepository(ctx, key, getRepoFromAPI)
+	return c.getRepositoryFromAPI(ctx, owner, name)
 }
 
 // GetOrganization gets an org from GitHub by its login.
 func (c *V3Client) GetOrganization(ctx context.Context, login string) (org *OrgDetails, err error) {
-	err = c.requestGet(ctx, "/orgs/"+login, &org)
+	_, err = c.get(ctx, "/orgs/"+login, &org)
 	if err != nil && strings.Contains(err.Error(), "404") {
 		err = &OrgNotFoundError{}
 	}
 	return
+}
+
+// ListOrganizations lists all orgs from GitHub. This is intended to be used for GitHub enterprise
+// server instances only. Callers should be careful not to use this for github.com or GitHub
+// enterprise cloud.
+//
+// The argument "since" is the ID of the org and the API call will only return orgs with ID greater
+// than this value. To list all orgs in a GitHub instance, invoke this initially with:
+//
+// orgs, nextSince, err := ListOrganizations(ctx, 0)
+//
+// And the next call with:
+//
+// orgs, nextSince, err := ListOrganizations(ctx, nextSince)
+//
+// Repeat this in a for-loop until nextSince is a non-positive integer.
+//
+// 🚀🚀🚀
+//
+// This API supports conditional requests and the underlying httpcache transport can leverage this
+// to use the cache to return responses.
+func (c *V3Client) ListOrganizations(ctx context.Context, since int) (orgs []*Org, nextSince int, err error) {
+	path := fmt.Sprintf("/organizations?since=%d&per_page=100", since)
+
+	_, err = c.get(ctx, path, &orgs)
+	if err != nil {
+		return nil, -1, err
+	}
+
+	getNextSince := func() int {
+		total := len(orgs)
+		if total == 0 {
+			return -1
+		}
+
+		return orgs[total-1].ID
+	}
+
+	return orgs, getNextSince(), nil
 }
 
 // ListOrganizationMembers retrieves collaborators in the given organization.
@@ -492,7 +521,7 @@ func (c *V3Client) ListOrganizationMembers(ctx context.Context, owner string, pa
 	if adminsOnly {
 		path += "&role=admin"
 	}
-	err := c.requestGet(ctx, path, &users)
+	_, err := c.get(ctx, path, &users)
 	if err != nil {
 		return nil, false, err
 	}
@@ -506,49 +535,11 @@ func (c *V3Client) ListOrganizationMembers(ctx context.Context, owner string, pa
 // be for page 1).
 func (c *V3Client) ListTeamMembers(ctx context.Context, owner, team string, page int) (users []*Collaborator, hasNextPage bool, _ error) {
 	path := fmt.Sprintf("/orgs/%s/teams/%s/members?page=%d&per_page=100", owner, team, page)
-	err := c.requestGet(ctx, path, &users)
+	_, err := c.get(ctx, path, &users)
 	if err != nil {
 		return nil, false, err
 	}
 	return users, len(users) > 0, nil
-}
-
-// getRepositoryFromCache attempts to get a response from the redis cache.
-// It returns nil error for cache-hit condition and non-nil error for cache-miss.
-func (c *V3Client) getRepositoryFromCache(ctx context.Context, key string) *cachedRepo {
-	b, ok := c.repoCache.Get(strings.ToLower(key))
-	if !ok {
-		return nil
-	}
-
-	var cached cachedRepo
-	if err := json.Unmarshal(b, &cached); err != nil {
-		return nil
-	}
-
-	return &cached
-}
-
-// addRepositoryToCache will cache the value for repo. The caller can provide multiple cache keys
-// for the multiple ways that this repository can be retrieved (e.g., both "owner/name" and the
-// GraphQL node ID).
-func (c *V3Client) addRepositoryToCache(keys []string, repo *cachedRepo) {
-	b, err := json.Marshal(repo)
-	if err != nil {
-		return
-	}
-	for _, key := range keys {
-		c.repoCache.Set(strings.ToLower(key), b)
-	}
-}
-
-// addRepositoriesToCache will cache repositories that exist
-// under relevant cache keys.
-func (c *V3Client) addRepositoriesToCache(repos []*Repository) {
-	for _, repo := range repos {
-		keys := []string{nameWithOwnerCacheKey(repo.NameWithOwner), nodeIDCacheKey(repo.ID)} // cache under multiple
-		c.addRepositoryToCache(keys, &cachedRepo{Repository: *repo})
-	}
 }
 
 // getPublicRepositories returns a page of public repositories that were created
@@ -569,7 +560,6 @@ func (c *V3Client) ListPublicRepositories(ctx context.Context, sinceRepoID int64
 	if err != nil {
 		return nil, err
 	}
-	c.addRepositoriesToCache(repos)
 	return repos, nil
 }
 
@@ -593,9 +583,6 @@ func (c *V3Client) ListAffiliatedRepositories(ctx context.Context, visibility Vi
 		path = fmt.Sprintf("%s&affiliation=%s", path, strings.Join(affilationsStrings, ","))
 	}
 	repos, err = c.listRepositories(ctx, path)
-	if err == nil {
-		c.addRepositoriesToCache(repos)
-	}
 
 	return repos, len(repos) > 0, 1, err
 }
@@ -634,7 +621,7 @@ func (c *V3Client) ListRepositoriesForSearch(ctx context.Context, searchString s
 	}
 	path := "search/repositories?" + urlValues.Encode()
 	var response restSearchResponse
-	if err := c.requestGet(ctx, path, &response); err != nil {
+	if _, err := c.get(ctx, path, &response); err != nil {
 		return RepositoryListPage{}, err
 	}
 	if response.IncompleteResults {
@@ -644,7 +631,6 @@ func (c *V3Client) ListRepositoriesForSearch(ctx context.Context, searchString s
 	for _, restRepo := range response.Items {
 		repos = append(repos, convertRestRepo(restRepo))
 	}
-	c.addRepositoriesToCache(repos)
 
 	return RepositoryListPage{
 		TotalCount:  response.TotalCount,
@@ -661,7 +647,7 @@ func (c *V3Client) ListTopicsOnRepository(ctx context.Context, ownerAndName stri
 	}
 
 	var result restTopicsResponse
-	if err := c.requestGet(ctx, fmt.Sprintf("/repos/%s/%s/topics", owner, name), &result); err != nil {
+	if _, err := c.get(ctx, fmt.Sprintf("/repos/%s/%s/topics", owner, name), &result); err != nil {
 		if HTTPErrorCode(err) == http.StatusNotFound {
 			return nil, ErrRepoNotFound
 		}
@@ -685,7 +671,7 @@ func (c *V3Client) ListInstallationRepositories(ctx context.Context, page int) (
 	}
 	var resp response
 	path := fmt.Sprintf("installation/repositories?page=%d&per_page=100", page)
-	if err = c.requestGet(ctx, path, &resp); err != nil {
+	if _, err = c.get(ctx, path, &resp); err != nil {
 		return nil, false, 1, err
 	}
 	repos = make([]*Repository, 0, len(resp.Repositories))
@@ -705,7 +691,16 @@ func (c *V3Client) ListInstallationRepositories(ctx context.Context, page int) (
 // - /user/repos
 func (c *V3Client) listRepositories(ctx context.Context, requestURI string) ([]*Repository, error) {
 	var restRepos []restRepository
-	if err := c.requestGet(ctx, requestURI, &restRepos); err != nil {
+	if res, err := c.get(ctx, requestURI, &restRepos); err != nil {
+		if res != nil {
+			link := res.headers.Get("Link")
+			// If we've reached beyond the last page then GitHub API returns 404 with link to
+			// the first page, but does NOT contain link to the next page. link to the next
+			// page is typically included in 200 response Link header
+			if res.statusCode == http.StatusNotFound && strings.Contains(link, `rel="first"`) && !strings.Contains(link, `rel="next"`) {
+				return []*Repository{}, nil
+			}
+		}
 		return nil, err
 	}
 	repos := make([]*Repository, 0, len(restRepos))
@@ -728,7 +723,7 @@ func (c *V3Client) Fork(ctx context.Context, owner, repo string, org *string) (*
 	}{Org: org}
 
 	var restRepo restRepository
-	if err := c.requestPost(ctx, "repos/"+owner+"/"+repo+"/forks", payload, &restRepo); err != nil {
+	if _, err := c.post(ctx, "repos/"+owner+"/"+repo+"/forks", payload, &restRepo); err != nil {
 		return nil, err
 	}
 
@@ -740,7 +735,7 @@ func (c *V3Client) Fork(ctx context.Context, owner, repo string, org *string) (*
 // API docs: https://docs.github.com/en/rest/reference/apps#get-an-installation-for-the-authenticated-app
 func (c *V3Client) GetAppInstallation(ctx context.Context, installationID int64) (*github.Installation, error) {
 	var ins github.Installation
-	if err := c.requestGet(ctx, fmt.Sprintf("app/installations/%d", installationID), &ins); err != nil {
+	if _, err := c.get(ctx, fmt.Sprintf("app/installations/%d", installationID), &ins); err != nil {
 		return nil, err
 	}
 	return &ins, nil
@@ -751,8 +746,22 @@ func (c *V3Client) GetAppInstallation(ctx context.Context, installationID int64)
 // API docs: https://docs.github.com/en/rest/reference/apps#create-an-installation-access-token-for-an-app
 func (c *V3Client) CreateAppInstallationAccessToken(ctx context.Context, installationID int64) (*github.InstallationToken, error) {
 	var token github.InstallationToken
-	if err := c.requestPost(ctx, fmt.Sprintf("/app/installations/%d/access_tokens", installationID), nil, &token); err != nil {
+	if _, err := c.post(ctx, fmt.Sprintf("/app/installations/%d/access_tokens", installationID), nil, &token); err != nil {
 		return nil, err
 	}
 	return &token, nil
+}
+
+// GetUserInstallations returns a list of GitHub App installations the user has access to
+//
+// API docs: https://docs.github.com/en/rest/reference/apps#list-app-installations-accessible-to-the-user-access-token
+func (c *V3Client) GetUserInstallations(ctx context.Context) ([]github.Installation, error) {
+	var resultStruct struct {
+		Installations []github.Installation `json:"installations,omitempty"`
+	}
+	if _, err := c.get(ctx, "user/installations", &resultStruct); err != nil {
+		return nil, err
+	}
+
+	return resultStruct.Installations, nil
 }

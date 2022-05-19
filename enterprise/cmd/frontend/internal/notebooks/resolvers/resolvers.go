@@ -3,14 +3,15 @@ package resolvers
 import (
 	"context"
 
-	"github.com/cockroachdb/errors"
 	"github.com/graph-gophers/graphql-go"
 	"github.com/graph-gophers/graphql-go/relay"
 
+	"github.com/sourcegraph/sourcegraph/cmd/frontend/envvar"
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/graphqlbackend"
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/graphqlbackend/graphqlutil"
 	"github.com/sourcegraph/sourcegraph/enterprise/internal/notebooks"
 	"github.com/sourcegraph/sourcegraph/internal/database"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 func NewResolver(db database.DB) graphqlbackend.NotebooksResolver {
@@ -91,6 +92,28 @@ func convertNotebookBlockInput(inputBlock graphqlbackend.CreateNotebookBlockInpu
 			Revision:       inputBlock.FileInput.Revision,
 			LineRange:      convertLineRangeInput(inputBlock.FileInput.LineRange),
 		}
+	case graphqlbackend.NotebookSymbolBlockType:
+		if inputBlock.SymbolInput == nil {
+			return nil, errors.Errorf("symbol block with id %s is missing input", inputBlock.ID)
+		}
+		block.Type = notebooks.NotebookSymbolBlockType
+		block.SymbolInput = &notebooks.NotebookSymbolBlockInput{
+			RepositoryName:      inputBlock.SymbolInput.RepositoryName,
+			FilePath:            inputBlock.SymbolInput.FilePath,
+			Revision:            inputBlock.SymbolInput.Revision,
+			LineContext:         inputBlock.SymbolInput.LineContext,
+			SymbolName:          inputBlock.SymbolInput.SymbolName,
+			SymbolContainerName: inputBlock.SymbolInput.SymbolContainerName,
+			SymbolKind:          inputBlock.SymbolInput.SymbolKind,
+		}
+	case graphqlbackend.NotebookComputeBlockType:
+		if inputBlock.ComputeInput == nil {
+			return nil, errors.Errorf("query block with id %s is missing input", inputBlock.ID)
+		}
+		block.Type = notebooks.NotebookComputeBlockType
+		block.ComputeInput = &notebooks.NotebookComputeBlockInput{Value: *inputBlock.ComputeInput}
+	default:
+		return nil, errors.Newf("invalid block type: %s", inputBlock.Type)
 	}
 	return block, nil
 }
@@ -170,11 +193,13 @@ func (r *Resolver) UpdateNotebook(ctx context.Context, args graphqlbackend.Updat
 	notebook.Public = notebookInput.Public
 	notebook.Blocks = blocks
 	notebook.UpdaterUserID = user.ID
-	err = graphqlbackend.UnmarshalNamespaceID(args.Notebook.Namespace, &notebook.NamespaceUserID, &notebook.NamespaceOrgID)
+	var namespaceUserID, namespaceOrgID int32
+	err = graphqlbackend.UnmarshalNamespaceID(args.Notebook.Namespace, &namespaceUserID, &namespaceOrgID)
 	if err != nil {
 		return nil, err
 	}
-
+	notebook.NamespaceUserID = namespaceUserID
+	notebook.NamespaceOrgID = namespaceOrgID
 	// Current user has to have write permissions for both the old and the new namespace.
 	err = validateNotebookWritePermissionsForUser(ctx, r.db, notebook, user.ID)
 	if err != nil {
@@ -387,6 +412,12 @@ func (r *notebookResolver) Namespace(ctx context.Context) (*graphqlbackend.Names
 	if r.notebook.NamespaceOrgID != 0 {
 		n, err := graphqlbackend.NamespaceByID(ctx, r.db, graphqlbackend.MarshalOrgID(r.notebook.NamespaceOrgID))
 		if err != nil {
+			// On Cloud, the user can have access to an org notebook if it is public. But if the user is not a member of
+			// that org, then he does not have access to further information about the org. Instead of returning an error
+			// (which would prevent the user from viewing the notebook) we return an empty namespace.
+			if envvar.SourcegraphDotComMode() && errors.HasType(err, &database.OrgNotFoundError{}) {
+				return nil, nil
+			}
 			return nil, err
 		}
 		return &graphqlbackend.NamespaceResolver{Namespace: n}, nil
@@ -455,6 +486,20 @@ func (r *notebookBlockResolver) ToQueryBlock() (graphqlbackend.QueryBlockResolve
 func (r *notebookBlockResolver) ToFileBlock() (graphqlbackend.FileBlockResolver, bool) {
 	if r.block.Type == notebooks.NotebookFileBlockType {
 		return &fileBlockResolver{r.block}, true
+	}
+	return nil, false
+}
+
+func (r *notebookBlockResolver) ToSymbolBlock() (graphqlbackend.SymbolBlockResolver, bool) {
+	if r.block.Type == notebooks.NotebookSymbolBlockType {
+		return &symbolBlockResolver{r.block}, true
+	}
+	return nil, false
+}
+
+func (r *notebookBlockResolver) ToComputeBlock() (graphqlbackend.ComputeBlockResolver, bool) {
+	if r.block.Type == notebooks.NotebookComputeBlockType {
+		return &computeBlockResolver{r.block}, true
 	}
 	return nil, false
 }
@@ -531,4 +576,62 @@ func (r *fileBlockLineRangeResolver) StartLine() int32 {
 
 func (r *fileBlockLineRangeResolver) EndLine() int32 {
 	return r.lineRange.EndLine
+}
+
+type symbolBlockResolver struct {
+	// block.type == NotebookSymbolBlockType
+	block notebooks.NotebookBlock
+}
+
+func (r *symbolBlockResolver) ID() string {
+	return r.block.ID
+}
+
+func (r *symbolBlockResolver) SymbolInput() graphqlbackend.SymbolBlockInputResolver {
+	return &symbolBlockInputResolver{*r.block.SymbolInput}
+}
+
+type symbolBlockInputResolver struct {
+	input notebooks.NotebookSymbolBlockInput
+}
+
+func (r *symbolBlockInputResolver) RepositoryName() string {
+	return r.input.RepositoryName
+}
+
+func (r *symbolBlockInputResolver) FilePath() string {
+	return r.input.FilePath
+}
+
+func (r *symbolBlockInputResolver) Revision() *string {
+	return r.input.Revision
+}
+
+func (r *symbolBlockInputResolver) LineContext() int32 {
+	return r.input.LineContext
+}
+
+func (r *symbolBlockInputResolver) SymbolName() string {
+	return r.input.SymbolName
+}
+
+func (r *symbolBlockInputResolver) SymbolContainerName() string {
+	return r.input.SymbolContainerName
+}
+
+func (r *symbolBlockInputResolver) SymbolKind() string {
+	return r.input.SymbolKind
+}
+
+type computeBlockResolver struct {
+	// block.type == NotebookComputeBlockType
+	block notebooks.NotebookBlock
+}
+
+func (r *computeBlockResolver) ID() string {
+	return r.block.ID
+}
+
+func (r *computeBlockResolver) ComputeInput() string {
+	return r.block.ComputeInput.Value
 }

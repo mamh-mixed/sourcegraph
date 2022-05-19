@@ -1,9 +1,13 @@
-import { MockedProvider, MockedProviderProps } from '@apollo/client/testing'
 import React, { useMemo } from 'react'
+
+import { MockedProvider, MockedProviderProps } from '@apollo/client/testing'
 
 import { generateCache } from '@sourcegraph/http-client'
 
-export const MockedTestProvider: React.FunctionComponent<MockedProviderProps> = ({ children, ...props }) => {
+export const MockedTestProvider: React.FunctionComponent<React.PropsWithChildren<MockedProviderProps>> = ({
+    children,
+    ...props
+}) => {
     /**
      * Generate a fresh cache for each instance of MockedTestProvider.
      * Important to ensure tests don't share cached data.

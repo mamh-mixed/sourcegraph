@@ -1,10 +1,12 @@
+import React, { useCallback, useState } from 'react'
+
 import { Meta } from '@storybook/react'
 import { StoryFnReactReturnType } from '@storybook/react/dist/ts3.9/client/preview/types'
-import React, { useCallback, useState } from 'react'
 
 import { BrandedStory } from '@sourcegraph/branded/src/components/BrandedStory'
 import webStyles from '@sourcegraph/web/src/SourcegraphWebApp.scss'
 
+import { Typography } from '../..'
 import { Grid } from '../../Grid'
 
 import { TextArea } from './TextArea'
@@ -22,19 +24,19 @@ const config: Meta = {
         component: TextArea,
         chromatic: {
             enableDarkMode: true,
+            disableSnapshot: false,
         },
         design: {
             type: 'figma',
             name: 'Figma',
-            url:
-                'https://www.figma.com/file/NIsN34NH7lPu04olBzddTw/Design-Refresh-Systemization-source-of-truth?node-id=908%3A1943',
+            url: 'https://www.figma.com/file/NIsN34NH7lPu04olBzddTw/Wildcard-Design-System?node-id=860%3A79961',
         },
     },
 }
 
 export default config
 
-export const TextAreaExamples: React.FunctionComponent = () => {
+export const TextAreaExamples: React.FunctionComponent<React.PropsWithChildren<unknown>> = () => {
     const [value, setValue] = useState('')
 
     const handleChange = useCallback<React.ChangeEventHandler<HTMLTextAreaElement>>(event => {
@@ -43,7 +45,7 @@ export const TextAreaExamples: React.FunctionComponent = () => {
 
     return (
         <>
-            <h1>TextArea</h1>
+            <Typography.H1>TextArea</Typography.H1>
             <Grid columnCount={4}>
                 <div>
                     <TextArea

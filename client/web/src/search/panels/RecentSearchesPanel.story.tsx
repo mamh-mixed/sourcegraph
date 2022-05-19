@@ -1,14 +1,14 @@
 import { storiesOf } from '@storybook/react'
 import { parseISO } from 'date-fns'
-import React from 'react'
-import { NEVER, of } from 'rxjs'
+import { noop } from 'lodash'
 
 import { NOOP_TELEMETRY_SERVICE } from '@sourcegraph/shared/src/telemetry/telemetryService'
+import { Typography } from '@sourcegraph/wildcard'
 
 import { WebStory } from '../../components/WebStory'
 
 import { RecentSearchesPanel } from './RecentSearchesPanel'
-import { _fetchRecentSearches } from './utils'
+import { recentSearchesPayload } from './utils'
 
 const { add } = storiesOf('web/search/panels/RecentSearchesPanel', module)
     .addParameters({
@@ -31,8 +31,10 @@ const emptyRecentSearches = {
 
 const props = {
     authenticatedUser: null,
-    fetchRecentSearches: _fetchRecentSearches,
+    recentSearches: { recentSearchesLogs: recentSearchesPayload() },
     now: () => parseISO('2020-09-16T23:15:01Z'),
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-explicit-any
+    fetchMore: noop as any,
     telemetryService: NOOP_TELEMETRY_SERVICE,
 }
 
@@ -40,14 +42,14 @@ add('RecentSearchesPanel', () => (
     <WebStory>
         {() => (
             <div style={{ maxWidth: '32rem' }}>
-                <h2>Populated</h2>
+                <Typography.H2>Populated</Typography.H2>
                 <RecentSearchesPanel {...props} />
 
-                <h2>Loading</h2>
-                <RecentSearchesPanel {...props} fetchRecentSearches={() => NEVER} />
+                <Typography.H2>Loading</Typography.H2>
+                <RecentSearchesPanel {...props} recentSearches={null} />
 
-                <h2>Empty</h2>
-                <RecentSearchesPanel {...props} fetchRecentSearches={() => of(emptyRecentSearches)} />
+                <Typography.H2>Empty</Typography.H2>
+                <RecentSearchesPanel {...props} recentSearches={{ recentSearchesLogs: emptyRecentSearches }} />
             </div>
         )}
     </WebStory>

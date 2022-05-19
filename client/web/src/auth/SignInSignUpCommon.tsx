@@ -1,6 +1,7 @@
+import * as React from 'react'
+
 import classNames from 'classnames'
 import * as H from 'history'
-import * as React from 'react'
 
 import { USERNAME_MAX_LENGTH, VALID_USERNAME_REGEXP } from '../user'
 
@@ -8,7 +9,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
     inputRef?: React.Ref<HTMLInputElement>
 }
 
-export const PasswordInput: React.FunctionComponent<InputProps> = props => {
+export const PasswordInput: React.FunctionComponent<React.PropsWithChildren<InputProps>> = props => {
     const { inputRef, ...other } = props
     return (
         <input
@@ -24,7 +25,7 @@ export const PasswordInput: React.FunctionComponent<InputProps> = props => {
     )
 }
 
-export const EmailInput: React.FunctionComponent<InputProps> = props => {
+export const EmailInput: React.FunctionComponent<React.PropsWithChildren<InputProps>> = props => {
     const { inputRef, ...other } = props
     return (
         <input
@@ -41,7 +42,7 @@ export const EmailInput: React.FunctionComponent<InputProps> = props => {
     )
 }
 
-export const UsernameInput: React.FunctionComponent<InputProps> = props => {
+export const UsernameInput: React.FunctionComponent<React.PropsWithChildren<InputProps>> = props => {
     const { inputRef, ...other } = props
     return (
         <input

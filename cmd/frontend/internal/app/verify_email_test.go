@@ -6,12 +6,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/cockroachdb/errors"
 	mockrequire "github.com/derision-test/go-mockgen/testutil/require"
 
 	"github.com/sourcegraph/sourcegraph/internal/actor"
 	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/types"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 func TestServeVerifyEmail(t *testing.T) {
@@ -32,6 +32,7 @@ func TestServeVerifyEmail(t *testing.T) {
 		db.UsersFunc.SetDefaultReturn(users)
 		db.UserEmailsFunc.SetDefaultReturn(userEmails)
 		db.AuthzFunc.SetDefaultReturn(authz)
+		db.SecurityEventLogsFunc.SetDefaultReturn(database.NewMockSecurityEventLogsStore())
 
 		ctx := context.Background()
 		ctx = actor.WithActor(ctx, &actor.Actor{UID: 1})
@@ -63,6 +64,7 @@ func TestServeVerifyEmail(t *testing.T) {
 		db.UsersFunc.SetDefaultReturn(users)
 		db.UserEmailsFunc.SetDefaultReturn(userEmails)
 		db.AuthzFunc.SetDefaultReturn(authz)
+		db.SecurityEventLogsFunc.SetDefaultReturn(database.NewMockSecurityEventLogsStore())
 
 		ctx := context.Background()
 		ctx = actor.WithActor(ctx, &actor.Actor{UID: 1})

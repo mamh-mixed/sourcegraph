@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 
-	"github.com/cockroachdb/errors"
 	"github.com/keegancsmith/sqlf"
 	"github.com/opentracing/opentracing-go/log"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/database/batch"
 	"github.com/sourcegraph/sourcegraph/internal/database/dbutil"
 	"github.com/sourcegraph/sourcegraph/internal/observation"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 // changesetJobInsertColumns is the list of changeset_jobs columns that are
@@ -58,7 +58,7 @@ var changesetJobColumns = SQLColumns{
 
 // CreateChangesetJob creates the given changeset jobs.
 func (s *Store) CreateChangesetJob(ctx context.Context, cs ...*btypes.ChangesetJob) (err error) {
-	ctx, endObservation := s.operations.createChangesetJob.With(ctx, &err, observation.Args{LogFields: []log.Field{
+	ctx, _, endObservation := s.operations.createChangesetJob.With(ctx, &err, observation.Args{LogFields: []log.Field{
 		log.Int("count", len(cs)),
 	}})
 	defer endObservation(1, observation.Args{})
@@ -111,7 +111,7 @@ func (s *Store) CreateChangesetJob(ctx context.Context, cs ...*btypes.ChangesetJ
 		changesetJobInsertColumns,
 		"",
 		changesetJobColumns,
-		func(rows *sql.Rows) error {
+		func(rows dbutil.Scanner) error {
 			i++
 			return scanChangesetJob(cs[i], rows)
 		},
@@ -126,7 +126,7 @@ type GetChangesetJobOpts struct {
 
 // GetChangesetJob gets a ChangesetJob matching the given options.
 func (s *Store) GetChangesetJob(ctx context.Context, opts GetChangesetJobOpts) (job *btypes.ChangesetJob, err error) {
-	ctx, endObservation := s.operations.getChangesetJob.With(ctx, &err, observation.Args{LogFields: []log.Field{
+	ctx, _, endObservation := s.operations.getChangesetJob.With(ctx, &err, observation.Args{LogFields: []log.Field{
 		log.Int("ID", int(opts.ID)),
 	}})
 	defer endObservation(1, observation.Args{})

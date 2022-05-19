@@ -6,9 +6,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cockroachdb/errors"
-
-	"github.com/sourcegraph/sourcegraph/lib/codeintel/bloomfilter"
 	"github.com/sourcegraph/sourcegraph/lib/codeintel/lsif/conversion/datastructures"
 	"github.com/sourcegraph/sourcegraph/lib/codeintel/precise"
 )
@@ -33,7 +30,6 @@ func groupBundleData(ctx context.Context, state *State) (*precise.GroupedBundleD
 	definitionRows := gatherMonikersLocations(ctx, state, state.DefinitionData, []string{"export"}, func(r Range) int { return r.DefinitionResultID })
 	referenceRows := gatherMonikersLocations(ctx, state, state.ReferenceData, []string{"import", "export"}, func(r Range) int { return r.ReferenceResultID })
 	implementationRows := gatherMonikersLocations(ctx, state, state.DefinitionData, []string{"implementation"}, func(r Range) int { return r.DefinitionResultID })
-	documentation := collectDocumentation(ctx, state)
 	packages := gatherPackages(state)
 	packageReferences, err := gatherPackageReferences(state, packages)
 	if err != nil {
@@ -41,17 +37,14 @@ func groupBundleData(ctx context.Context, state *State) (*precise.GroupedBundleD
 	}
 
 	return &precise.GroupedBundleDataChans{
-		Meta:                  meta,
-		Documents:             documents,
-		ResultChunks:          resultChunks,
-		Definitions:           definitionRows,
-		References:            referenceRows,
-		Implementations:       implementationRows,
-		DocumentationPages:    documentation.pages,
-		DocumentationPathInfo: documentation.pathInfo,
-		DocumentationMappings: documentation.mappings,
-		Packages:              packages,
-		PackageReferences:     packageReferences,
+		Meta:              meta,
+		Documents:         documents,
+		ResultChunks:      resultChunks,
+		Definitions:       definitionRows,
+		References:        referenceRows,
+		Implementations:   implementationRows,
+		Packages:          packages,
+		PackageReferences: packageReferences,
 	}, nil
 }
 
@@ -84,18 +77,18 @@ func serializeBundleDocuments(ctx context.Context, state *State) chan precise.Ke
 
 func serializeDocument(state *State, documentID int) precise.DocumentData {
 	document := precise.DocumentData{
-		Ranges:             make(map[precise.ID]precise.RangeData, state.Contains.SetLen(documentID)),
+		Ranges:             make(map[precise.ID]precise.RangeData, state.Contains.NumIDsForKey(documentID)),
 		HoverResults:       map[precise.ID]string{},
 		Monikers:           map[precise.ID]precise.MonikerData{},
 		PackageInformation: map[precise.ID]precise.PackageInformationData{},
-		Diagnostics:        make([]precise.DiagnosticData, 0, state.Diagnostics.SetLen(documentID)),
+		Diagnostics:        make([]precise.DiagnosticData, 0, state.Diagnostics.NumIDsForKey(documentID)),
 	}
 
-	state.Contains.SetEach(documentID, func(rangeID int) {
+	state.Contains.EachID(documentID, func(rangeID int) {
 		rangeData := state.RangeData[rangeID]
 
-		monikerIDs := make([]precise.ID, 0, state.Monikers.SetLen(rangeID))
-		state.Monikers.SetEach(rangeID, func(monikerID int) {
+		monikerIDs := make([]precise.ID, 0, state.Monikers.NumIDsForKey(rangeID))
+		state.Monikers.EachID(rangeID, func(monikerID int) {
 			moniker := state.MonikerData[monikerID]
 			monikerIDs = append(monikerIDs, toID(monikerID))
 
@@ -124,7 +117,6 @@ func serializeDocument(state *State, documentID int) precise.DocumentData {
 			ReferenceResultID:      toID(rangeData.ReferenceResultID),
 			ImplementationResultID: toID(rangeData.ImplementationResultID),
 			HoverResultID:          toID(rangeData.HoverResultID),
-			DocumentationResultID:  toID(rangeData.DocumentationResultID),
 			MonikerIDs:             monikerIDs,
 		}
 
@@ -134,7 +126,7 @@ func serializeDocument(state *State, documentID int) precise.DocumentData {
 		}
 	})
 
-	state.Diagnostics.SetEach(documentID, func(diagnosticID int) {
+	state.Diagnostics.EachID(documentID, func(diagnosticID int) {
 		for _, diagnostic := range state.DiagnosticResults[diagnosticID] {
 			document.Diagnostics = append(document.Diagnostics, precise.DiagnosticData{
 				Severity:       diagnostic.Severity,
@@ -266,7 +258,7 @@ func gatherMonikersLocations(ctx context.Context, state *State, data map[int]*da
 	monikers := datastructures.NewDefaultIDSetMap()
 	for rangeID, r := range state.RangeData {
 		if resultID := getResultID(r); resultID != 0 {
-			monikers.SetUnion(resultID, state.Monikers.Get(rangeID))
+			monikers.UnionIDSet(resultID, state.Monikers.Get(rangeID))
 		}
 	}
 
@@ -444,18 +436,12 @@ func gatherPackageReferences(state *State, packageDefinitions []precise.Package)
 
 	packageReferences := make([]precise.PackageReference, 0, len(uniques))
 	for _, v := range uniques {
-		filter, err := bloomfilter.CreateFilter(v.Identifiers)
-		if err != nil {
-			return nil, errors.Wrap(err, "bloomfilter.CreateFilter")
-		}
-
 		packageReferences = append(packageReferences, precise.PackageReference{
 			Package: precise.Package{
 				Scheme:  v.Scheme,
 				Name:    v.Name,
 				Version: v.Version,
 			},
-			Filter: filter,
 		})
 	}
 

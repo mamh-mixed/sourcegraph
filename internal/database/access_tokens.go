@@ -9,12 +9,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cockroachdb/errors"
 	"github.com/keegancsmith/sqlf"
 	"github.com/lib/pq"
 
 	"github.com/sourcegraph/sourcegraph/internal/database/basestore"
-	"github.com/sourcegraph/sourcegraph/internal/database/dbutil"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 // AccessToken describes an access token. The actual token (that a caller must supply to
@@ -129,11 +128,6 @@ type accessTokenStore struct {
 }
 
 var _ AccessTokenStore = (*accessTokenStore)(nil)
-
-// AccessTokens instantiates and returns a new AccessTokenStore with prepared statements.
-func AccessTokens(db dbutil.DB) AccessTokenStore {
-	return &accessTokenStore{Store: basestore.NewWithDB(db, sql.TxOptions{})}
-}
 
 // AccessTokensWith instantiates and returns a new AccessTokenStore using the other store handle.
 func AccessTokensWith(other basestore.ShareableStore) AccessTokenStore {
@@ -327,9 +321,6 @@ func (s *accessTokenStore) DeleteByID(ctx context.Context, id int64) error {
 }
 
 func (s *accessTokenStore) HardDeleteByID(ctx context.Context, id int64) error {
-	if Mocks.AccessTokens.HardDeleteByID != nil {
-		return Mocks.AccessTokens.HardDeleteByID(id)
-	}
 	res, err := s.ExecResult(ctx, sqlf.Sprintf("DELETE FROM access_tokens WHERE id = %s", id))
 	if err != nil {
 		return err

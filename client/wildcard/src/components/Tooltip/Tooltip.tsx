@@ -1,11 +1,14 @@
+import React, { ReactNode, useMemo } from 'react'
+
 import classNames from 'classnames'
 import Popper from 'popper.js'
-import React, { ReactNode, useMemo } from 'react'
+// eslint-disable-next-line no-restricted-imports
 import { Tooltip as BootstrapTooltip } from 'reactstrap'
 
-import styles from './Tooltip.module.scss'
 import { useTooltipState } from './useTooltipState'
 import { getTooltipStyle } from './utils'
+
+import styles from './Tooltip.module.scss'
 
 interface TooltipProps {
     className?: string
@@ -27,7 +30,7 @@ const TOOLTIP_MODIFIERS: Popper.Modifiers = {
  * This component should typically only need to be rendered once in a React tree.
  * If you need to attach a tooltip to an specific element, simply add the `data-tooltip` attribute to that element.
  */
-export const Tooltip: React.FunctionComponent<TooltipProps> = ({ className }) => {
+export const Tooltip: React.FunctionComponent<React.PropsWithChildren<TooltipProps>> = ({ className }) => {
     const { subject, content, subjectSeq, placement = 'auto', delay } = useTooltipState()
 
     const tooltipStyle = useMemo(() => getTooltipStyle(placement), [placement])

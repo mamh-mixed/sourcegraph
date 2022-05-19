@@ -22,6 +22,10 @@ export AWS_CODE_COMMIT_PASSWORD=<REDACTED>
 export BITBUCKET_SERVER_URL=<REDACTED>
 export BITBUCKET_SERVER_TOKEN=<REDACTED>
 export BITBUCKET_SERVER_USERNAME=<REDACTED>
+
+export PERFORCE_PORT=<REDACTED>
+export PERFORCE_USER=<REDACTED>
+export PERFORCE_PASSWORD=<REDACTED>
 ```
 
 You need to run `direnv allow` after editing the `.envrc` file (it is suggested to place the `.envrc` file under `dev/gqltest`).
@@ -45,7 +49,7 @@ GraphQL-based integration tests are running against a live Sourcegraph instance,
 docker run --publish 7080:7080 --rm sourcegraph/server:insiders
 ```
 
-Once the the instance is live (look for the log line `✱ Sourcegraph is ready at: http://127.0.0.1:7080`), you can open another terminal tab to run these tests under this directory (`dev/gqltest`):
+Once the instance is live (look for the log line `✱ Sourcegraph is ready at: http://127.0.0.1:7080`), you can open another terminal tab to run these tests under this directory (`dev/gqltest`):
 
 ```sh
 → go test -long

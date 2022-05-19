@@ -1,5 +1,6 @@
-import classNames from 'classnames'
 import React from 'react'
+
+import classNames from 'classnames'
 
 import * as GQL from '@sourcegraph/shared/src/schema'
 import { Link } from '@sourcegraph/wildcard'
@@ -7,9 +8,11 @@ import { Link } from '@sourcegraph/wildcard'
 /**
  * Displays an inline list of email addresses for an account.
  */
-export const AccountEmailAddresses: React.FunctionComponent<{
-    emails: Pick<GQL.IUserEmail, 'email' | 'verified'>[]
-}> = ({ emails }) => (
+export const AccountEmailAddresses: React.FunctionComponent<
+    React.PropsWithChildren<{
+        emails: Pick<GQL.IUserEmail, 'email' | 'verified'>[]
+    }>
+> = ({ emails }) => (
     <>
         {emails.map(({ email, verified }, index) => (
             <span

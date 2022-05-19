@@ -1,35 +1,33 @@
+import React from 'react'
+
 import { VisuallyHidden } from '@reach/visually-hidden'
 import CloseIcon from 'mdi-react/CloseIcon'
-import React from 'react'
 import { useHistory } from 'react-router-dom'
 
 import { ErrorAlert } from '@sourcegraph/branded/src/components/alerts'
 import { isErrorLike } from '@sourcegraph/common'
-import { Button, Modal } from '@sourcegraph/wildcard'
+import { Button, Modal, Typography } from '@sourcegraph/wildcard'
 
 import { LoaderButton } from '../../../../../../../components/LoaderButton'
 import { CustomInsightDashboard } from '../../../../../core/types'
 
-import styles from './DeleteDashobardModal.module.scss'
 import { useDeleteDashboardHandler } from './hooks/use-delete-dashboard-handler'
+
+import styles from './DeleteDashobardModal.module.scss'
 
 export interface DeleteDashboardModalProps {
     dashboard: CustomInsightDashboard
     onClose: () => void
 }
 
-export const DeleteDashboardModal: React.FunctionComponent<DeleteDashboardModalProps> = props => {
+export const DeleteDashboardModal: React.FunctionComponent<
+    React.PropsWithChildren<DeleteDashboardModalProps>
+> = props => {
     const { dashboard, onClose } = props
     const history = useHistory()
 
     const handleDeleteSuccess = (): void => {
-        if (!dashboard.owner) {
-            history.push('/insights/dashboards')
-            onClose()
-            return
-        }
-
-        history.push(`/insights/dashboards/${dashboard.owner.id}`)
+        history.push('/insights/dashboards')
         onClose()
     }
 
@@ -47,7 +45,7 @@ export const DeleteDashboardModal: React.FunctionComponent<DeleteDashboardModalP
                 <CloseIcon />
             </Button>
 
-            <h2 className="text-danger">Delete ”{dashboard.title}”</h2>
+            <Typography.H2 className="text-danger">Delete ”{dashboard.title}”</Typography.H2>
 
             <span className="d-block mb-4">
                 This can't be undone. You will still be able to access insights from this dashboard in ”All insights”.

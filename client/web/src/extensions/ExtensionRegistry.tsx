@@ -1,5 +1,6 @@
-import * as H from 'history'
 import React, { useEffect, useState, useCallback } from 'react'
+
+import * as H from 'history'
 import { concat, of, timer } from 'rxjs'
 import { debounce, delay, map, switchMap, takeUntil, tap, distinctUntilChanged } from 'rxjs/operators'
 
@@ -115,7 +116,7 @@ const extensionRegistryQuery = gql`
 export type ConfiguredExtensionCache = Map<string, MinimalConfiguredRegistryExtension>
 
 /** A page that displays overview information about the available extensions. */
-export const ExtensionRegistry: React.FunctionComponent<Props> = props => {
+export const ExtensionRegistry: React.FunctionComponent<React.PropsWithChildren<Props>> = props => {
     useEffect(() => eventLogger.logViewEvent('ExtensionsOverview'), [])
 
     const { history, location, settingsCascade, platformContext, authenticatedUser } = props

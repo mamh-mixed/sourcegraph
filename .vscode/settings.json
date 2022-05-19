@@ -3,7 +3,7 @@
     "**/node_modules": true,
     "**/bower_components": true,
     "dist": true,
-    "ui/assets": true,
+    "ui/assets/!(*.go)": true,
     "client/browser/build": true,
     "**/coverage": true,
     "**/out": true,
@@ -34,6 +34,7 @@
   "editor.formatOnSave": true,
   "go.useLanguageServer": true,
   "gopls": {
+    "build.allowImplicitNetworkAccess": true,
     "local": "github.com/sourcegraph/sourcegraph",
   },
   "jest.pathToJest": "yarn -s test",
@@ -72,9 +73,16 @@
     "./client/extension-api",
     "./client/template-parser",
     "./client/codeintellify",
+    "./client/client-api",
   ],
   "go.lintTool": "golangci-lint",
   "shellformat.flag": "-i 2 -ci",
   "vscode-graphql.useSchemaFileDefinitions": true,
   "jest.jestCommandLine": "yarn -s test",
+  "nixEnvSelector.nixFile": "${workspaceRoot}/shell.nix",
+  "nix.enableLanguageServer": true,
+  "[nix]": {
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2,
+  },
 }

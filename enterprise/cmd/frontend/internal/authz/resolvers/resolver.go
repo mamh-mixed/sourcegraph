@@ -5,8 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/RoaringBitmap/roaring"
-	"github.com/cockroachdb/errors"
 	"github.com/graph-gophers/graphql-go"
 	"github.com/inconshreveable/log15"
 
@@ -24,6 +22,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/repoupdater"
 	"github.com/sourcegraph/sourcegraph/internal/repoupdater/protocol"
 	"github.com/sourcegraph/sourcegraph/internal/types"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 var errDisabledSourcegraphDotCom = errors.New("not enabled on sourcegraph.com")
@@ -102,7 +101,7 @@ func (r *Resolver) SetRepositoryPermissionsForUsers(ctx context.Context, args *g
 	p := &authz.RepoPermissions{
 		RepoID:  int32(repoID),
 		Perm:    authz.Read, // Note: We currently only support read for repository permissions.
-		UserIDs: roaring.NewBitmap(),
+		UserIDs: map[int32]struct{}{},
 	}
 	cfg := globals.PermissionsUserMapping()
 	switch cfg.BindID {
@@ -113,7 +112,7 @@ func (r *Resolver) SetRepositoryPermissionsForUsers(ctx context.Context, args *g
 		}
 
 		for i := range emails {
-			p.UserIDs.Add(uint32(emails[i].UserID))
+			p.UserIDs[emails[i].UserID] = struct{}{}
 			delete(bindIDSet, emails[i].Email)
 		}
 
@@ -124,7 +123,7 @@ func (r *Resolver) SetRepositoryPermissionsForUsers(ctx context.Context, args *g
 		}
 
 		for i := range users {
-			p.UserIDs.Add(uint32(users[i].ID))
+			p.UserIDs[users[i].ID] = struct{}{}
 			delete(bindIDSet, users[i].Username)
 		}
 
@@ -153,6 +152,34 @@ func (r *Resolver) SetRepositoryPermissionsForUsers(ctx context.Context, args *g
 		return nil, errors.Wrap(err, "set repository permissions")
 	} else if err = txs.SetRepoPendingPermissions(ctx, accounts, p); err != nil {
 		return nil, errors.Wrap(err, "set repository pending permissions")
+	}
+
+	return &graphqlbackend.EmptyResponse{}, nil
+}
+
+func (r *Resolver) SetRepositoryPermissionsUnrestricted(ctx context.Context, args *graphqlbackend.RepoUnrestrictedArgs) (*graphqlbackend.EmptyResponse, error) {
+	if envvar.SourcegraphDotComMode() {
+		return nil, errDisabledSourcegraphDotCom
+	}
+	if err := r.checkLicense(); err != nil {
+		return nil, err
+	}
+	// 🚨 SECURITY: Only site admins can mutate repository permissions.
+	if err := backend.CheckCurrentUserIsSiteAdmin(ctx, r.db); err != nil {
+		return nil, err
+	}
+
+	ids := make([]int32, 0, len(args.Repositories))
+	for _, id := range args.Repositories {
+		repoID, err := graphqlbackend.UnmarshalRepositoryID(id)
+		if err != nil {
+			return nil, errors.Wrap(err, "unmarshalling id")
+		}
+		ids = append(ids, int32(repoID))
+	}
+
+	if err := r.db.Perms().SetRepoPermissionsUnrestricted(ctx, ids, args.Unrestricted); err != nil {
+		return nil, errors.Wrap(err, "setting unrestricted field")
 	}
 
 	return &graphqlbackend.EmptyResponse{}, nil
@@ -302,7 +329,7 @@ func (r *Resolver) AuthorizedUserRepositories(ctx context.Context, args *graphql
 		return nil, err
 	}
 
-	var ids *roaring.Bitmap
+	var ids []int32
 	if user != nil {
 		p := &authz.UserPermissions{
 			UserID: user.ID,
@@ -310,7 +337,7 @@ func (r *Resolver) AuthorizedUserRepositories(ctx context.Context, args *graphql
 			Type:   authz.PermRepos,
 		}
 		err = r.db.Perms().LoadUserPermissions(ctx, p)
-		ids = p.IDs
+		ids = p.GenerateSortedIDsSlice()
 	} else {
 		p := &authz.UserPendingPermissions{
 			ServiceType: authz.SourcegraphServiceType,
@@ -320,14 +347,14 @@ func (r *Resolver) AuthorizedUserRepositories(ctx context.Context, args *graphql
 			Type:        authz.PermRepos,
 		}
 		err = r.db.Perms().LoadUserPendingPermissions(ctx, p)
-		ids = p.IDs
+		ids = p.GenerateSortedIDsSlice()
 	}
 	if err != nil && err != authz.ErrPermsNotFound {
 		return nil, err
 	}
 	// If no row is found, we return an empty list to the consumer.
 	if err == authz.ErrPermsNotFound {
-		ids = roaring.NewBitmap()
+		ids = []int32{}
 	}
 
 	return &repositoryConnectionResolver{
@@ -372,21 +399,22 @@ func (r *Resolver) AuthorizedUsers(ctx context.Context, args *graphqlbackend.Rep
 	}
 	// If no row is found, we return an empty list to the consumer.
 	if err == authz.ErrPermsNotFound {
-		p.UserIDs = roaring.NewBitmap()
+		p.UserIDs = map[int32]struct{}{}
 	}
 
 	return &userConnectionResolver{
 		db:    r.db,
-		ids:   p.UserIDs,
+		ids:   p.GenerateSortedIDsSlice(),
 		first: args.First,
 		after: args.After,
 	}, nil
 }
 
 type permissionsInfoResolver struct {
-	perms     authz.Perms
-	syncedAt  time.Time
-	updatedAt time.Time
+	perms        authz.Perms
+	syncedAt     time.Time
+	updatedAt    time.Time
+	unrestricted bool
 }
 
 func (r *permissionsInfoResolver) Permissions() []string {
@@ -402,6 +430,10 @@ func (r *permissionsInfoResolver) SyncedAt() *graphqlbackend.DateTime {
 
 func (r *permissionsInfoResolver) UpdatedAt() graphqlbackend.DateTime {
 	return graphqlbackend.DateTime{Time: r.updatedAt}
+}
+
+func (r *permissionsInfoResolver) Unrestricted() bool {
+	return r.unrestricted
 }
 
 func (r *Resolver) RepositoryPermissionsInfo(ctx context.Context, id graphql.ID) (graphqlbackend.PermissionsInfoResolver, error) {
@@ -433,9 +465,10 @@ func (r *Resolver) RepositoryPermissionsInfo(ctx context.Context, id graphql.ID)
 	}
 
 	return &permissionsInfoResolver{
-		perms:     p.Perm,
-		syncedAt:  p.SyncedAt,
-		updatedAt: p.UpdatedAt,
+		perms:        p.Perm,
+		syncedAt:     p.SyncedAt,
+		updatedAt:    p.UpdatedAt,
+		unrestricted: p.Unrestricted,
 	}, nil
 }
 

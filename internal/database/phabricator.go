@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/cockroachdb/errors"
 	"github.com/inconshreveable/log15"
 
 	"github.com/sourcegraph/sourcegraph/internal/api"
@@ -13,6 +12,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/database/dbutil"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc"
 	"github.com/sourcegraph/sourcegraph/internal/types"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 	"github.com/sourcegraph/sourcegraph/schema"
 )
 
@@ -50,7 +50,7 @@ func (s *phabricatorStore) Transact(ctx context.Context) (PhabricatorStore, erro
 }
 
 type errPhabricatorRepoNotFound struct {
-	args []interface{}
+	args []any
 }
 
 func (err errPhabricatorRepoNotFound) Error() string {
@@ -105,7 +105,7 @@ func (p *phabricatorStore) CreateIfNotExists(ctx context.Context, callsign strin
 	return repo, nil
 }
 
-func (p *phabricatorStore) getBySQL(ctx context.Context, query string, args ...interface{}) ([]*types.PhabricatorRepo, error) {
+func (p *phabricatorStore) getBySQL(ctx context.Context, query string, args ...any) ([]*types.PhabricatorRepo, error) {
 	rows, err := p.Handle().DB().QueryContext(ctx, "SELECT id, callsign, repo_name, url FROM phabricator_repos "+query, args...)
 	if err != nil {
 		return nil, err
@@ -127,7 +127,7 @@ func (p *phabricatorStore) getBySQL(ctx context.Context, query string, args ...i
 	return repos, nil
 }
 
-func (p *phabricatorStore) getOneBySQL(ctx context.Context, query string, args ...interface{}) (*types.PhabricatorRepo, error) {
+func (p *phabricatorStore) getOneBySQL(ctx context.Context, query string, args ...any) (*types.PhabricatorRepo, error) {
 	rows, err := p.getBySQL(ctx, query, args...)
 	if err != nil {
 		return nil, err

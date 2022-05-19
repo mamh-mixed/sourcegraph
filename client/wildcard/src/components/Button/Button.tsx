@@ -1,11 +1,14 @@
-import classNames from 'classnames'
 import React from 'react'
 
+import classNames from 'classnames'
+
+import { useWildcardTheme } from '../../hooks/useWildcardTheme'
 import { ForwardReferenceComponent } from '../../types'
 
-import styles from './Button.module.scss'
 import { BUTTON_VARIANTS, BUTTON_SIZES, BUTTON_DISPLAY } from './constants'
 import { getButtonSize, getButtonStyle, getButtonDisplay } from './utils'
+
+import styles from './Button.module.scss'
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     /**
@@ -64,17 +67,19 @@ export const Button = React.forwardRef(
         reference
     ) => {
         const tooltip = attributes['data-tooltip']
+        const { isBranded } = useWildcardTheme()
+
+        const brandedButtonClassname = classNames(
+            styles.btn,
+            variant && getButtonStyle({ variant, outline }),
+            display && getButtonDisplay({ display }),
+            size && getButtonSize({ size })
+        )
 
         const buttonComponent = (
             <Component
                 ref={reference}
-                className={classNames(
-                    styles.btn,
-                    variant && getButtonStyle({ variant, outline }),
-                    display && getButtonDisplay({ display }),
-                    size && getButtonSize({ size }),
-                    className
-                )}
+                className={classNames(isBranded && brandedButtonClassname, className)}
                 type={type}
                 disabled={disabled}
                 {...attributes}
@@ -102,3 +107,5 @@ export const Button = React.forwardRef(
         return buttonComponent
     }
 ) as ForwardReferenceComponent<'button', ButtonProps>
+
+Button.displayName = 'Button'

@@ -2,13 +2,12 @@ import * as comlink from 'comlink'
 import { BehaviorSubject, Observable, ReplaySubject, Subject } from 'rxjs'
 import * as sourcegraph from 'sourcegraph'
 
+import { Contributions } from '@sourcegraph/client-api'
 import { Context } from '@sourcegraph/template-parser'
 
 import { ConfiguredExtension } from '../../extensions/extension'
 import { SettingsCascade } from '../../settings/settings'
-import { ReferenceCounter } from '../../util/ReferenceCounter'
 import { MainThreadAPI } from '../contract'
-import { Contributions } from '../protocol'
 import { ExtensionViewer, ViewerUpdate } from '../viewerTypes'
 
 import { ExecutableExtension, observeActiveExtensions } from './activation'
@@ -23,12 +22,14 @@ import {
     PlainNotification,
     ProgressNotification,
 } from './extensionHostApi'
+import { ReferenceCounter } from './utils/ReferenceCounter'
 
 export function createExtensionHostState(
     initData: Pick<InitData, 'initialSettings' | 'clientApplication'>,
-    mainAPI: comlink.Remote<MainThreadAPI>
+    mainAPI: comlink.Remote<MainThreadAPI>,
+    mainThreadAPIInitializations: Observable<boolean>
 ): ExtensionHostState {
-    const { activeLanguages, activeExtensions } = observeActiveExtensions(mainAPI)
+    const { activeLanguages, activeExtensions } = observeActiveExtensions(mainAPI, mainThreadAPIInitializations)
 
     return {
         haveInitialExtensionsLoaded: new BehaviorSubject<boolean>(false),

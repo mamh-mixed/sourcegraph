@@ -2,7 +2,8 @@ package operations
 
 import (
 	"fmt"
-	"regexp"
+
+	"github.com/grafana/regexp"
 
 	bk "github.com/sourcegraph/sourcegraph/enterprise/dev/ci/internal/buildkite"
 )
@@ -87,6 +88,8 @@ func (o *Set) Apply(pipeline *bk.Pipeline) {
 					Key:   item.set.Key(),
 					Group: item.set.name,
 				},
+				BeforeEveryStepOpts: pipeline.BeforeEveryStepOpts,
+				AfterEveryStepOpts:  pipeline.AfterEveryStepOpts,
 			}
 			item.set.Apply(group)
 			pipeline.Steps = append(pipeline.Steps, group)

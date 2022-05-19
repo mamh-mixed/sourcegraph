@@ -10,7 +10,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/cockroachdb/errors"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 const (
@@ -43,7 +43,7 @@ func newClient() (*client, error) {
 
 func (s *client) search(ctx context.Context, query, queryName string) (*metrics, error) {
 	var body bytes.Buffer
-	if err := json.NewEncoder(&body).Encode(map[string]interface{}{
+	if err := json.NewEncoder(&body).Encode(map[string]any{
 		"query":     graphQLQuery,
 		"variables": map[string]string{"query": query},
 	}); err != nil {
@@ -84,7 +84,7 @@ func (s *client) search(ctx context.Context, query, queryName string) (*metrics,
 	return &metrics{
 		took:        duration,
 		firstResult: duration,
-		matchCount:  respDec.Data.Search.Results.ResultCount,
+		matchCount:  respDec.Data.Search.Results.MatchCount,
 		trace:       resp.Header.Get("x-trace"),
 	}, nil
 }

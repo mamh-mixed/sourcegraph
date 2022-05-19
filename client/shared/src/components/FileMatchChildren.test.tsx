@@ -1,13 +1,11 @@
 import { cleanup } from '@testing-library/react'
 import * as H from 'history'
-import * as React from 'react'
 import _VisibilitySensor from 'react-visibility-sensor'
 import { of } from 'rxjs'
 import sinon from 'sinon'
 
-import { renderWithRouter } from '@sourcegraph/shared/src/testing/render-with-router'
-
 import { NOOP_TELEMETRY_SERVICE } from '../telemetry/telemetryService'
+import { renderWithBrandedContext } from '../testing'
 import {
     RESULT,
     HIGHLIGHTED_FILE_LINES_SIMPLE_REQUEST,
@@ -66,7 +64,7 @@ describe('FileMatchChildren', () => {
             ideal.
         */
         const fetchHighlightedFileLineRanges = sinon.spy(context => of(HIGHLIGHTED_FILE_LINES))
-        renderWithRouter(
+        renderWithBrandedContext(
             <FileMatchChildren {...defaultProps} fetchHighlightedFileLineRanges={fetchHighlightedFileLineRanges} />
         )
         sinon.assert.calledOnce(fetchHighlightedFileLineRanges)

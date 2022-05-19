@@ -1,7 +1,7 @@
-import { render } from '@testing-library/react'
 import { createMemoryHistory, createLocation } from 'history'
-import React from 'react'
 import { MemoryRouter } from 'react-router'
+
+import { renderWithBrandedContext } from '@sourcegraph/shared/src/testing'
 
 import { AuthenticatedUser } from '../auth'
 import { SourcegraphContext } from '../jscontext'
@@ -28,7 +28,7 @@ describe('SignInPage', () => {
 
     it('renders sign in page (server)', () => {
         expect(
-            render(
+            renderWithBrandedContext(
                 <MemoryRouter>
                     <SignInPage
                         {...commonProps}
@@ -48,7 +48,7 @@ describe('SignInPage', () => {
 
     it('renders sign in page (cloud)', () => {
         expect(
-            render(
+            renderWithBrandedContext(
                 <MemoryRouter>
                     <SignInPage
                         {...commonProps}
@@ -76,7 +76,7 @@ describe('SignInPage', () => {
         } as AuthenticatedUser
 
         expect(
-            render(
+            renderWithBrandedContext(
                 <MemoryRouter>
                     <SignInPage
                         {...commonProps}

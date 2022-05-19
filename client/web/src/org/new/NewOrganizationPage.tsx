@@ -1,5 +1,6 @@
-import * as H from 'history'
 import React, { useCallback, useEffect, useState } from 'react'
+
+import * as H from 'history'
 
 import { ErrorAlert } from '@sourcegraph/branded/src/components/alerts'
 import { Form } from '@sourcegraph/branded/src/components/Form'
@@ -18,7 +19,7 @@ interface Props {
     history: H.History
 }
 
-export const NewOrganizationPage: React.FunctionComponent<Props> = ({ history }) => {
+export const NewOrganizationPage: React.FunctionComponent<React.PropsWithChildren<Props>> = ({ history }) => {
     useEffect(() => {
         eventLogger.logViewEvent('NewOrg')
     }, [])

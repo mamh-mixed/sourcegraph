@@ -5,11 +5,11 @@ import (
 	"sort"
 	"time"
 
-	"github.com/cockroachdb/errors"
 	"github.com/inconshreveable/log15"
 
-	store "github.com/sourcegraph/sourcegraph/enterprise/internal/codeintel/stores/dbstore"
+	store "github.com/sourcegraph/sourcegraph/internal/codeintel/stores/dbstore"
 	"github.com/sourcegraph/sourcegraph/internal/goroutine"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 type hardDeleter struct {
@@ -18,8 +18,10 @@ type hardDeleter struct {
 	metrics   *metrics
 }
 
-var _ goroutine.Handler = &hardDeleter{}
-var _ goroutine.ErrorHandler = &hardDeleter{}
+var (
+	_ goroutine.Handler      = &hardDeleter{}
+	_ goroutine.ErrorHandler = &hardDeleter{}
+)
 
 // NewHardDeleter returns a background routine that periodically hard-deletes all
 // soft-deleted upload records. Each upload record marked as soft-deleted in the
@@ -42,9 +44,10 @@ const uploadsBatchSize = 100
 
 func (d *hardDeleter) Handle(ctx context.Context) error {
 	options := store.GetUploadsOptions{
-		State:        "deleted",
-		Limit:        uploadsBatchSize,
-		AllowExpired: true,
+		State:            "deleted",
+		Limit:            uploadsBatchSize,
+		AllowExpired:     true,
+		AllowDeletedRepo: true,
 	}
 
 	for {

@@ -2,25 +2,21 @@ package background
 
 import (
 	"context"
-	"strings"
 	"time"
+
+	"github.com/sourcegraph/sourcegraph/enterprise/internal/insights/query/querybuilder"
 
 	"github.com/inconshreveable/log15"
 
-	"github.com/sourcegraph/sourcegraph/internal/insights/priority"
-
-	"github.com/sourcegraph/sourcegraph/enterprise/internal/insights/types"
-
-	"github.com/sourcegraph/sourcegraph/enterprise/internal/insights/store"
-
-	"github.com/cockroachdb/errors"
-	"github.com/hashicorp/go-multierror"
-
 	"github.com/sourcegraph/sourcegraph/enterprise/internal/insights/background/queryrunner"
+	"github.com/sourcegraph/sourcegraph/enterprise/internal/insights/store"
+	"github.com/sourcegraph/sourcegraph/enterprise/internal/insights/types"
 	"github.com/sourcegraph/sourcegraph/internal/database/basestore"
 	"github.com/sourcegraph/sourcegraph/internal/goroutine"
+	"github.com/sourcegraph/sourcegraph/internal/insights/priority"
 	"github.com/sourcegraph/sourcegraph/internal/metrics"
 	"github.com/sourcegraph/sourcegraph/internal/observation"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 // newInsightEnqueuer returns a background goroutine which will periodically find all of the search
@@ -73,7 +69,7 @@ func discoverAndEnqueueInsights(
 	}
 	err = enqueue(ctx, recordingSeries, store.RecordMode, insightStore.StampRecording, queryRunnerEnqueueJob)
 	if err != nil {
-		multi = multierror.Append(multi, err)
+		multi = errors.Append(multi, err)
 	}
 
 	log15.Info("enqueuing indexed insight snapshots")
@@ -83,7 +79,7 @@ func discoverAndEnqueueInsights(
 	}
 	err = enqueue(ctx, snapshotSeries, store.SnapshotMode, insightStore.StampSnapshot, queryRunnerEnqueueJob)
 	if err != nil {
-		multi = multierror.Append(multi, err)
+		multi = errors.Append(multi, err)
 	}
 
 	return multi
@@ -107,16 +103,23 @@ func enqueue(ctx context.Context, dataSeries []types.InsightSeries, mode store.P
 		}
 		uniqueSeries[seriesID] = series
 
-		err := enqueueQueryRunnerJob(ctx, &queryrunner.Job{
+		// Construct the search query that will generate data for this repository and time (revision) tuple.
+		modifiedQuery, err := querybuilder.GlobalQuery(series.Query)
+		if err != nil {
+			multi = errors.Append(multi, errors.Wrapf(err, "GlobalQuery series_id:%s", seriesID))
+			continue
+		}
+
+		err = enqueueQueryRunnerJob(ctx, &queryrunner.Job{
 			SeriesID:    seriesID,
-			SearchQuery: withCountUnlimited(series.Query),
+			SearchQuery: modifiedQuery,
 			State:       "queued",
 			Priority:    int(priority.High),
 			Cost:        int(priority.Indexed),
 			PersistMode: string(mode),
 		})
 		if err != nil {
-			multi = multierror.Append(multi, errors.Wrapf(err, "failed to enqueue insight series_id: %s", seriesID))
+			multi = errors.Append(multi, errors.Wrapf(err, "failed to enqueue insight series_id: %s", seriesID))
 			continue
 		}
 
@@ -124,24 +127,11 @@ func enqueue(ctx context.Context, dataSeries []types.InsightSeries, mode store.P
 		// at-least-once semantics by waiting until the queue transaction is complete and without error.
 		_, err = stampFunc(ctx, series)
 		if err != nil {
-			multi = multierror.Append(multi, errors.Wrapf(err, "failed to stamp insight series_id: %s", seriesID))
+			multi = errors.Append(multi, errors.Wrapf(err, "failed to stamp insight series_id: %s", seriesID))
 			continue // might as well try the other insights and just skip this one
 		}
 		log15.Info("queued global search for insight recording", "series_id", series.SeriesID)
 	}
 
 	return multi
-}
-
-// withCountUnlimited adds `count:9999999` to the given search query string iff `count:` does not
-// exist in the query string. This is extremely important as otherwise the number of results our
-// search query would return would be incomplete and fluctuate.
-//
-// TODO(slimsag): future: we should pull in the search query parser to avoid cases where `count:`
-// is actually e.g. a search query like `content:"count:"`.
-func withCountUnlimited(s string) string {
-	if strings.Contains(s, "count:") {
-		return s
-	}
-	return s + " count:all"
 }

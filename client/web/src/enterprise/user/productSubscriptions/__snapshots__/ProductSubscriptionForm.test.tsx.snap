@@ -39,7 +39,7 @@ exports[`ProductSubscriptionForm edit existing subscription 1`] = `
             </div>
           </div>
           <h4
-            class="mt-2 mb-0"
+            class="h4 mt-2 mb-0"
           >
             Plan
           </h4>
@@ -47,7 +47,7 @@ exports[`ProductSubscriptionForm edit existing subscription 1`] = `
             class="product-plan-form-control"
           >
             <div
-              class="loadingSpinner icon-inline"
+              class="iconInline loadingSpinner"
             />
           </div>
         </div>
@@ -55,7 +55,7 @@ exports[`ProductSubscriptionForm edit existing subscription 1`] = `
           class="col-md-6 mt-3 mt-md-0"
         >
           <h3
-            class="mt-2 mb-0"
+            class="h3 mt-2 mb-0"
           >
             Billing
           </h3>
@@ -66,7 +66,7 @@ exports[`ProductSubscriptionForm edit existing subscription 1`] = `
               class="form-text mb-2"
             >
               <div
-                class="loadingSpinner icon-inline"
+                class="iconInline loadingSpinner"
               />
             </div>
           </div>
@@ -135,7 +135,7 @@ exports[`ProductSubscriptionForm new subscription for anonymous viewer (no accou
             </div>
           </div>
           <h4
-            class="mt-2 mb-0"
+            class="h4 mt-2 mb-0"
           >
             Plan
           </h4>
@@ -143,7 +143,7 @@ exports[`ProductSubscriptionForm new subscription for anonymous viewer (no accou
             class="product-plan-form-control"
           >
             <div
-              class="loadingSpinner icon-inline"
+              class="iconInline loadingSpinner"
             />
           </div>
         </div>
@@ -151,7 +151,7 @@ exports[`ProductSubscriptionForm new subscription for anonymous viewer (no accou
           class="col-md-6 mt-3 mt-md-0"
         >
           <h3
-            class="mt-2 mb-0"
+            class="h3 mt-2 mb-0"
           >
             Billing
           </h3>
@@ -168,7 +168,7 @@ exports[`ProductSubscriptionForm new subscription for anonymous viewer (no accou
             class="form-group mt-3"
           >
             <a
-              class="btn btnPrimary btnLg w-100 center"
+              class="anchorLink btn btnPrimary btnLg w-100 center"
               href="/sign-up?returnTo=%2Fsubscriptions%2Fnew"
             >
               Create account or sign in to continue
@@ -252,7 +252,7 @@ exports[`ProductSubscriptionForm new subscription for existing account 1`] = `
             </div>
           </div>
           <h4
-            class="mt-2 mb-0"
+            class="h4 mt-2 mb-0"
           >
             Plan
           </h4>
@@ -260,7 +260,7 @@ exports[`ProductSubscriptionForm new subscription for existing account 1`] = `
             class="product-plan-form-control"
           >
             <div
-              class="loadingSpinner icon-inline"
+              class="iconInline loadingSpinner"
             />
           </div>
         </div>
@@ -268,7 +268,7 @@ exports[`ProductSubscriptionForm new subscription for existing account 1`] = `
           class="col-md-6 mt-3 mt-md-0"
         >
           <h3
-            class="mt-2 mb-0"
+            class="h3 mt-2 mb-0"
           >
             Billing
           </h3>

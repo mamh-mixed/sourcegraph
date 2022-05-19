@@ -1,7 +1,8 @@
-import TwitterIcon from 'mdi-react/TwitterIcon'
 import * as React from 'react'
 
-import { ButtonLink } from '@sourcegraph/wildcard'
+import TwitterIcon from 'mdi-react/TwitterIcon'
+
+import { ButtonLink, Icon } from '@sourcegraph/wildcard'
 
 export interface TweetFeedbackProps {
     score: number
@@ -10,7 +11,10 @@ export interface TweetFeedbackProps {
 
 const SCORE_TO_TWEET = 9
 
-export const TweetFeedback: React.FunctionComponent<TweetFeedbackProps> = ({ feedback, score }) => {
+export const TweetFeedback: React.FunctionComponent<React.PropsWithChildren<TweetFeedbackProps>> = ({
+    feedback,
+    score,
+}) => {
     if (score >= SCORE_TO_TWEET) {
         const url = new URL('https://twitter.com/intent/tweet')
         url.searchParams.set('text', `After using @sourcegraph: ${feedback}`)
@@ -26,7 +30,7 @@ export const TweetFeedback: React.FunctionComponent<TweetFeedbackProps> = ({ fee
                     rel="noreferrer noopener"
                     variant="primary"
                 >
-                    <TwitterIcon className="icon-inline mr-2" />
+                    <Icon className="mr-2" as={TwitterIcon} />
                     Tweet feedback
                 </ButtonLink>
             </>

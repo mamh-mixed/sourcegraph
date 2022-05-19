@@ -1,6 +1,5 @@
 import { storiesOf } from '@storybook/react'
 import { subDays } from 'date-fns'
-import React from 'react'
 import { NEVER, Observable, of } from 'rxjs'
 import sinon from 'sinon'
 
@@ -76,6 +75,7 @@ const authUser: AuthenticatedUser = {
     viewerCanAdminister: true,
     databaseID: 0,
     tosAccepted: true,
+    searchable: true,
 }
 
 const deleteSearchContext = sinon.fake(() => NEVER)

@@ -1,14 +1,15 @@
+import { FunctionComponent, useCallback, useMemo, useState } from 'react'
+
 import * as H from 'history'
 import { editor } from 'monaco-editor'
-import React, { FunctionComponent, useCallback, useMemo, useState } from 'react'
 
 import { ErrorAlert } from '@sourcegraph/branded/src/components/alerts'
 import { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryService'
 import { ThemeProps } from '@sourcegraph/shared/src/theme'
-import { SaveToolbarProps, SaveToolbarPropsGenerator } from '@sourcegraph/web/src/components/SaveToolbar'
 import { LoadingSpinner } from '@sourcegraph/wildcard'
 
 import { AuthenticatedUser } from '../../../../auth'
+import { SaveToolbarProps, SaveToolbarPropsGenerator } from '../../../../components/SaveToolbar'
 import { DynamicallyImportedMonacoSettingsEditor } from '../../../../settings/DynamicallyImportedMonacoSettingsEditor'
 import { useInferredConfig } from '../hooks/useInferredConfig'
 import { useRepositoryConfig } from '../hooks/useRepositoryConfig'
@@ -23,7 +24,7 @@ export interface ConfigurationEditorProps extends ThemeProps, TelemetryProps {
     history: H.History
 }
 
-export const ConfigurationEditor: FunctionComponent<ConfigurationEditorProps> = ({
+export const ConfigurationEditor: FunctionComponent<React.PropsWithChildren<ConfigurationEditorProps>> = ({
     repoId,
     authenticatedUser,
     isLightTheme,

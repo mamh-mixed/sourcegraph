@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cockroachdb/errors"
 	"github.com/goware/urlx"
 	"github.com/inconshreveable/log15"
 
@@ -17,6 +16,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/httpcli"
 	"github.com/sourcegraph/sourcegraph/internal/jsonc"
 	"github.com/sourcegraph/sourcegraph/internal/types"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 	"github.com/sourcegraph/sourcegraph/schema"
 )
 
@@ -180,11 +180,11 @@ func (s *PhabricatorSource) client(ctx context.Context) (*phabricator.Client, er
 }
 
 // RunPhabricatorRepositorySyncWorker runs the worker that syncs repositories from Phabricator to Sourcegraph
-func RunPhabricatorRepositorySyncWorker(ctx context.Context, s *Store) {
+func RunPhabricatorRepositorySyncWorker(ctx context.Context, s Store) {
 	cf := httpcli.ExternalClientFactory
 
 	for {
-		phabs, err := s.ExternalServiceStore.List(ctx, database.ExternalServicesListOptions{
+		phabs, err := s.ExternalServiceStore().List(ctx, database.ExternalServicesListOptions{
 			Kinds: []string{extsvc.KindPhabricator},
 		})
 		if err != nil {

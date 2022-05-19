@@ -1,5 +1,6 @@
-import * as H from 'history'
 import React, { useState, useMemo, useEffect, useCallback } from 'react'
+
+import * as H from 'history'
 import { ReactStripeElements } from 'react-stripe-elements'
 import { from, of, throwError, Observable } from 'rxjs'
 import { catchError, startWith, switchMap } from 'rxjs/operators'
@@ -10,7 +11,7 @@ import { asError, ErrorLike, isErrorLike } from '@sourcegraph/common'
 import { Scalars } from '@sourcegraph/shared/src/graphql-operations'
 import * as GQL from '@sourcegraph/shared/src/schema'
 import { ThemeProps } from '@sourcegraph/shared/src/theme'
-import { Button, LoadingSpinner, useEventObservable, Link } from '@sourcegraph/wildcard'
+import { Button, LoadingSpinner, useEventObservable, Link, Typography } from '@sourcegraph/wildcard'
 
 import { StripeWrapper } from '../../dotcom/billing/StripeWrapper'
 import { ProductPlanFormControl } from '../../dotcom/productPlans/ProductPlanFormControl'
@@ -89,7 +90,9 @@ const DEFAULT_USER_COUNT = MIN_USER_COUNT
 /**
  * Displays a form for a product subscription.
  */
-const _ProductSubscriptionForm: React.FunctionComponent<Props & ReactStripeElements.InjectedStripeProps> = ({
+const _ProductSubscriptionForm: React.FunctionComponent<
+    React.PropsWithChildren<Props & ReactStripeElements.InjectedStripeProps>
+> = ({
     accountID,
     subscriptionID,
     onSubmit: parentOnSubmit,
@@ -204,11 +207,11 @@ const _ProductSubscriptionForm: React.FunctionComponent<Props & ReactStripeEleme
                 <div className="row">
                     <div className="col-md-6">
                         <ProductSubscriptionUserCountFormControl value={userCount} onChange={setUserCount} />
-                        <h4 className="mt-2 mb-0">Plan</h4>
+                        <Typography.H4 className="mt-2 mb-0">Plan</Typography.H4>
                         <ProductPlanFormControl value={billingPlanID} onChange={setBillingPlanID} />
                     </div>
                     <div className="col-md-6 mt-3 mt-md-0">
-                        <h3 className="mt-2 mb-0">Billing</h3>
+                        <Typography.H3 className="mt-2 mb-0">Billing</Typography.H3>
                         <NewProductSubscriptionPaymentSection
                             productSubscription={productSubscriptionInput}
                             accountID={accountID}
@@ -275,6 +278,6 @@ const _ProductSubscriptionForm: React.FunctionComponent<Props & ReactStripeEleme
     )
 }
 
-export const ProductSubscriptionForm: React.FunctionComponent<Props> = props => (
+export const ProductSubscriptionForm: React.FunctionComponent<React.PropsWithChildren<Props>> = props => (
     <StripeWrapper<Props> component={_ProductSubscriptionForm} {...props} />
 )

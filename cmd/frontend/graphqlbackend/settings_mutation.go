@@ -5,14 +5,13 @@ import (
 	"encoding/json"
 	"strconv"
 
-	"github.com/cockroachdb/errors"
 	"github.com/graph-gophers/graphql-go"
-
 	"github.com/sourcegraph/jsonx"
 
 	"github.com/sourcegraph/sourcegraph/internal/actor"
 	"github.com/sourcegraph/sourcegraph/internal/conf"
 	"github.com/sourcegraph/sourcegraph/internal/database"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 // Deprecated: The GraphQL type Configuration is deprecated.
@@ -125,7 +124,7 @@ func (r *settingsMutation) EditSettings(ctx context.Context, args *struct {
 	}
 
 	remove := args.Edit.Value == nil
-	var value interface{}
+	var value any
 	if args.Edit.Value != nil {
 		value = args.Edit.Value.Value
 	}
@@ -146,7 +145,7 @@ func (r *settingsMutation) EditConfiguration(ctx context.Context, args *struct {
 	return r.EditSettings(ctx, args)
 }
 
-func (r *settingsMutation) editSettings(ctx context.Context, keyPath jsonx.Path, value interface{}, remove bool) (*updateSettingsPayload, error) {
+func (r *settingsMutation) editSettings(ctx context.Context, keyPath jsonx.Path, value any, remove bool) (*updateSettingsPayload, error) {
 	_, err := r.doUpdateSettings(ctx, func(oldSettings string) (edits []jsonx.Edit, err error) {
 		if remove {
 			edits, _, err = jsonx.ComputePropertyRemoval(oldSettings, keyPath, conf.FormatOptions)

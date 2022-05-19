@@ -1,7 +1,8 @@
+import React, { useState, useMemo, useEffect, useCallback } from 'react'
+
 import * as H from 'history'
 import AddIcon from 'mdi-react/AddIcon'
 import ArrowLeftIcon from 'mdi-react/ArrowLeftIcon'
-import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import { RouteComponentProps } from 'react-router'
 import { Observable, Subject, NEVER } from 'rxjs'
 import { catchError, map, mapTo, startWith, switchMap, tap, filter } from 'rxjs/operators'
@@ -19,6 +20,8 @@ import {
     CardHeader,
     CardBody,
     Card,
+    Icon,
+    Typography,
 } from '@sourcegraph/wildcard'
 
 import { queryGraphQL, requestGraphQL } from '../../../../backend/graphql'
@@ -60,7 +63,7 @@ const LOADING = 'loading' as const
 /**
  * Displays a product subscription in the site admin area.
  */
-export const SiteAdminProductSubscriptionPage: React.FunctionComponent<Props> = ({
+export const SiteAdminProductSubscriptionPage: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
     history,
     location,
     match: {
@@ -142,7 +145,7 @@ export const SiteAdminProductSubscriptionPage: React.FunctionComponent<Props> = 
             <PageTitle title="Product subscription" />
             <div className="mb-2">
                 <Button to="/site-admin/dotcom/product/subscriptions" variant="link" size="sm" as={Link}>
-                    <ArrowLeftIcon className="icon-inline" /> All subscriptions
+                    <Icon as={ArrowLeftIcon} /> All subscriptions
                 </Button>
             </div>
             {productSubscription === LOADING ? (
@@ -151,7 +154,7 @@ export const SiteAdminProductSubscriptionPage: React.FunctionComponent<Props> = 
                 <ErrorAlert className="my-2" error={productSubscription} />
             ) : (
                 <>
-                    <h2>Product subscription {productSubscription.name}</h2>
+                    <Typography.H2>Product subscription {productSubscription.name}</Typography.H2>
                     <div className="mb-3">
                         <Button onClick={nextArchival} disabled={archival === LOADING} variant="danger">
                             Archive
@@ -215,7 +218,7 @@ export const SiteAdminProductSubscriptionPage: React.FunctionComponent<Props> = 
                                 </Button>
                             ) : (
                                 <Button onClick={toggleShowGenerate} variant="primary" size="sm">
-                                    <AddIcon className="icon-inline" /> Generate new license manually
+                                    <Icon as={AddIcon} /> Generate new license manually
                                 </Button>
                             )}
                         </CardHeader>

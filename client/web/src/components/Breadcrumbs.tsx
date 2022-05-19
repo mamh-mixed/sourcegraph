@@ -1,12 +1,13 @@
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
+
 import classNames from 'classnames'
 import * as H from 'history'
 import { sortBy } from 'lodash'
 import ChevronRightIcon from 'mdi-react/ChevronRightIcon'
-import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { Unsubscribable } from 'sourcegraph'
 
 import { isDefined } from '@sourcegraph/common'
-import { Link } from '@sourcegraph/wildcard'
+import { Link, Icon } from '@sourcegraph/wildcard'
 
 import styles from './Breadcrumbs.module.scss'
 
@@ -150,18 +151,15 @@ export const useBreadcrumbs = (): BreadcrumbsProps & BreadcrumbSetters => {
 /**
  * Renders breadcrumbs by depth.
  */
-export const Breadcrumbs: React.FunctionComponent<{ breadcrumbs: BreadcrumbAtDepth[]; location: H.Location }> = ({
-    breadcrumbs,
-    location,
-}) => (
+export const Breadcrumbs: React.FunctionComponent<
+    React.PropsWithChildren<{ breadcrumbs: BreadcrumbAtDepth[]; location: H.Location }>
+> = ({ breadcrumbs, location }) => (
     <nav className="d-flex container-fluid flex-nowrap flex-shrink-past-contents pl-3 pr-2" aria-label="Breadcrumbs">
         {sortBy(breadcrumbs, 'depth')
             .map(({ breadcrumb }) => breadcrumb)
             .filter(isDefined)
             .map((breadcrumb, index, validBreadcrumbs) => {
-                const divider = breadcrumb.divider ?? (
-                    <ChevronRightIcon className={classNames('icon-inline', styles.divider)} />
-                )
+                const divider = breadcrumb.divider ?? <Icon className={styles.divider} as={ChevronRightIcon} />
                 // When the last breadcrumbs is a link and the hash is empty (to allow user to reset hash),
                 // render link breadcrumbs as plain text
                 return (

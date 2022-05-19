@@ -1,28 +1,16 @@
 import { Meta, Story } from '@storybook/react'
 import delay from 'delay'
-import { noop } from 'lodash'
-import React from 'react'
+import { noop, random } from 'lodash'
 
 import { NOOP_TELEMETRY_SERVICE } from '@sourcegraph/shared/src/telemetry/telemetryService'
 
 import { WebStory } from '../../../../../../components/WebStory'
-import { CodeInsightsBackendContext } from '../../../../core/backend/code-insights-backend-context'
-import { CodeInsightsSettingsCascadeBackend } from '../../../../core/backend/setting-based-api/code-insights-setting-cascade-backend'
-import { SupportedInsightSubject } from '../../../../core/types/subjects'
-import {
-    createGlobalSubject,
-    createOrgSubject,
-    createUserSubject,
-    SETTINGS_CASCADE_MOCK,
-} from '../../../../mocks/settings-cascade'
+import { CodeInsightsBackendStoryMock } from '../../../../CodeInsightsBackendStoryMock'
+import { SERIES_MOCK_CHART } from '../../../../components/creation-ui-kit'
 
-import {
-    DEFAULT_MOCK_CHART_CONTENT,
-    getRandomDataForMock,
-} from './components/live-preview-chart/live-preview-mock-data'
 import { SearchInsightCreationPage as SearchInsightCreationPageComponent } from './SearchInsightCreationPage'
 
-export default {
+const defaultStory: Meta = {
     title: 'web/insights/creation-ui/SearchInsightCreationPage',
     decorators: [story => <WebStory>{() => story()}</WebStory>],
     parameters: {
@@ -31,11 +19,20 @@ export default {
             disableSnapshot: false,
         },
     },
-} as Meta
+}
+
+export default defaultStory
 
 function sleep(delay: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, delay))
 }
+
+const getRandomDataForMock = (): unknown[] =>
+    new Array(6).fill(null).map((item, index) => ({
+        x: 1588965700286 - index * 24 * 60 * 60 * 1000,
+        a: random(20, 200),
+        b: random(10, 200),
+    }))
 
 const fakeAPIRequest = async () => {
     await delay(1000)
@@ -43,42 +40,31 @@ const fakeAPIRequest = async () => {
     throw new Error('Network error')
 }
 
-class CodeInsightsStoryBackend extends CodeInsightsSettingsCascadeBackend {
-    public getSearchInsightContent = async () => {
+const codeInsightsBackend = {
+    getSearchInsightContent: async () => {
         await sleep(2000)
 
         return {
-            ...DEFAULT_MOCK_CHART_CONTENT,
+            ...SERIES_MOCK_CHART,
             data: getRandomDataForMock(),
         }
-    }
-
+    },
     // eslint-disable-next-line @typescript-eslint/require-await
-    public getRepositorySuggestions = async () => [
+    getRepositorySuggestions: async () => [
         { id: '1', name: 'github.com/example/sub-repo-1' },
         { id: '2', name: 'github.com/example/sub-repo-2' },
         { id: '3', name: 'github.com/another-example/sub-repo-1' },
         { id: '4', name: 'github.com/another-example/sub-repo-2' },
-    ]
+    ],
 }
 
-const codeInsightsBackend = new CodeInsightsStoryBackend(SETTINGS_CASCADE_MOCK, {} as any)
-
-const SUBJECTS = [
-    createUserSubject('Emir Kusturica'),
-    createOrgSubject('Warner Brothers'),
-    createGlobalSubject('Global'),
-] as SupportedInsightSubject[]
-
 export const SearchInsightCreationPage: Story = () => (
-    <CodeInsightsBackendContext.Provider value={codeInsightsBackend}>
+    <CodeInsightsBackendStoryMock mocks={codeInsightsBackend}>
         <SearchInsightCreationPageComponent
-            visibility="user_test_id"
-            subjects={SUBJECTS}
             telemetryService={NOOP_TELEMETRY_SERVICE}
             onInsightCreateRequest={fakeAPIRequest}
             onSuccessfulCreation={noop}
             onCancel={noop}
         />
-    </CodeInsightsBackendContext.Provider>
+    </CodeInsightsBackendStoryMock>
 )

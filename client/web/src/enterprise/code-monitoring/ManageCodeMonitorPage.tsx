@@ -1,11 +1,13 @@
-import * as H from 'history'
 import React, { useEffect } from 'react'
+
+import * as H from 'history'
 import { RouteComponentProps } from 'react-router'
 import { Observable } from 'rxjs'
 import { startWith, catchError, tap } from 'rxjs/operators'
 
 import { asError, isErrorLike } from '@sourcegraph/common'
 import { Scalars } from '@sourcegraph/shared/src/graphql-operations'
+import { ThemeProps } from '@sourcegraph/shared/src/theme'
 import { PageHeader, Link, LoadingSpinner, useObservable } from '@sourcegraph/wildcard'
 
 import { AuthenticatedUser } from '../../auth'
@@ -23,7 +25,7 @@ import {
 } from './backend'
 import { CodeMonitorForm } from './components/CodeMonitorForm'
 
-interface ManageCodeMonitorPageProps extends RouteComponentProps<{ id: Scalars['ID'] }> {
+interface ManageCodeMonitorPageProps extends RouteComponentProps<{ id: Scalars['ID'] }>, ThemeProps {
     authenticatedUser: AuthenticatedUser
     location: H.Location
     history: H.History
@@ -31,9 +33,13 @@ interface ManageCodeMonitorPageProps extends RouteComponentProps<{ id: Scalars['
     fetchCodeMonitor?: typeof _fetchCodeMonitor
     updateCodeMonitor?: typeof _updateCodeMonitor
     deleteCodeMonitor?: typeof _deleteCodeMonitor
+
+    isSourcegraphDotCom: boolean
 }
 
-const AuthenticatedManageCodeMonitorPage: React.FunctionComponent<ManageCodeMonitorPageProps> = ({
+const AuthenticatedManageCodeMonitorPage: React.FunctionComponent<
+    React.PropsWithChildren<ManageCodeMonitorPageProps>
+> = ({
     authenticatedUser,
     history,
     location,
@@ -41,6 +47,8 @@ const AuthenticatedManageCodeMonitorPage: React.FunctionComponent<ManageCodeMoni
     fetchCodeMonitor = _fetchCodeMonitor,
     updateCodeMonitor = _updateCodeMonitor,
     deleteCodeMonitor = _deleteCodeMonitor,
+    isLightTheme,
+    isSourcegraphDotCom,
 }) => {
     const LOADING = 'loading' as const
 
@@ -113,6 +121,8 @@ const AuthenticatedManageCodeMonitorPage: React.FunctionComponent<ManageCodeMoni
                         codeMonitor={codeMonitorState}
                         submitButtonLabel="Save"
                         showDeleteButton={true}
+                        isLightTheme={isLightTheme}
+                        isSourcegraphDotCom={isSourcegraphDotCom}
                     />
                 </>
             )}

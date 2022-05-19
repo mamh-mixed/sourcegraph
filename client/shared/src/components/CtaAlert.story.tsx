@@ -1,8 +1,9 @@
 import { DecoratorFn, Meta, Story } from '@storybook/react'
-import React from 'react'
 
+// eslint-disable-next-line no-restricted-imports
+import { ExtensionRadialGradientIcon } from '@sourcegraph/web/src/components/CtaIcons'
+// eslint-disable-next-line no-restricted-imports
 import { WebStory } from '@sourcegraph/web/src/components/WebStory'
-import { ExtensionRadialGradientIcon } from '@sourcegraph/web/src/search/CtaIcons'
 
 import { CtaAlert } from './CtaAlert'
 
@@ -15,6 +16,7 @@ const config: Meta = {
         component: CtaAlert,
         chromatic: {
             enableDarkMode: true,
+            disableSnapshot: false,
         },
     },
 }
@@ -27,7 +29,6 @@ export const Default: Story = () => (
         description="Description"
         cta={{ label: 'Label', href: '#' }}
         icon={<ExtensionRadialGradientIcon />}
-        className=""
         onClose={() => {}}
     />
 )

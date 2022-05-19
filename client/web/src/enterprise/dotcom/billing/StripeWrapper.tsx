@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react'
+
 import { Elements, injectStripe, StripeProvider, ReactStripeElements } from 'react-stripe-elements'
 
 import { billingPublishableKey } from '../productSubscriptions/features'
 
-type Props<P> = P & { component: React.ComponentType<P & ReactStripeElements.InjectedStripeProps> }
+type Props<P> = P & {
+    component: React.ComponentType<React.PropsWithChildren<P & ReactStripeElements.InjectedStripeProps>>
+}
 
 /**
  * Wraps a React tree (of elements) and injects the Stripe API.

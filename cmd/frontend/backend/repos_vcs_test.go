@@ -4,15 +4,15 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cockroachdb/errors"
-
 	"github.com/sourcegraph/sourcegraph/internal/api"
 	"github.com/sourcegraph/sourcegraph/internal/database"
+	"github.com/sourcegraph/sourcegraph/internal/gitserver"
 	"github.com/sourcegraph/sourcegraph/internal/gitserver/gitdomain"
 	"github.com/sourcegraph/sourcegraph/internal/repoupdater"
 	"github.com/sourcegraph/sourcegraph/internal/repoupdater/protocol"
 	"github.com/sourcegraph/sourcegraph/internal/types"
 	"github.com/sourcegraph/sourcegraph/internal/vcs/git"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 func TestRepos_ResolveRev_noRevSpecified_getsDefaultBranch(t *testing.T) {
@@ -33,14 +33,14 @@ func TestRepos_ResolveRev_noRevSpecified_getsDefaultBranch(t *testing.T) {
 	}
 	defer func() { repoupdater.MockRepoLookup = nil }()
 	var calledVCSRepoResolveRevision bool
-	git.Mocks.ResolveRevision = func(rev string, opt git.ResolveRevisionOptions) (api.CommitID, error) {
+	gitserver.Mocks.ResolveRevision = func(rev string, opt gitserver.ResolveRevisionOptions) (api.CommitID, error) {
 		calledVCSRepoResolveRevision = true
 		return api.CommitID(want), nil
 	}
 	defer git.ResetMocks()
 
 	// (no rev/branch specified)
-	commitID, err := NewRepos(database.NewMockRepoStore()).ResolveRev(ctx, &types.Repo{Name: "a"}, "")
+	commitID, err := NewRepos(database.NewMockDB()).ResolveRev(ctx, &types.Repo{Name: "a"}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,13 +73,13 @@ func TestRepos_ResolveRev_noCommitIDSpecified_resolvesRev(t *testing.T) {
 	}
 	defer func() { repoupdater.MockRepoLookup = nil }()
 	var calledVCSRepoResolveRevision bool
-	git.Mocks.ResolveRevision = func(rev string, opt git.ResolveRevisionOptions) (api.CommitID, error) {
+	gitserver.Mocks.ResolveRevision = func(rev string, opt gitserver.ResolveRevisionOptions) (api.CommitID, error) {
 		calledVCSRepoResolveRevision = true
 		return api.CommitID(want), nil
 	}
 	defer git.ResetMocks()
 
-	commitID, err := NewRepos(database.NewMockRepoStore()).ResolveRev(ctx, &types.Repo{Name: "a"}, "b")
+	commitID, err := NewRepos(database.NewMockDB()).ResolveRev(ctx, &types.Repo{Name: "a"}, "b")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,13 +112,13 @@ func TestRepos_ResolveRev_commitIDSpecified_resolvesCommitID(t *testing.T) {
 	}
 	defer func() { repoupdater.MockRepoLookup = nil }()
 	var calledVCSRepoResolveRevision bool
-	git.Mocks.ResolveRevision = func(rev string, opt git.ResolveRevisionOptions) (api.CommitID, error) {
+	gitserver.Mocks.ResolveRevision = func(rev string, opt gitserver.ResolveRevisionOptions) (api.CommitID, error) {
 		calledVCSRepoResolveRevision = true
 		return api.CommitID(want), nil
 	}
 	defer git.ResetMocks()
 
-	commitID, err := NewRepos(database.NewMockRepoStore()).ResolveRev(ctx, &types.Repo{Name: "a"}, strings.Repeat("a", 40))
+	commitID, err := NewRepos(database.NewMockDB()).ResolveRev(ctx, &types.Repo{Name: "a"}, strings.Repeat("a", 40))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,13 +151,13 @@ func TestRepos_ResolveRev_commitIDSpecified_failsToResolve(t *testing.T) {
 	}
 	defer func() { repoupdater.MockRepoLookup = nil }()
 	var calledVCSRepoResolveRevision bool
-	git.Mocks.ResolveRevision = func(rev string, opt git.ResolveRevisionOptions) (api.CommitID, error) {
+	gitserver.Mocks.ResolveRevision = func(rev string, opt gitserver.ResolveRevisionOptions) (api.CommitID, error) {
 		calledVCSRepoResolveRevision = true
 		return "", errors.New("x")
 	}
 	defer git.ResetMocks()
 
-	_, err := NewRepos(database.NewMockRepoStore()).ResolveRev(ctx, &types.Repo{Name: "a"}, strings.Repeat("a", 40))
+	_, err := NewRepos(database.NewMockDB()).ResolveRev(ctx, &types.Repo{Name: "a"}, strings.Repeat("a", 40))
 	if !errors.Is(err, want) {
 		t.Fatalf("got err %v, want %v", err, want)
 	}
@@ -191,7 +191,7 @@ func TestRepos_GetCommit_repoupdaterError(t *testing.T) {
 	}
 	defer git.ResetMocks()
 
-	commit, err := NewRepos(database.NewMockRepoStore()).GetCommit(ctx, &types.Repo{Name: "a"}, want)
+	commit, err := NewRepos(database.NewMockDB()).GetCommit(ctx, &types.Repo{Name: "a"}, want)
 	if err != nil {
 		t.Fatal(err)
 	}

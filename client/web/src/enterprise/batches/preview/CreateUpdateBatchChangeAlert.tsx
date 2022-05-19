@@ -1,6 +1,7 @@
+import React, { useCallback, useContext, useState } from 'react'
+
 import classNames from 'classnames'
 import * as H from 'history'
-import React, { useCallback, useContext, useState } from 'react'
 
 import { ErrorAlert } from '@sourcegraph/branded/src/components/alerts'
 import { isErrorLike } from '@sourcegraph/common'
@@ -12,6 +13,7 @@ import { MultiSelectContext } from '../MultiSelectContext'
 
 import { createBatchChange, applyBatchChange } from './backend'
 import { BatchChangePreviewContext } from './BatchChangePreviewContext'
+
 import styles from './CreateUpdateBatchChangeAlert.module.scss'
 
 export interface CreateUpdateBatchChangeAlertProps extends TelemetryProps {
@@ -22,16 +24,13 @@ export interface CreateUpdateBatchChangeAlertProps extends TelemetryProps {
     history: H.History
 }
 
-export const CreateUpdateBatchChangeAlert: React.FunctionComponent<CreateUpdateBatchChangeAlertProps> = ({
-    specID,
-    toBeArchived,
-    batchChange,
-    viewerCanAdminister,
-    history,
-    telemetryService,
-}) => {
+export const CreateUpdateBatchChangeAlert: React.FunctionComponent<
+    React.PropsWithChildren<CreateUpdateBatchChangeAlertProps>
+> = ({ specID, toBeArchived, batchChange, viewerCanAdminister, history, telemetryService }) => {
     const batchChangeID = batchChange?.id
 
+    // `BatchChangePreviewContext` is responsible for managing the overrideable
+    // publication states for preview changesets on the clientside.
     const { publicationStates } = useContext(BatchChangePreviewContext)
     const { selected } = useContext(MultiSelectContext)
 

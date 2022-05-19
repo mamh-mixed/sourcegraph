@@ -1,12 +1,13 @@
-import React, { FunctionComponent } from 'react'
+import { FunctionComponent } from 'react'
 
 import { Link } from '@sourcegraph/wildcard'
 
 import { DismissibleAlert } from '../../components/DismissibleAlert'
-import globalAlertStyles from '../../global/GlobalAlerts.module.scss'
 import { githubRepoScopeRequired, gitlabAPIScopeRequired } from '../../user/settings/cloud-ga'
 
 import { useCodeHostScopeContext } from './CodeHostScopeProvider'
+
+import globalAlertStyles from '../../global/GlobalAlerts.module.scss'
 
 interface Props {
     authenticatedUser: { id: string; tags: string[] } | null
@@ -19,7 +20,7 @@ export const GITLAB_SCOPE_ALERT_KEY = 'GitLabPrivateScopeAlert'
  * A global alert telling authenticated users if they need to update GitHub code
  * host token to access the private repositories.
  */
-export const CodeHostScopeAlerts: FunctionComponent<Props> = ({ authenticatedUser }) => {
+export const CodeHostScopeAlerts: FunctionComponent<React.PropsWithChildren<Props>> = ({ authenticatedUser }) => {
     const { scopes } = useCodeHostScopeContext()
 
     if (!authenticatedUser || scopes === null) {
@@ -44,7 +45,7 @@ export const CodeHostScopeAlerts: FunctionComponent<Props> = ({ authenticatedUse
  * A global alert telling authenticated users if they need to update GitLab code
  * host token to access the private repositories.
  */
-export const GitLabScopeAlert: FunctionComponent<Props> = ({ authenticatedUser }) => {
+export const GitLabScopeAlert: FunctionComponent<React.PropsWithChildren<Props>> = ({ authenticatedUser }) => {
     const { scopes } = useCodeHostScopeContext()
 
     if (!authenticatedUser || scopes === null) {

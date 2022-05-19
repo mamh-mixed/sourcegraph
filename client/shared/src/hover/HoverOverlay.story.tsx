@@ -1,14 +1,15 @@
 import bitbucketStyles from '@atlassian/aui/dist/aui/css/aui.css'
 import { DecoratorFn, Meta, Story } from '@storybook/react'
 import classNames from 'classnames'
-import React from 'react'
 import { BrowserRouter } from 'react-router-dom'
 
+// eslint-disable-next-line no-restricted-imports
 import browserExtensionStyles from '@sourcegraph/browser/src/app.scss'
+// eslint-disable-next-line no-restricted-imports
 import bitbucketCodeHostStyles from '@sourcegraph/browser/src/shared/code-hosts/bitbucket/codeHost.module.scss'
+import { registerHighlightContributions } from '@sourcegraph/common'
 
 import { NotificationType } from '../api/extension/extensionHostApi'
-import { registerHighlightContributions } from '../highlight/contributions'
 
 import { HoverOverlay, HoverOverlayClassProps } from './HoverOverlay'
 import { commonProps, FIXTURE_ACTIONS, FIXTURE_CONTENT, FIXTURE_SEMANTIC_BADGE } from './HoverOverlay.fixtures'
@@ -27,6 +28,7 @@ const config: Meta = {
     parameters: {
         chromatic: {
             enableDarkMode: true,
+            disableSnapshot: false,
         },
     },
 }

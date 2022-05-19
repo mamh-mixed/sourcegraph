@@ -1,6 +1,8 @@
-import * as H from 'history'
 import React, { useCallback, useContext, useEffect, useRef } from 'react'
-import { Form } from 'reactstrap'
+
+import * as H from 'history'
+
+import { Form } from '@sourcegraph/branded/src/components/Form'
 
 import { ChangesetSpecOperation, ChangesetState } from '../../../../graphql-operations'
 import { ChangesetFilter } from '../../ChangesetFilter'
@@ -17,9 +19,14 @@ export interface PreviewFilterRowProps {
     location: H.Location
 }
 
-export const PreviewFilterRow: React.FunctionComponent<PreviewFilterRowProps> = ({ history, location }) => {
+export const PreviewFilterRow: React.FunctionComponent<React.PropsWithChildren<PreviewFilterRowProps>> = ({
+    history,
+    location,
+}) => {
     const searchElement = useRef<HTMLInputElement | null>(null)
 
+    // `BatchChangePreviewContext` is responsible for managing the filter arguments for
+    // the `applyPreview` connection query.
     const { filters, setFilters } = useContext(BatchChangePreviewContext)
 
     const onSubmit = useCallback(
@@ -84,6 +91,7 @@ export const PreviewFilterRow: React.FunctionComponent<PreviewFilterRowProps> = 
                         ref={searchElement}
                         defaultValue={filters.search ?? undefined}
                         placeholder="Search title and repository name"
+                        aria-label="Search title and repository name"
                     />
                 </Form>
             </div>

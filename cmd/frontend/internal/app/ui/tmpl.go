@@ -11,14 +11,16 @@ import (
 	"os"
 	"sync"
 
-	"github.com/cockroachdb/errors"
-
 	"github.com/sourcegraph/sourcegraph/internal/env"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 	"github.com/sourcegraph/sourcegraph/ui/assets"
 )
 
 //go:embed app.html
 var appHTML string
+
+//go:embed embed.html
+var embedHTML string
 
 //go:embed error.html
 var errorHTML string
@@ -102,6 +104,8 @@ func doLoadTemplate(path string) (*template.Template, error) {
 	switch path {
 	case "app.html":
 		data = appHTML
+	case "embed.html":
+		data = embedHTML
 	case "error.html":
 		data = errorHTML
 	default:
@@ -118,7 +122,7 @@ func doLoadTemplate(path string) (*template.Template, error) {
 // is its file name, relative to the template directory.
 //
 // The given data is accessible in the template via $.Foobar
-func renderTemplate(w http.ResponseWriter, name string, data interface{}) error {
+func renderTemplate(w http.ResponseWriter, name string, data any) error {
 	root, err := loadTemplate(name)
 	if err != nil {
 		return err

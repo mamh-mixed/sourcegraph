@@ -4,7 +4,6 @@ import (
 	"context"
 	"sync"
 
-	"github.com/cockroachdb/errors"
 	"github.com/graph-gophers/graphql-go"
 	"github.com/graph-gophers/graphql-go/relay"
 	"github.com/inconshreveable/log15"
@@ -16,6 +15,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/rcache"
 	"github.com/sourcegraph/sourcegraph/internal/repos"
 	"github.com/sourcegraph/sourcegraph/internal/types"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 	"github.com/sourcegraph/sourcegraph/schema"
 )
 
@@ -75,7 +75,7 @@ func (r *externalServiceResolver) DisplayName() string {
 }
 
 func (r *externalServiceResolver) Config() (JSONCString, error) {
-	redacted, err := r.externalService.RedactConfigSecrets()
+	redacted, err := r.externalService.RedactedConfig()
 	if err != nil {
 		return "", err
 	}
@@ -109,8 +109,15 @@ func (r *externalServiceResolver) WebhookURL() (*string, error) {
 			r.webhookErr = errors.Wrap(err, "parsing external service config")
 			return
 		}
-		u := extsvc.WebhookURL(r.externalService.Kind, r.externalService.ID, conf.ExternalURL())
+		u, err := extsvc.WebhookURL(r.externalService.Kind, r.externalService.ID, parsed, conf.ExternalURL())
+		if err != nil {
+			r.webhookErr = errors.Wrap(err, "building webhook URL")
+		}
 		switch c := parsed.(type) {
+		case *schema.BitbucketCloudConnection:
+			if c.WebhookSecret != "" {
+				r.webhookURL = u
+			}
 		case *schema.BitbucketServerConnection:
 			if c.Webhooks != nil {
 				r.webhookURL = u
@@ -173,7 +180,7 @@ func (r *externalServiceResolver) NextSyncAt() *DateTime {
 var scopeCache = rcache.New("extsvc_token_scope")
 
 func (r *externalServiceResolver) GrantedScopes(ctx context.Context) (*[]string, error) {
-	scopes, err := repos.GrantedScopes(ctx, scopeCache, r.externalService)
+	scopes, err := repos.GrantedScopes(ctx, scopeCache, r.db, r.externalService)
 	if err != nil {
 		// It's possible that we fail to fetch scope from the code host, in this case we
 		// don't want the entire resolver to fail.

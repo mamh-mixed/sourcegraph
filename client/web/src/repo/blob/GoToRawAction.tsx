@@ -1,8 +1,10 @@
-import FileDownloadOutlineIcon from 'mdi-react/FileDownloadOutlineIcon'
 import * as React from 'react'
+
+import FileDownloadOutlineIcon from 'mdi-react/FileDownloadOutlineIcon'
 
 import { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryService'
 import { encodeRepoRevision, RepoSpec, RevisionSpec, FileSpec } from '@sourcegraph/shared/src/util/url'
+import { Icon } from '@sourcegraph/wildcard'
 
 import { RepoHeaderActionAnchor } from '../components/RepoHeaderActions'
 import { RepoHeaderContext } from '../RepoHeader'
@@ -26,8 +28,14 @@ export class GoToRawAction extends React.PureComponent<Props> {
 
         if (this.props.actionType === 'dropdown') {
             return (
-                <RepoHeaderActionAnchor href={to} onClick={this.onClick.bind(this)} download={true}>
-                    <FileDownloadOutlineIcon className="icon-inline" />
+                <RepoHeaderActionAnchor
+                    to={to}
+                    target="_blank"
+                    file={true}
+                    onClick={this.onClick.bind(this)}
+                    download={true}
+                >
+                    <Icon as={FileDownloadOutlineIcon} />
                     <span>{descriptiveText}</span>
                 </RepoHeaderActionAnchor>
             )
@@ -36,13 +44,14 @@ export class GoToRawAction extends React.PureComponent<Props> {
         return (
             <RepoHeaderActionAnchor
                 to={to}
+                target="_blank"
                 onClick={this.onClick.bind(this)}
                 className="btn-icon"
                 data-tooltip={descriptiveText}
                 aria-label={descriptiveText}
                 download={true}
             >
-                <FileDownloadOutlineIcon className="icon-inline" />
+                <Icon as={FileDownloadOutlineIcon} />
             </RepoHeaderActionAnchor>
         )
     }

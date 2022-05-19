@@ -1,9 +1,10 @@
+import React, { useCallback, useMemo, useState } from 'react'
+
 import { upperFirst, toLower } from 'lodash'
 import BitbucketIcon from 'mdi-react/BitbucketIcon'
 import ExportIcon from 'mdi-react/ExportIcon'
 import GithubIcon from 'mdi-react/GithubIcon'
 import GitlabIcon from 'mdi-react/GitlabIcon'
-import React, { useCallback, useMemo, useState } from 'react'
 import { merge, of } from 'rxjs'
 import { catchError } from 'rxjs/operators'
 
@@ -11,12 +12,12 @@ import { asError, ErrorLike, isErrorLike } from '@sourcegraph/common'
 import { Position, Range } from '@sourcegraph/extension-api-types'
 import { PhabricatorIcon } from '@sourcegraph/shared/src/components/icons' // TODO: Switch mdi icon
 import { RevisionSpec, FileSpec } from '@sourcegraph/shared/src/util/url'
-import { useObservable, useLocalStorage } from '@sourcegraph/wildcard'
+import { useObservable, useLocalStorage, Popover, PopoverTrigger, PopoverOpenEvent, Icon } from '@sourcegraph/wildcard'
 
 import { ExternalLinkFields, RepositoryFields, ExternalServiceKind } from '../../graphql-operations'
 import { eventLogger } from '../../tracking/eventLogger'
 import { fetchFileExternalLinks } from '../backend'
-import { RepoHeaderActionAnchor } from '../components/RepoHeaderActions'
+import { RepoHeaderActionAnchor, RepoHeaderActionAnchorProps } from '../components/RepoHeaderActions'
 import { RepoHeaderContext } from '../RepoHeader'
 
 import { InstallBrowserExtensionPopover } from './InstallBrowserExtensionPopover'
@@ -53,7 +54,9 @@ const HAS_PERMANENTLY_DISMISSED_POPUP_KEY = 'has-dismissed-browser-ext-popup'
 /**
  * A repository header action that goes to the corresponding URL on an external code host.
  */
-export const GoToCodeHostAction: React.FunctionComponent<Props & RepoHeaderContext> = props => {
+export const GoToCodeHostAction: React.FunctionComponent<
+    React.PropsWithChildren<Props & RepoHeaderContext>
+> = props => {
     const [isPopoverOpen, setIsPopoverOpen] = useState(false)
 
     const showPopover = useCallback(() => {
@@ -119,16 +122,23 @@ export const GoToCodeHostAction: React.FunctionComponent<Props & RepoHeaderConte
         eventLogger.log('BrowserExtensionPopupClickedInstall')
     }, [closePopover, onPopoverDismissed, setHasPermanentlyDismissedPopup])
 
-    const onToggle = useCallback(() => {
-        if (isPopoverOpen) {
-            closePopover()
-            return
-        }
+    const onToggle = useCallback(
+        (event: PopoverOpenEvent) => {
+            if (event.isOpen === isPopoverOpen) {
+                return
+            }
 
-        if (hijackLink) {
-            showPopover()
-        }
-    }, [closePopover, hijackLink, isPopoverOpen, showPopover])
+            if (isPopoverOpen) {
+                closePopover()
+                return
+            }
+
+            if (hijackLink) {
+                showPopover()
+            }
+        },
+        [closePopover, hijackLink, isPopoverOpen, showPopover]
+    )
 
     const onClick = useCallback(
         (event: React.MouseEvent<HTMLElement, MouseEvent>) => {
@@ -181,7 +191,7 @@ export const GoToCodeHostAction: React.FunctionComponent<Props & RepoHeaderConte
     const externalURL = externalURLs[0]
 
     const { displayName, icon } = serviceKindDisplayNameAndIcon(externalURL.serviceKind)
-    const Icon = icon || ExportIcon
+    const exportIcon = icon || ExportIcon
 
     // Extract url to add branch, line numbers or commit range.
     let url = externalURL.url
@@ -224,40 +234,45 @@ export const GoToCodeHostAction: React.FunctionComponent<Props & RepoHeaderConte
                 onClick={onClick}
                 onAuxClick={onClick}
             >
-                <Icon className="icon-inline" />
+                <Icon as={exportIcon} />
                 <span>{descriptiveText}</span>
             </RepoHeaderActionAnchor>
         )
     }
 
-    return (
-        <>
-            <RepoHeaderActionAnchor
-                className="btn-icon test-go-to-code-host"
-                // empty href is OK because we always set tabindex=0
-                to={hijackLink ? '' : url}
-                target="_blank"
-                rel="noopener noreferrer"
-                id={TARGET_ID}
-                onClick={onClick}
-                onAuxClick={onClick}
-                data-tooltip={descriptiveText}
-                aria-label={descriptiveText}
-            >
-                <Icon className="icon-inline" />
-            </RepoHeaderActionAnchor>
+    const commonProps: Partial<RepoHeaderActionAnchorProps> = {
+        to: hijackLink ? '' : url,
+        target: '_blank',
+        rel: 'noopener noreferrer',
+        id: TARGET_ID,
+        onClick,
+        onAuxClick: onClick,
+        'data-tooltip': descriptiveText,
+        'aria-label': descriptiveText,
+        className: 'btn-icon test-go-to-code-host',
+    }
 
-            <InstallBrowserExtensionPopover
-                url={url}
-                onToggle={onToggle}
-                isOpen={isPopoverOpen}
-                serviceKind={externalURL.serviceKind}
-                onClose={onClose}
-                onReject={onReject}
-                onInstall={onInstall}
-                targetID={TARGET_ID}
-            />
-        </>
+    if (hijackLink) {
+        return (
+            <Popover isOpen={isPopoverOpen} onOpenChange={onToggle}>
+                <PopoverTrigger as={RepoHeaderActionAnchor} {...commonProps}>
+                    <Icon as={exportIcon} />
+                </PopoverTrigger>
+                <InstallBrowserExtensionPopover
+                    url={url}
+                    serviceKind={externalURL.serviceKind}
+                    onClose={onClose}
+                    onReject={onReject}
+                    onInstall={onInstall}
+                />
+            </Popover>
+        )
+    }
+
+    return (
+        <RepoHeaderActionAnchor {...commonProps}>
+            <Icon as={exportIcon} />
+        </RepoHeaderActionAnchor>
     )
 }
 

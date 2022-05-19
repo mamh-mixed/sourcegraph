@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cockroachdb/errors"
 	mockrequire "github.com/derision-test/go-mockgen/testutil/require"
 	gqlerrors "github.com/graph-gophers/graphql-go/errors"
 	"github.com/stretchr/testify/assert"
@@ -16,6 +15,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/txemail"
 	"github.com/sourcegraph/sourcegraph/internal/types"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 func TestUserEmail_ViewerCanManuallyVerify(t *testing.T) {
@@ -536,7 +536,7 @@ func TestResendUserEmailVerification(t *testing.T) {
 					ExpectedResult: "null",
 					ExpectedErrors: []*gqlerrors.QueryError{
 						{
-							Path:          []interface{}{"resendVerificationEmail"},
+							Path:          []any{"resendVerificationEmail"},
 							Message:       "oh no!",
 							ResolverError: errors.New("oh no!"),
 						},
@@ -566,7 +566,7 @@ func TestResendUserEmailVerification(t *testing.T) {
 					ExpectedErrors: []*gqlerrors.QueryError{
 						{
 							Message:       "Last verification email sent too recently",
-							Path:          []interface{}{"resendVerificationEmail"},
+							Path:          []any{"resendVerificationEmail"},
 							ResolverError: errors.New("Last verification email sent too recently"),
 						},
 					},

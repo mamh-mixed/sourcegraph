@@ -1,11 +1,13 @@
 import { storiesOf } from '@storybook/react'
-import React from 'react'
 import sinon from 'sinon'
+
+import { Typography } from '@sourcegraph/wildcard'
 
 import { WebStory } from '../../../components/WebStory'
 
-import codeMonitorFormStyles from './CodeMonitorForm.module.scss'
 import { FormTriggerArea } from './FormTriggerArea'
+
+import codeMonitorFormStyles from './CodeMonitorForm.module.scss'
 
 const { add } = storiesOf('web/enterprise/code-monitoring/FormTrigerArea', module).addParameters({
     design: {
@@ -24,7 +26,7 @@ add('FormTrigerArea', () => (
     <WebStory>
         {props => (
             <>
-                <h2>Closed, empty query</h2>
+                <Typography.H2>Closed, empty query</Typography.H2>
                 <div className="my-2">
                     <FormTriggerArea
                         {...props}
@@ -36,10 +38,11 @@ add('FormTrigerArea', () => (
                         cardBtnClassName={codeMonitorFormStyles.cardButton}
                         cardLinkClassName={codeMonitorFormStyles.cardLink}
                         cardClassName={codeMonitorFormStyles.card}
+                        isSourcegraphDotCom={false}
                     />
                 </div>
 
-                <h2>Open, empty query</h2>
+                <Typography.H2>Open, empty query</Typography.H2>
                 <div className="my-2">
                     <FormTriggerArea
                         {...props}
@@ -51,10 +54,11 @@ add('FormTrigerArea', () => (
                         cardBtnClassName={codeMonitorFormStyles.cardButton}
                         cardLinkClassName={codeMonitorFormStyles.cardLink}
                         cardClassName={codeMonitorFormStyles.card}
+                        isSourcegraphDotCom={false}
                     />
                 </div>
 
-                <h2>Open, partially valid query</h2>
+                <Typography.H2>Open, partially valid query</Typography.H2>
                 <div className="my-2">
                     <FormTriggerArea
                         {...props}
@@ -66,10 +70,11 @@ add('FormTrigerArea', () => (
                         cardBtnClassName={codeMonitorFormStyles.cardButton}
                         cardLinkClassName={codeMonitorFormStyles.cardLink}
                         cardClassName={codeMonitorFormStyles.card}
+                        isSourcegraphDotCom={false}
                     />
                 </div>
 
-                <h2>Open, fully valid query</h2>
+                <Typography.H2>Open, fully valid query</Typography.H2>
                 <div className="my-2">
                     <FormTriggerArea
                         {...props}
@@ -81,6 +86,7 @@ add('FormTrigerArea', () => (
                         cardBtnClassName={codeMonitorFormStyles.cardButton}
                         cardLinkClassName={codeMonitorFormStyles.cardLink}
                         cardClassName={codeMonitorFormStyles.card}
+                        isSourcegraphDotCom={false}
                     />
                 </div>
             </>

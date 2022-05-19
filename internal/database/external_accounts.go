@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/cockroachdb/errors"
 	"github.com/keegancsmith/sqlf"
 	otlog "github.com/opentracing/opentracing-go/log"
 
@@ -17,11 +16,12 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/encryption/keyring"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc"
 	"github.com/sourcegraph/sourcegraph/internal/trace"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 // userExternalAccountNotFoundError is the error that is returned when a user external account is not found.
 type userExternalAccountNotFoundError struct {
-	args []interface{}
+	args []any
 }
 
 func (err userExternalAccountNotFoundError) Error() string {
@@ -170,7 +170,7 @@ AND deleted_at IS NULL
 RETURNING user_id
 `, spec.ServiceType, spec.ServiceID, spec.ClientID, spec.AccountID, data.AuthData, data.Data, keyID).Scan(&userID)
 	if err == sql.ErrNoRows {
-		err = userExternalAccountNotFoundError{[]interface{}{spec}}
+		err = userExternalAccountNotFoundError{[]any{spec}}
 	}
 	return userID, err
 }
@@ -258,7 +258,7 @@ AND deleted_at IS NULL
 		return err
 	}
 	if nrows == 0 {
-		return userExternalAccountNotFoundError{[]interface{}{existingID}}
+		return userExternalAccountNotFoundError{[]any{existingID}}
 	}
 	return nil
 }
@@ -342,7 +342,7 @@ func (s *userExternalAccountsStore) Delete(ctx context.Context, id int32) error 
 		return err
 	}
 	if nrows == 0 {
-		return userExternalAccountNotFoundError{[]interface{}{id}}
+		return userExternalAccountNotFoundError{[]any{id}}
 	}
 	return nil
 }

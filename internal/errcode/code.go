@@ -9,10 +9,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cockroachdb/errors"
 	"github.com/gorilla/schema"
 
 	"github.com/sourcegraph/sourcegraph/internal/gitserver/gitdomain"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 // HTTP returns the most appropriate HTTP status code that describes
@@ -124,6 +124,13 @@ func IsForbidden(err error) bool {
 func IsAccountSuspended(err error) bool {
 	var e interface{ AccountSuspended() bool }
 	return errors.As(err, &e) && e.AccountSuspended()
+}
+
+// IsUnavailableForLegalReasons will check if err or one of its causes was due to
+// legal reasons.
+func IsUnavailableForLegalReasons(err error) bool {
+	var e interface{ UnavailableForLegalReasons() bool }
+	return errors.As(err, &e) && e.UnavailableForLegalReasons()
 }
 
 // IsBadRequest will check if err or one of its causes is a bad request.

@@ -1,13 +1,14 @@
-import * as H from 'history'
 import React, { useMemo } from 'react'
+
+import * as H from 'history'
 import { from } from 'rxjs'
 import { switchMap } from 'rxjs/operators'
 
+import { ContributableMenu } from '@sourcegraph/client-api'
 import { useObservable } from '@sourcegraph/wildcard'
 
 import { wrapRemoteObservable } from '../api/client/api/common'
 import { ContributionOptions } from '../api/extension/extensionHostApi'
-import { ContributableMenu } from '../api/protocol'
 import { getContributedActionItems } from '../contributions/contributions'
 import { ExtensionsControllerProps } from '../extensions/controller'
 import { PlatformContextProps } from '../platform/context'
@@ -38,7 +39,7 @@ interface Props extends ActionsProps, TelemetryProps {
 }
 
 /** Displays the actions in a container, with a wrapper and/or empty element. */
-export const ActionsContainer: React.FunctionComponent<Props> = props => {
+export const ActionsContainer: React.FunctionComponent<React.PropsWithChildren<Props>> = props => {
     const { scope, extraContext, returnInactiveMenuItems, extensionsController, menu, empty } = props
 
     const contributions = useObservable(

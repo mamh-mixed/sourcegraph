@@ -1,8 +1,9 @@
-import AlertCircleIcon from 'mdi-react/AlertCircleIcon'
-import CheckCircleIcon from 'mdi-react/CheckCircleIcon'
 import React from 'react'
 
-import { pluralize } from '@sourcegraph/shared/src/util/strings'
+import AlertCircleIcon from 'mdi-react/AlertCircleIcon'
+import CheckCircleIcon from 'mdi-react/CheckCircleIcon'
+
+import { pluralize } from '@sourcegraph/common'
 import { LoadingSpinner, CardBody, Card } from '@sourcegraph/wildcard'
 
 import { Collapsible } from './Collapsible'
@@ -21,7 +22,11 @@ interface ExecutionLogEntryProps extends React.PropsWithChildren<{}> {
     now?: () => Date
 }
 
-export const ExecutionLogEntry: React.FunctionComponent<ExecutionLogEntryProps> = ({ logEntry, children, now }) => (
+export const ExecutionLogEntry: React.FunctionComponent<React.PropsWithChildren<ExecutionLogEntryProps>> = ({
+    logEntry,
+    children,
+    now,
+}) => (
     <Card className="mb-3">
         <CardBody>
             {logEntry.command.length > 0 ? (

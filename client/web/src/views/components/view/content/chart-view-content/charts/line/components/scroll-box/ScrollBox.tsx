@@ -1,8 +1,8 @@
-import classNames from 'classnames'
 import React, { useEffect, useState } from 'react'
 
-import { isFirefox } from '@sourcegraph/shared/src/util/browserDetection'
-import { observeResize } from '@sourcegraph/shared/src/util/dom'
+import classNames from 'classnames'
+
+import { isFirefox, observeResize } from '@sourcegraph/common'
 
 import styles from './ScrollBox.module.scss'
 
@@ -44,7 +44,7 @@ interface ScrollBoxProps extends React.HTMLAttributes<HTMLDivElement> {
     className?: string
 }
 
-export const ScrollBox: React.FunctionComponent<ScrollBoxProps> = props => {
+export const ScrollBox: React.FunctionComponent<React.PropsWithChildren<ScrollBoxProps>> = props => {
     const { children, className, ...otherProps } = props
 
     const [parentElement, setParentElement] = useState<HTMLDivElement | null>()

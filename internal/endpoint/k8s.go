@@ -6,7 +6,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cockroachdb/errors"
 	"github.com/inconshreveable/log15"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -17,6 +16,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
+
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 // K8S returns a Map for the given k8s urlspec (e.g. k8s+http://searcher), starting
@@ -60,7 +61,7 @@ func k8sDiscovery(urlspec, ns string, clientFactory func() (*kubernetes.Clientse
 			informer = factory.Core().V1().Endpoints().Informer()
 		}
 
-		handle := func(obj interface{}) {
+		handle := func(obj any) {
 			eps := k8sEndpoints(u, obj)
 
 			log15.Info(
@@ -76,7 +77,7 @@ func k8sDiscovery(urlspec, ns string, clientFactory func() (*kubernetes.Clientse
 
 		informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 			AddFunc:    handle,
-			UpdateFunc: func(_, obj interface{}) { handle(obj) },
+			UpdateFunc: func(_, obj any) { handle(obj) },
 		})
 
 		stop := make(chan struct{})
@@ -88,7 +89,7 @@ func k8sDiscovery(urlspec, ns string, clientFactory func() (*kubernetes.Clientse
 
 // k8sEndpoints constructs a list of endpoint addresses for u based on the
 // kubernetes resource object obj.
-func k8sEndpoints(u *k8sURL, obj interface{}) []string {
+func k8sEndpoints(u *k8sURL, obj any) []string {
 	var eps []string
 
 	switch o := (obj).(type) {

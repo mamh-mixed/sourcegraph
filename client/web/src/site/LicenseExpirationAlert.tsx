@@ -1,6 +1,7 @@
+import React from 'react'
+
 import classNames from 'classnames'
 import formatDistanceStrict from 'date-fns/formatDistanceStrict'
-import React from 'react'
 
 import { Link } from '@sourcegraph/wildcard'
 
@@ -11,11 +12,13 @@ import { isProductLicenseExpired, formatRelativeExpirationDate } from '../produc
  * A global alert that appears telling the site admin that their license key is about to expire. Even after being dismissed,
  * it reappears every day.
  */
-export const LicenseExpirationAlert: React.FunctionComponent<{
-    expiresAt: Date
-    daysLeft: number
-    className?: string
-}> = ({ expiresAt, daysLeft, className }) => (
+export const LicenseExpirationAlert: React.FunctionComponent<
+    React.PropsWithChildren<{
+        expiresAt: Date
+        daysLeft: number
+        className?: string
+    }>
+> = ({ expiresAt, daysLeft, className }) => (
     <DismissibleAlert
         partialStorageKey={`licenseExpiring.${daysLeft}`}
         variant="warning"

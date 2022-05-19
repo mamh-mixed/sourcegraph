@@ -1,5 +1,6 @@
-import { getReasonPhrase } from 'http-status-codes'
 import React, { useMemo } from 'react'
+
+import { getReasonPhrase } from 'http-status-codes'
 
 import { CodeSnippet } from '@sourcegraph/branded/src/components/CodeSnippet'
 
@@ -16,7 +17,11 @@ export interface Props {
     requestOrStatusCode: WebhookLogRequestFields | number
 }
 
-export const MessagePanel: React.FunctionComponent<Props> = ({ className, message, requestOrStatusCode }) => {
+export const MessagePanel: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
+    className,
+    message,
+    requestOrStatusCode,
+}) => {
     const [headers, language, body] = useMemo(() => {
         const headers = []
         let language = 'nohighlight'

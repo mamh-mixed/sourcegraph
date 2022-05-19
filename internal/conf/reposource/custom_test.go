@@ -1,8 +1,9 @@
 package reposource
 
 import (
-	"regexp"
 	"testing"
+
+	"github.com/grafana/regexp"
 
 	"github.com/sourcegraph/sourcegraph/internal/api"
 )
@@ -46,7 +47,7 @@ func TestCustomCloneURLToRepoName(t *testing.T) {
 	}}
 
 	for i, test := range tests {
-		cloneURLResolvers = func() interface{} { return test.cloneURLResolvers }
+		cloneURLResolvers = func() any { return test.cloneURLResolvers }
 		for cloneURL, expName := range test.cloneURLToRepoName {
 			if name := CustomCloneURLToRepoName(cloneURL); name != expName {
 				t.Errorf("In test case %d, expected %s -> %s, but got %s", i+1, cloneURL, expName, name)

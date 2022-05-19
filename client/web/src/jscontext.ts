@@ -1,6 +1,6 @@
 import { SiteConfiguration } from '@sourcegraph/shared/src/schema/site.schema'
 
-export type DeployType = 'kubernetes' | 'docker-container' | 'docker-compose' | 'pure-docker' | 'dev'
+export type DeployType = 'kubernetes' | 'docker-container' | 'docker-compose' | 'pure-docker' | 'dev' | 'helm'
 
 /**
  * Defined in cmd/frontend/internal/app/jscontext/jscontext.go JSContext struct
@@ -24,6 +24,12 @@ export interface SourcegraphContext extends Pick<Required<SiteConfiguration>, 'e
 
     readonly sentryDSN: string | null
 
+    /** Configuration required for Datadog RUM (https://docs.datadoghq.com/real_user_monitoring/browser/#setup). */
+    readonly datadog?: {
+        clientToken: string
+        applicationId: string
+    }
+
     /** Externally accessible URL for Sourcegraph (e.g., https://sourcegraph.com or http://localhost:3080). */
     externalURL: string
 
@@ -40,6 +46,8 @@ export interface SourcegraphContext extends Pick<Required<SiteConfiguration>, 'e
     sourcegraphDotComMode: boolean
 
     githubAppCloudSlug: string
+
+    githubAppCloudClientID: string
 
     /**
      * siteID is the identifier of the Sourcegraph site.

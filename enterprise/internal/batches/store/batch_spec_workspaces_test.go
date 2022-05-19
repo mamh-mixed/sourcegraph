@@ -6,35 +6,35 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/keegancsmith/sqlf"
 
+	"github.com/sourcegraph/sourcegraph/enterprise/internal/batches/search"
 	ct "github.com/sourcegraph/sourcegraph/enterprise/internal/batches/testing"
 	btypes "github.com/sourcegraph/sourcegraph/enterprise/internal/batches/types"
+	"github.com/sourcegraph/sourcegraph/internal/actor"
 	"github.com/sourcegraph/sourcegraph/internal/database"
-	"github.com/sourcegraph/sourcegraph/internal/extsvc"
 	"github.com/sourcegraph/sourcegraph/internal/types/typestest"
 )
 
 func testStoreBatchSpecWorkspaces(t *testing.T, ctx context.Context, s *Store, clock ct.Clock) {
 	repoStore := database.ReposWith(s)
-	esStore := database.ExternalServicesWith(s)
 
-	repo := ct.TestRepo(t, esStore, extsvc.KindGitHub)
-	deletedRepo := ct.TestRepo(t, esStore, extsvc.KindGitHub).With(typestest.Opt.RepoDeletedAt(clock.Now()))
-
-	if err := repoStore.Create(ctx, repo, deletedRepo); err != nil {
-		t.Fatal(err)
-	}
+	user := ct.CreateTestUser(t, s.DatabaseDB(), false)
+	repos, _ := ct.CreateTestRepos(t, ctx, s.DatabaseDB(), 4)
+	deletedRepo := repos[3].With(typestest.Opt.RepoDeletedAt(clock.Now()))
 	if err := repoStore.Delete(ctx, deletedRepo.ID); err != nil {
 		t.Fatal(err)
 	}
+	// Allow all repos but repos[2]
+	ct.MockRepoPermissions(t, s.DatabaseDB(), user.ID, repos[0].ID, repos[1].ID, repos[3].ID)
 
-	workspaces := make([]*btypes.BatchSpecWorkspace, 0, 3)
+	workspaces := make([]*btypes.BatchSpecWorkspace, 0, 4)
 	for i := 0; i < cap(workspaces); i++ {
 		job := &btypes.BatchSpecWorkspace{
 			BatchSpecID:      int64(i + 567),
 			ChangesetSpecIDs: []int64{int64(i + 456), int64(i + 678)},
 
-			RepoID: repo.ID,
+			RepoID: repos[i].ID,
 			Branch: "master",
 			Commit: "d34db33f",
 			Path:   "sub/dir/ectory",
@@ -47,11 +47,7 @@ func testStoreBatchSpecWorkspaces(t *testing.T, ctx context.Context, s *Store, c
 			Unsupported:        true,
 			Ignored:            true,
 			Skipped:            true,
-			CachedResultFound:  true,
-		}
-
-		if i == cap(workspaces)-1 {
-			job.RepoID = deletedRepo.ID
+			CachedResultFound:  i == 1,
 		}
 
 		workspaces = append(workspaces, job)
@@ -77,6 +73,10 @@ func testStoreBatchSpecWorkspaces(t *testing.T, ctx context.Context, s *Store, c
 			}
 		}
 	})
+
+	if err := s.Exec(ctx, sqlf.Sprintf("INSERT INTO batch_spec_workspace_execution_jobs (batch_spec_workspace_id, state) VALUES (%s, %s)", workspaces[0].ID, btypes.BatchSpecWorkspaceExecutionJobStateCompleted)); err != nil {
+		t.Fatal(err)
+	}
 
 	t.Run("Get", func(t *testing.T) {
 		t.Run("GetByID", func(t *testing.T) {
@@ -176,6 +176,85 @@ func testStoreBatchSpecWorkspaces(t *testing.T, ctx context.Context, s *Store, c
 				}
 			}
 		})
+
+		t.Run("ByState", func(t *testing.T) {
+			// Grab the completed one:
+			have, _, err := s.ListBatchSpecWorkspaces(ctx, ListBatchSpecWorkspacesOpts{
+				State: btypes.BatchSpecWorkspaceExecutionJobStateCompleted,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if len(have) != 1 {
+				t.Fatalf("wrong number of results. have=%d", len(have))
+			}
+
+			if diff := cmp.Diff(have, workspaces[:1]); diff != "" {
+				t.Fatalf("invalid jobs returned: %s", diff)
+			}
+		})
+
+		t.Run("OnlyWithoutExecution", func(t *testing.T) {
+			have, _, err := s.ListBatchSpecWorkspaces(ctx, ListBatchSpecWorkspacesOpts{
+				OnlyWithoutExecution: true,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if len(have) != 2 {
+				t.Fatalf("wrong number of results. have=%d", len(have))
+			}
+
+			if diff := cmp.Diff(have, workspaces[1:3]); diff != "" {
+				t.Fatalf("invalid jobs returned: %s", diff)
+			}
+		})
+
+		t.Run("OnlyCachedOrCompleted", func(t *testing.T) {
+			have, _, err := s.ListBatchSpecWorkspaces(ctx, ListBatchSpecWorkspacesOpts{
+				OnlyCachedOrCompleted: true,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if len(have) != 2 {
+				t.Fatalf("wrong number of results. have=%d", len(have))
+			}
+
+			if diff := cmp.Diff(have, workspaces[:2]); diff != "" {
+				t.Fatalf("invalid jobs returned: %s", diff)
+			}
+		})
+
+		t.Run("TextSearch", func(t *testing.T) {
+			for i, r := range repos[:3] {
+				userCtx := actor.WithActor(ctx, actor.FromUser(user.ID))
+				have, _, err := s.ListBatchSpecWorkspaces(userCtx, ListBatchSpecWorkspacesOpts{
+					TextSearch: []search.TextSearchTerm{{Term: string(r.Name)}},
+				})
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				// Expect to return no results for repo[2], which the user cannot access.
+				if i == 2 {
+					if len(have) != 0 {
+						t.Fatalf("wrong number of results. have=%d", len(have))
+					}
+					break
+
+				} else if len(have) != 1 {
+					t.Fatalf("wrong number of results. have=%d", len(have))
+				}
+
+				if diff := cmp.Diff(have, []*btypes.BatchSpecWorkspace{workspaces[i]}); diff != "" {
+					t.Fatalf("invalid jobs returned: %s", diff)
+				}
+			}
+		})
 	})
 
 	t.Run("Count", func(t *testing.T) {
@@ -184,7 +263,7 @@ func testStoreBatchSpecWorkspaces(t *testing.T, ctx context.Context, s *Store, c
 			if err != nil {
 				t.Fatal(err)
 			}
-			if want := int64(2); have != want {
+			if want := int64(3); have != want {
 				t.Fatalf("invalid count returned: want=%d have=%d", want, have)
 			}
 		})
@@ -272,7 +351,7 @@ func testStoreBatchSpecWorkspaces(t *testing.T, ctx context.Context, s *Store, c
 			}
 
 			tt.workspace.BatchSpecID = tt.batchSpec.ID
-			tt.workspace.RepoID = repo.ID
+			tt.workspace.RepoID = repos[0].ID
 			tt.workspace.Branch = "master"
 			tt.workspace.Commit = "d34db33f"
 			tt.workspace.Path = "sub/dir/ectory"

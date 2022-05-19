@@ -12,19 +12,30 @@ import {
 } from 'rxjs/operators'
 import * as sourcegraph from 'sourcegraph'
 
+import {
+    fromHoverMerged,
+    TextDocumentIdentifier,
+    ContributableViewContainer,
+    TextDocumentPositionParameters,
+} from '@sourcegraph/client-api'
 import { LOADING, MaybeLoadingResult } from '@sourcegraph/codeintellify'
-import { asError, ErrorLike, isDefined } from '@sourcegraph/common'
+import {
+    allOf,
+    asError,
+    combineLatestOrDefault,
+    ErrorLike,
+    isDefined,
+    isExactly,
+    isNot,
+    property,
+} from '@sourcegraph/common'
 import * as clientType from '@sourcegraph/extension-api-types'
 import { Context } from '@sourcegraph/template-parser'
 
 import { getModeFromPath } from '../../languages'
-import { combineLatestOrDefault } from '../../util/rxjs/combineLatestOrDefault'
-import { allOf, isExactly, isNot, property } from '../../util/types'
 import { parseRepoURI } from '../../util/url'
-import { fromHoverMerged } from '../client/types/hover'
-import { match, TextDocumentIdentifier } from '../client/types/textDocument'
+import { match } from '../client/types/textDocument'
 import { FlatExtensionHostAPI } from '../contract'
-import { ContributableViewContainer, TextDocumentPositionParameters } from '../protocol'
 import { ExtensionViewer, ViewerId, ViewerWithPartialModel } from '../viewerTypes'
 
 import { ExtensionCodeEditor } from './api/codeEditor'

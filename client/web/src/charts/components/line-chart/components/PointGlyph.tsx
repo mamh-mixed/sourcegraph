@@ -1,5 +1,6 @@
-import { GlyphDot } from '@visx/glyph'
 import React, { FocusEventHandler, MouseEventHandler } from 'react'
+
+import { GlyphDot } from '@visx/glyph'
 
 import { MaybeLink } from '../../../../views/components/view/content/chart-view-content/charts/MaybeLink'
 
@@ -14,7 +15,7 @@ interface PointGlyphProps {
     onBlur: FocusEventHandler<Element>
 }
 
-export const PointGlyph: React.FunctionComponent<PointGlyphProps> = props => {
+export const PointGlyph: React.FunctionComponent<React.PropsWithChildren<PointGlyphProps>> = props => {
     const { top, left, color, active, linkURL, onFocus, onBlur, onClick } = props
 
     return (
@@ -26,6 +27,7 @@ export const PointGlyph: React.FunctionComponent<PointGlyphProps> = props => {
             onFocus={onFocus}
             onBlur={onBlur}
             role={linkURL ? 'link' : 'graphics-dataunit'}
+            aria-label={linkURL ? 'Click to view data point detail' : 'Data point'}
         >
             <GlyphDot
                 tabIndex={linkURL ? -1 : 0}

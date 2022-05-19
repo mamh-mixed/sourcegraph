@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/cockroachdb/errors"
 	"github.com/graph-gophers/graphql-go"
 	"github.com/graph-gophers/graphql-go/relay"
 
 	"github.com/sourcegraph/sourcegraph/internal/types"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 type ExecutorResolver struct {
@@ -59,7 +59,7 @@ func (v DateTime) MarshalJSON() ([]byte, error) {
 	return json.Marshal(v.Time.Format(time.RFC3339))
 }
 
-func (v *DateTime) UnmarshalGraphQL(input interface{}) error {
+func (v *DateTime) UnmarshalGraphQL(input any) error {
 	s, ok := input.(string)
 	if !ok {
 		return errors.Errorf("invalid GraphQL DateTime scalar value input (got %T, expected string)", input)

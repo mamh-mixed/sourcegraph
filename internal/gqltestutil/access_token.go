@@ -1,8 +1,6 @@
 package gqltestutil
 
-import (
-	"github.com/cockroachdb/errors"
-)
+import "github.com/sourcegraph/sourcegraph/lib/errors"
 
 // CreateAccessToken creates a new access token with given note and scopes for the
 // authenticated user. It returns the new access token created.
@@ -14,7 +12,7 @@ mutation CreateAccessToken($user: ID!, $scopes: [String!]!, $note: String!) {
 	}
 }
 `
-	variables := map[string]interface{}{
+	variables := map[string]any{
 		"user":   c.userID,
 		"scopes": scopes,
 		"note":   note,
@@ -42,7 +40,7 @@ mutation DeleteAccessToken($token: String!) {
 	}
 }
 `
-	variables := map[string]interface{}{
+	variables := map[string]any{
 		"token": token,
 	}
 	err := c.GraphQL("", query, variables, nil)

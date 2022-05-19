@@ -13,8 +13,13 @@
 
 - [Developing the product documentation](documentation_implementation.md)
 - [Observability](../background-information/observability/index.md)
+  - [How to add observability](add_observability.md)
+  - [How to add logging](add_logging.md)
   - [How to find monitoring](find_monitoring.md)
   - [How to add monitoring](add_monitoring.md)
+  - [How to enable continuous profiling in production](profiling_continuous.md)
+- [GraphQL](../background-information/graphql_api.md)
+  - [How to add a GraphQL query](../how-to/add_graphql_query.md)
 
 ## Local Environment
 
@@ -26,10 +31,15 @@
 ## Testing Sourcegraph & CI
 
 - [How to run tests](testing.md)
-   - See also [Testing Principles](../background-information/testing_principles.md) and [Continuous Integration](../background-information/continuous_integration.md)
+   - See also [Testing Principles](../background-information/testing_principles.md) and [Continuous Integration](../background-information/ci/index.md)
 - [Configure a test instance of Phabricator and Gitolite](configure_phabricator_gitolite.md)
 - [Test a Phabricator and Gitolite instance](test_phabricator.md)
-- [Adding or changing Buildkite secrets](adding_buildkite_secrets.md)
+- [How to test changes in dogfood](testing_in_dogfood.md)
+- [How to use client app PR previews](client_pr_previews.md)
+
+## Profiling
+
+- [How to do one-off profiling for dogfood and production using pprof](profiling_one-off.md)
 
 ## Executors
 

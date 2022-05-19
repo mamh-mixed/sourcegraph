@@ -1,5 +1,6 @@
-import classNames from 'classnames'
 import React from 'react'
+
+import classNames from 'classnames'
 
 import styles from './ExecutionMetaInformation.module.scss'
 
@@ -9,11 +10,9 @@ export interface ExecutionMetaInformationProps {
     root: string
 }
 
-export const ExecutionMetaInformation: React.FunctionComponent<ExecutionMetaInformationProps> = ({
-    image,
-    commands,
-    root,
-}) => (
+export const ExecutionMetaInformation: React.FunctionComponent<
+    React.PropsWithChildren<ExecutionMetaInformationProps>
+> = ({ image, commands, root }) => (
     <div className="pt-3">
         <div className={classNames(styles.dockerCommandSpec, 'py-2 border-top pl-2')}>
             <strong className={styles.header}>Image</strong>

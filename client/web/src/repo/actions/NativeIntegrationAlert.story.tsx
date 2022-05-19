@@ -1,6 +1,7 @@
+import React from 'react'
+
 import { action } from '@storybook/addon-actions'
 import { DecoratorFn, Meta, Story } from '@storybook/react'
-import React from 'react'
 
 import { ExternalServiceKind } from '@sourcegraph/shared/src/schema'
 
@@ -26,12 +27,12 @@ const config: Meta = {
 
 export default config
 
-const NativeIntegrationAlertWrapper: React.FunctionComponent<{ serviceKind: ExternalServiceKind }> = ({
-    serviceKind,
-}) => (
+const NativeIntegrationAlertWrapper: React.FunctionComponent<
+    React.PropsWithChildren<{ serviceKind: ExternalServiceKind }>
+> = ({ serviceKind }) => (
     <NativeIntegrationAlert
-        className=""
         onAlertDismissed={onAlertDismissed}
+        page="search"
         externalURLs={[
             {
                 url: '',

@@ -1,45 +1,37 @@
-import { render } from '@testing-library/react'
 import { createMemoryHistory } from 'history'
-import React from 'react'
-import { Router } from 'react-router'
 
 import { NOOP_TELEMETRY_SERVICE } from '@sourcegraph/shared/src/telemetry/telemetryService'
-
-import { PageTitle } from '../../components/PageTitle'
+import { renderWithBrandedContext } from '@sourcegraph/shared/src/testing'
 
 import { RegistryExtensionOverviewPage } from './RegistryExtensionOverviewPage'
 
 jest.mock('mdi-react/GithubIcon', () => 'GithubIcon')
 
 describe('RegistryExtensionOverviewPage', () => {
-    afterEach(() => {
-        PageTitle.titleSet = false
-    })
     test('renders', () => {
         const history = createMemoryHistory()
         expect(
-            render(
-                <Router history={history}>
-                    <RegistryExtensionOverviewPage
-                        telemetryService={NOOP_TELEMETRY_SERVICE}
-                        extension={{
-                            id: 'x',
-                            rawManifest: '{}',
-                            manifest: {
-                                url: 'https://example.com',
-                                activationEvents: ['*'],
-                                categories: ['Programming languages', 'Other'],
-                                tags: ['T1', 'T2'],
-                                readme: '**A**',
-                                repository: {
-                                    url: 'https://github.com/foo/bar',
-                                    type: 'git',
-                                },
+            renderWithBrandedContext(
+                <RegistryExtensionOverviewPage
+                    telemetryService={NOOP_TELEMETRY_SERVICE}
+                    extension={{
+                        id: 'x',
+                        rawManifest: '{}',
+                        manifest: {
+                            url: 'https://example.com',
+                            activationEvents: ['*'],
+                            categories: ['Programming languages', 'Other'],
+                            tags: ['T1', 'T2'],
+                            readme: '**A**',
+                            repository: {
+                                url: 'https://github.com/foo/bar',
+                                type: 'git',
                             },
-                        }}
-                        isLightTheme={true}
-                    />
-                </Router>
+                        },
+                    }}
+                    isLightTheme={true}
+                />,
+                { history }
             ).asFragment()
         ).toMatchSnapshot()
     })
@@ -48,28 +40,27 @@ describe('RegistryExtensionOverviewPage', () => {
     test('renders with no tags', () => {
         const history = createMemoryHistory()
         expect(
-            render(
-                <Router history={history}>
-                    <RegistryExtensionOverviewPage
-                        telemetryService={NOOP_TELEMETRY_SERVICE}
-                        extension={{
-                            id: 'x',
-                            rawManifest: '{}',
-                            manifest: {
-                                url: 'https://example.com',
-                                activationEvents: ['*'],
-                                categories: ['Programming languages', 'Other'],
-                                tags: [],
-                                readme: '**A**',
-                                repository: {
-                                    url: 'https://github.com/foo/bar',
-                                    type: 'git',
-                                },
+            renderWithBrandedContext(
+                <RegistryExtensionOverviewPage
+                    telemetryService={NOOP_TELEMETRY_SERVICE}
+                    extension={{
+                        id: 'x',
+                        rawManifest: '{}',
+                        manifest: {
+                            url: 'https://example.com',
+                            activationEvents: ['*'],
+                            categories: ['Programming languages', 'Other'],
+                            tags: [],
+                            readme: '**A**',
+                            repository: {
+                                url: 'https://github.com/foo/bar',
+                                type: 'git',
                             },
-                        }}
-                        isLightTheme={true}
-                    />
-                </Router>
+                        },
+                    }}
+                    isLightTheme={true}
+                />,
+                { history }
             ).asFragment()
         ).toMatchSnapshot()
     })
@@ -77,22 +68,21 @@ describe('RegistryExtensionOverviewPage', () => {
     describe('categories', () => {
         test('filters out unrecognized categories', () => {
             const history = createMemoryHistory()
-            const output = render(
-                <Router history={history}>
-                    <RegistryExtensionOverviewPage
-                        telemetryService={NOOP_TELEMETRY_SERVICE}
-                        extension={{
-                            id: 'x',
-                            rawManifest: '',
-                            manifest: {
-                                url: 'https://example.com',
-                                activationEvents: ['*'],
-                                categories: ['Programming languages', 'invalid', 'Other'],
-                            },
-                        }}
-                        isLightTheme={true}
-                    />
-                </Router>
+            const output = renderWithBrandedContext(
+                <RegistryExtensionOverviewPage
+                    telemetryService={NOOP_TELEMETRY_SERVICE}
+                    extension={{
+                        id: 'x',
+                        rawManifest: '',
+                        manifest: {
+                            url: 'https://example.com',
+                            activationEvents: ['*'],
+                            categories: ['Programming languages', 'invalid', 'Other'],
+                        },
+                    }}
+                    isLightTheme={true}
+                />,
+                { history }
             )
             expect(toText(output.getAllByTestId('test-registry-extension-categories'))).toEqual([
                 'Programming languages',

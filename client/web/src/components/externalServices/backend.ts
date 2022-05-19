@@ -161,6 +161,7 @@ export function listAffiliatedRepositories(
                         }
                         private
                     }
+                    codeHostErrors
                 }
             }
         `,
@@ -207,18 +208,23 @@ export const listExternalServiceFragment = gql`
         grantedScopes
     }
 `
+export const listExternalServiceInvitableCollaboratorsFragment = gql`
+    fragment ListExternalServiceInvitableCollaboratorsFields on ExternalService {
+        invitableCollaborators {
+            email
+            displayName
+            name
+            avatarURL
+        }
+    }
+`
 
 export const EXTERNAL_SERVICES_WITH_COLLABORATORS = gql`
     query ExternalServicesWithCollaborators($first: Int, $after: String, $namespace: ID) {
         externalServices(first: $first, after: $after, namespace: $namespace) {
             nodes {
                 ...ListExternalServiceFields
-                invitableCollaborators {
-                    email
-                    displayName
-                    name
-                    avatarURL
-                }
+                ...ListExternalServiceInvitableCollaboratorsFields
             }
             totalCount
             pageInfo {
@@ -229,6 +235,7 @@ export const EXTERNAL_SERVICES_WITH_COLLABORATORS = gql`
     }
 
     ${listExternalServiceFragment}
+    ${listExternalServiceInvitableCollaboratorsFragment}
 `
 
 export const EXTERNAL_SERVICES = gql`

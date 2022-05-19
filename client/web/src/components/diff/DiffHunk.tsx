@@ -1,9 +1,10 @@
 /* eslint jsx-a11y/click-events-have-key-events: warn, jsx-a11y/no-noninteractive-element-interactions: warn */
-import classNames from 'classnames'
 import * as React from 'react'
+
+import classNames from 'classnames'
 import { useLocation } from 'react-router'
 
-import { isDefined } from '@sourcegraph/common'
+import { isDefined, property } from '@sourcegraph/common'
 import {
     decorationAttachmentStyleForTheme,
     DecorationMapByLine,
@@ -11,12 +12,12 @@ import {
 } from '@sourcegraph/shared/src/api/extension/api/decorations'
 import { LinkOrSpan } from '@sourcegraph/shared/src/components/LinkOrSpan'
 import { ThemeProps } from '@sourcegraph/shared/src/theme'
-import { property } from '@sourcegraph/shared/src/util/types'
 import { Link } from '@sourcegraph/wildcard'
 
 import { DiffHunkLineType, FileDiffHunkFields } from '../../graphql-operations'
 
 import { DiffBoundary } from './DiffBoundary'
+
 import styles from './DiffHunk.module.scss'
 
 const diffHunkTypeIndicators: Record<DiffHunkLineType, string> = {
@@ -38,7 +39,7 @@ interface DiffHunkProps extends ThemeProps {
     persistLines?: boolean
 }
 
-export const DiffHunk: React.FunctionComponent<DiffHunkProps> = ({
+export const DiffHunk: React.FunctionComponent<React.PropsWithChildren<DiffHunkProps>> = ({
     fileDiffAnchor,
     decorations,
     hunk,
@@ -72,10 +73,16 @@ export const DiffHunk: React.FunctionComponent<DiffHunkProps> = ({
                     .map(decoration => decorationStyleForTheme(decoration, isLightTheme))
                     .reduce((style, decoration) => ({ ...style, ...decoration }), {})
                 return (
+                    /*
+                        a11y-ignore
+                        Rule: "color-contrast" (Elements must have sufficient color contrast) for all changes in this file
+                        GitHub issue: https://github.com/sourcegraph/sourcegraph/issues/33343
+                    */
                     <tr
                         key={index}
                         data-hunk-line-kind={line.kind}
                         className={classNames(
+                            'a11y-ignore',
                             line.kind === DiffHunkLineType.UNCHANGED && styles.lineBoth,
                             line.kind === DiffHunkLineType.DELETED && styles.lineDeletion,
                             line.kind === DiffHunkLineType.ADDED && styles.lineAddition,

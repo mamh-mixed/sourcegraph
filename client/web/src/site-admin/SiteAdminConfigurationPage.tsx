@@ -1,8 +1,9 @@
+import * as React from 'react'
+
 import * as jsonc from '@sqs/jsonc-parser'
 import { setProperty } from '@sqs/jsonc-parser/lib/edit'
 import classNames from 'classnames'
 import * as H from 'history'
-import * as React from 'react'
 import { RouteComponentProps } from 'react-router'
 import { Subject, Subscription } from 'rxjs'
 import { catchError, concatMap, delay, mergeMap, retryWhen, tap, timeout } from 'rxjs/operators'
@@ -12,7 +13,7 @@ import * as GQL from '@sourcegraph/shared/src/schema'
 import { SiteConfiguration } from '@sourcegraph/shared/src/schema/site.schema'
 import { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryService'
 import { ThemeProps } from '@sourcegraph/shared/src/theme'
-import { Button, LoadingSpinner, Link, Alert } from '@sourcegraph/wildcard'
+import { Button, LoadingSpinner, Link, Alert, Typography } from '@sourcegraph/wildcard'
 
 import siteSchemaJSON from '../../../../schema/site.schema.json'
 import { PageTitle } from '../components/PageTitle'
@@ -21,6 +22,7 @@ import { refreshSiteFlags } from '../site/backend'
 import { eventLogger } from '../tracking/eventLogger'
 
 import { fetchSite, reloadSite, updateSiteConfiguration } from './backend'
+
 import styles from './SiteAdminConfigurationPage.module.scss'
 
 const defaultFormattingOptions: jsonc.FormattingOptions = {
@@ -428,7 +430,7 @@ export class SiteAdminConfigurationPage extends React.Component<Props, State> {
         return (
             <div>
                 <PageTitle title="Configuration - Admin" />
-                <h2>Site configuration</h2>
+                <Typography.H2>Site configuration</Typography.H2>
                 <p>
                     View and edit the Sourcegraph site configuration. See{' '}
                     <Link to="/help/admin/config/site_config">documentation</Link> for more information.

@@ -5,13 +5,11 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"regexp"
 	"sort"
 	"sync"
 
-	"github.com/cockroachdb/errors"
 	"github.com/gobwas/glob"
-	"github.com/hashicorp/go-multierror"
+	"github.com/grafana/regexp"
 
 	"github.com/sourcegraph/sourcegraph/enterprise/internal/batches/store"
 	btypes "github.com/sourcegraph/sourcegraph/enterprise/internal/batches/types"
@@ -20,7 +18,9 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/api/internalapi"
 	"github.com/sourcegraph/sourcegraph/internal/authz"
 	"github.com/sourcegraph/sourcegraph/internal/database"
+	"github.com/sourcegraph/sourcegraph/internal/errcode"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc"
+	"github.com/sourcegraph/sourcegraph/internal/gitserver"
 	"github.com/sourcegraph/sourcegraph/internal/gitserver/gitdomain"
 	"github.com/sourcegraph/sourcegraph/internal/httpcli"
 	streamapi "github.com/sourcegraph/sourcegraph/internal/search/streaming/api"
@@ -30,6 +30,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/vcs/git"
 	batcheslib "github.com/sourcegraph/sourcegraph/lib/batches"
 	onlib "github.com/sourcegraph/sourcegraph/lib/batches/on"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 // RepoRevision describes a repository on a branch at a fixed revision.
@@ -90,7 +91,7 @@ func (wr *workspaceResolver) ResolveWorkspacesForBatchSpec(ctx context.Context, 
 	}
 
 	// Next, find the repos that are ignored through a .batchignore file.
-	ignored, err := findIgnoredRepositories(ctx, repos)
+	ignored, err := findIgnoredRepositories(ctx, database.NewDBWith(wr.store), repos)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +137,7 @@ func (wr *workspaceResolver) determineRepositories(ctx context.Context, batchSpe
 	for _, on := range batchSpec.On {
 		revs, ruleType, err := wr.resolveRepositoriesOn(ctx, &on)
 		if err != nil {
-			errs = multierror.Append(errs, errors.Wrapf(err, "resolving %q", on.String()))
+			errs = errors.Append(errs, errors.Wrapf(err, "resolving %q", on.String()))
 			continue
 		}
 
@@ -158,7 +159,7 @@ func (wr *workspaceResolver) determineRepositories(ctx context.Context, batchSpe
 	return repoRevs, errs
 }
 
-func findIgnoredRepositories(ctx context.Context, repos []*RepoRevision) (map[*types.Repo]struct{}, error) {
+func findIgnoredRepositories(ctx context.Context, db database.DB, repos []*RepoRevision) (map[*types.Repo]struct{}, error) {
 	type result struct {
 		repo           *RepoRevision
 		hasBatchIgnore bool
@@ -179,7 +180,7 @@ func findIgnoredRepositories(ctx context.Context, repos []*RepoRevision) (map[*t
 		go func(in chan *RepoRevision, out chan result) {
 			defer wg.Done()
 			for repo := range in {
-				hasBatchIgnore, err := hasBatchIgnoreFile(ctx, repo)
+				hasBatchIgnore, err := hasBatchIgnoreFile(ctx, db, repo)
 				out <- result{repo, hasBatchIgnore, err}
 			}
 		}(input, results)
@@ -195,10 +196,10 @@ func findIgnoredRepositories(ctx context.Context, repos []*RepoRevision) (map[*t
 		close(results)
 	}(&wg)
 
-	var errs *multierror.Error
+	var errs error
 	for result := range results {
 		if result.err != nil {
-			errs = multierror.Append(errs, result.err)
+			errs = errors.Append(errs, result.err)
 			continue
 		}
 
@@ -207,7 +208,7 @@ func findIgnoredRepositories(ctx context.Context, repos []*RepoRevision) (map[*t
 		}
 	}
 
-	return ignored, errs.ErrorOrNil()
+	return ignored, errs
 }
 
 var ErrMalformedOnQueryOrRepository = batcheslib.NewValidationError(errors.New("malformed 'on' field; missing either a repository name or a query"))
@@ -270,6 +271,7 @@ func (wr *workspaceResolver) resolveRepositoryName(ctx context.Context, name str
 
 	return repoToRepoRevisionWithDefaultBranch(
 		ctx,
+		database.NewDBWith(wr.store),
 		repo,
 		// Directly resolved repos don't have any file matches.
 		[]string{},
@@ -288,7 +290,7 @@ func (wr *workspaceResolver) resolveRepositoryNameAndBranch(ctx context.Context,
 		return nil, err
 	}
 
-	commit, err := git.ResolveRevision(ctx, repo.Name, branch, git.ResolveRevisionOptions{
+	commit, err := gitserver.NewClient(database.NewDBWith(wr.store)).ResolveRevision(ctx, repo.Name, branch, gitserver.ResolveRevisionOptions{
 		NoEnsureRevision: true,
 	})
 	if err != nil && errors.HasType(err, &gitdomain.RevisionNotFoundError{}) {
@@ -345,6 +347,11 @@ func (wr *workspaceResolver) resolveRepositoriesMatchingQuery(ctx context.Contex
 		return nil, err
 	}
 
+	// If no repos matched the search query, we can early return.
+	if len(repoIDs) == 0 {
+		return []*RepoRevision{}, nil
+	}
+
 	// 🚨 SECURITY: We use database.Repos.List to check whether the user has access to
 	// the repositories or not. We also impersonate on the internal search request to
 	// properly respect these permissions.
@@ -360,8 +367,12 @@ func (wr *workspaceResolver) resolveRepositoriesMatchingQuery(ctx context.Contex
 			fileMatches = append(fileMatches, path)
 		}
 		sort.Strings(fileMatches)
-		rev, err := repoToRepoRevisionWithDefaultBranch(ctx, repo, fileMatches)
+		rev, err := repoToRepoRevisionWithDefaultBranch(ctx, database.NewDBWith(wr.store), repo, fileMatches)
 		if err != nil {
+			// There is an edge-case where a repo might be returned by a search query that does not exist in gitserver yet.
+			if errcode.IsNotFound(err) {
+				continue
+			}
 			return nil, err
 		}
 		revs = append(revs, rev)
@@ -410,14 +421,14 @@ func (wr *workspaceResolver) runSearch(ctx context.Context, query string, onMatc
 	return err
 }
 
-func repoToRepoRevisionWithDefaultBranch(ctx context.Context, repo *types.Repo, fileMatches []string) (_ *RepoRevision, err error) {
+func repoToRepoRevisionWithDefaultBranch(ctx context.Context, db database.DB, repo *types.Repo, fileMatches []string) (_ *RepoRevision, err error) {
 	tr, ctx := trace.New(ctx, "repoToRepoRevision", "")
 	defer func() {
 		tr.SetError(err)
 		tr.Finish()
 	}()
 
-	branch, commit, err := git.GetDefaultBranch(ctx, repo.Name)
+	branch, commit, err := git.GetDefaultBranch(ctx, db, repo.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -431,7 +442,7 @@ func repoToRepoRevisionWithDefaultBranch(ctx context.Context, repo *types.Repo, 
 	return repoRev, nil
 }
 
-func hasBatchIgnoreFile(ctx context.Context, r *RepoRevision) (_ bool, err error) {
+func hasBatchIgnoreFile(ctx context.Context, db database.DB, r *RepoRevision) (_ bool, err error) {
 	traceTitle := fmt.Sprintf("RepoID: %q", r.Repo.ID)
 	tr, ctx := trace.New(ctx, "hasBatchIgnoreFile", traceTitle)
 	defer func() {
@@ -440,7 +451,7 @@ func hasBatchIgnoreFile(ctx context.Context, r *RepoRevision) (_ bool, err error
 	}()
 
 	const path = ".batchignore"
-	stat, err := git.Stat(ctx, authz.DefaultSubRepoPermsChecker, r.Repo.Name, r.Commit, path)
+	stat, err := git.Stat(ctx, db, authz.DefaultSubRepoPermsChecker, r.Repo.Name, r.Commit, path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return false, nil
@@ -521,7 +532,7 @@ func (wr *workspaceResolver) FindDirectoriesInRepos(ctx context.Context, fileNam
 
 			result, err := findForRepoRev(repoRev)
 			if err != nil {
-				errs = multierror.Append(errs, err)
+				errs = errors.Append(errs, err)
 				return
 			}
 
@@ -556,7 +567,7 @@ func findWorkspaces(
 ) ([]*RepoWorkspace, error) {
 	// Pre-compile all globs.
 	workspaceMatchers := make(map[batcheslib.WorkspaceConfiguration]glob.Glob)
-	var errs *multierror.Error
+	var errs error
 	for _, conf := range spec.Workspaces {
 		in := conf.In
 		// Empty `in` should fall back to matching all, instead of nothing.
@@ -565,12 +576,12 @@ func findWorkspaces(
 		}
 		g, err := glob.Compile(in)
 		if err != nil {
-			errs = multierror.Append(errs, batcheslib.NewValidationError(errors.Errorf("failed to compile glob %q: %v", in, err)))
+			errs = errors.Append(errs, batcheslib.NewValidationError(errors.Errorf("failed to compile glob %q: %v", in, err)))
 		}
 		workspaceMatchers[conf] = g
 	}
-	if err := errs.ErrorOrNil(); err != nil {
-		return nil, err
+	if errs != nil {
+		return nil, errs
 	}
 
 	root := []*RepoRevision{}

@@ -19,11 +19,19 @@ import {
     commentOnIssue,
     queryIssues,
     IssueLabel,
-    createRelease,
+    createLatestRelease,
 } from './github'
 import { ensureEvent, getClient, EventOptions, calendarTime } from './google-calendar'
 import { postMessage, slackURL } from './slack'
-import { cacheFolder, formatDate, timezoneLink, hubSpotFeedbackFormStub, ensureDocker, changelogURL } from './util'
+import {
+    cacheFolder,
+    formatDate,
+    timezoneLink,
+    hubSpotFeedbackFormStub,
+    ensureDocker,
+    changelogURL,
+    ensureReleaseBranchUpToDate,
+} from './util'
 
 const sed = process.platform === 'linux' ? 'sed' : 'gsed'
 
@@ -109,6 +117,14 @@ const steps: Step[] = [
             const { upcoming: release } = await releaseVersions(config)
             const name = releaseName(release)
             const events: EventOptions[] = [
+                {
+                    title: `Security Team to Review Release Container Image Scans ${name}`,
+                    description: '(This is not an actual event to attend, just a calendar marker.)',
+                    anyoneCanAddSelf: true,
+                    attendees: [config.teamEmail],
+                    transparency: 'transparent',
+                    ...calendarTime(config.oneWorkingWeekBeforeRelease),
+                },
                 {
                     title: `Cut Sourcegraph ${name}`,
                     description: '(This is not an actual event to attend, just a calendar marker.)',
@@ -287,6 +303,7 @@ ${trackingIssues.map(index => `- ${slackURL(index.title, index.url)}`).join('\n'
             const { upcoming: release } = await releaseVersions(config)
             const branch = `${release.major}.${release.minor}`
             const tag = `v${release.version}${candidate === 'final' ? '' : `-rc.${candidate}`}`
+            ensureReleaseBranchUpToDate(branch)
             await createTag(
                 await getAuthenticatedGitHubClient(),
                 {
@@ -353,6 +370,10 @@ These steps must be completed before this PR can be merged, unless otherwise sta
 ${actionItems.map(item => `- [ ] ${item}`).join('\n')}
 
 cc @${config.captainGitHubUsername}
+
+### Test plan
+
+CI checks in this repository should pass, and a manual review should confirm if the generated changes are correct.
 `,
                 }
             }
@@ -371,7 +392,7 @@ cc @${config.captainGitHubUsername}
 
             // Render changes
             const createdChanges = await createChangesets({
-                requiredCommands: ['comby', sed, 'find', 'go'],
+                requiredCommands: ['comby', sed, 'find', 'go', 'src', 'sg'],
                 changes: [
                     {
                         owner: 'sourcegraph',
@@ -388,9 +409,10 @@ cc @${config.captainGitHubUsername}
                             // Update sourcegraph/server:VERSION everywhere except changelog
                             `find . -type f -name '*.md' ! -name 'CHANGELOG.md' -exec ${sed} -i -E 's/sourcegraph\\/server:${versionRegex}/sourcegraph\\/server:${release.version}/g' {} +`,
                             // Update Sourcegraph versions in installation guides
-                            `find ./doc/admin/install/ -type f -name '*.md' -exec ${sed} -i -E 's/SOURCEGRAPH_VERSION="v${versionRegex}"/SOURCEGRAPH_VERSION="v${release.version}"/g' {} +`,
+                            `find ./doc/admin/deploy/ -type f -name '*.md' -exec ${sed} -i -E 's/SOURCEGRAPH_VERSION="v${versionRegex}"/SOURCEGRAPH_VERSION="v${release.version}"/g' {} +`,
+                            `find ./doc/admin/deploy/ -type f -name '*.md' -exec ${sed} -i -E 's/--version ${versionRegex}/--version ${release.version}/g' {} +`,
                             // Update fork variables in installation guides
-                            `find ./doc/admin/install/ -type f -name '*.md' -exec ${sed} -i -E "s/DEPLOY_SOURCEGRAPH_DOCKER_FORK_REVISION='v${versionRegex}'/DEPLOY_SOURCEGRAPH_DOCKER_FORK_REVISION='v${release.version}'/g" {} +`,
+                            `find ./doc/admin/deploy/ -type f -name '*.md' -exec ${sed} -i -E "s/DEPLOY_SOURCEGRAPH_DOCKER_FORK_REVISION='v${versionRegex}'/DEPLOY_SOURCEGRAPH_DOCKER_FORK_REVISION='v${release.version}'/g" {} +`,
                             // Update sourcegraph.com frontpage
                             `${sed} -i -E 's/sourcegraph\\/server:${versionRegex}/sourcegraph\\/server:${release.version}/g' 'client/web/src/search/home/SelfHostInstructions.tsx'`,
 
@@ -441,8 +463,8 @@ cc @${config.captainGitHubUsername}
                         commitMessage: defaultPRMessage,
                         title: defaultPRMessage,
                         edits: [
-                            `${sed} -i -E 's/sourcegraph\\/server:${versionRegex}/sourcegraph\\/server:${release.version}/g' 'website/src/components/GetStarted.tsx'`,
-                            `${sed} -i -E 's/sourcegraph\\/server:${versionRegex}/sourcegraph\\/server:${release.version}/g' 'website/src/pages/get-started.tsx'`,
+                            // Update sourcegraph/server:VERSION in all tsx files
+                            `find . -type f -name '*.tsx' -exec ${sed} -i -E 's/sourcegraph\\/server:${versionRegex}/sourcegraph\\/server:${release.version}/g' {} +`,
                         ],
                         ...prBodyAndDraftState(
                             [],
@@ -494,6 +516,21 @@ cc @${config.captainGitHubUsername}
                         title: defaultPRMessage,
                         edits: [
                             `${sed} -i -E 's/export SOURCEGRAPH_VERSION=${versionRegex}/export SOURCEGRAPH_VERSION=${release.version}/g' resources/user-data.sh`,
+                        ],
+                        ...prBodyAndDraftState([]),
+                    },
+                    {
+                        owner: 'sourcegraph',
+                        repo: 'deploy-sourcegraph-helm',
+                        base: `release/${release.major}.${release.minor}`,
+                        head: `publish-${release.version}`,
+                        commitMessage: defaultPRMessage,
+                        title: defaultPRMessage,
+                        edits: [
+                            `for i in charts/*; do sg ops update-images -kind helm -pin-tag ${release.version} $i/.; done`,
+                            `${sed} -i 's/appVersion:.*/appVersion: "${release.version}"/g' charts/*/Chart.yaml`,
+                            `${sed} -i 's/version:.*/version: "${release.version}"/g' charts/*/Chart.yaml`,
+                            './scripts/helm-docs.sh',
                         ],
                         ...prBodyAndDraftState([]),
                     },
@@ -600,7 +637,7 @@ Batch change: ${batchChangeURL}`,
             // Create final GitHub release
             let githubRelease = ''
             try {
-                githubRelease = await createRelease(
+                githubRelease = await createLatestRelease(
                     githubClient,
                     {
                         owner: 'sourcegraph',
@@ -621,7 +658,7 @@ Batch change: ${batchChangeURL}`,
             const releaseMessage = `*Sourcegraph ${release.version} has been published*
 
 * Changelog: ${changelogURL(release.format())}
-* GitHub release: ${githubRelease || 'Failed to generate release'}
+* GitHub release: ${githubRelease || 'No release generated'}
 * Release batch change: ${batchChangeURL}`
 
             // Slack

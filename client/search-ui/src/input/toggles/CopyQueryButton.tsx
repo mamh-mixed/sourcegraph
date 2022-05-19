@@ -1,13 +1,14 @@
+import React, { useCallback, useRef, useEffect } from 'react'
+
 import { Shortcut } from '@slimsag/react-shortcuts'
 import classNames from 'classnames'
 import copy from 'copy-to-clipboard'
 import ClipboardOutlineIcon from 'mdi-react/ClipboardOutlineIcon'
-import React, { useCallback, useRef, useEffect } from 'react'
 import { Observable, merge, of } from 'rxjs'
 import { tap, switchMapTo, startWith, delay } from 'rxjs/operators'
 
 import { KeyboardShortcut } from '@sourcegraph/shared/src/keyboardShortcuts'
-import { Button, TooltipController, useEventObservable } from '@sourcegraph/wildcard'
+import { Button, Icon, TooltipController, useEventObservable } from '@sourcegraph/wildcard'
 
 interface Props {
     fullQuery: string
@@ -19,7 +20,7 @@ interface Props {
 /**
  * A repository header action that copies the current page's URL to the clipboard.
  */
-export const CopyQueryButton: React.FunctionComponent<Props> = (props: Props) => {
+export const CopyQueryButton: React.FunctionComponent<React.PropsWithChildren<Props>> = (props: Props) => {
     // Convoluted, but using props.fullQuery directly in the copyFullQuery callback does not work, since
     // props.fullQuery is not refrenced during the render and it is not updated within the callback.
     const fullQueryReference = useRef<string>('')
@@ -54,7 +55,7 @@ export const CopyQueryButton: React.FunctionComponent<Props> = (props: Props) =>
                 aria-live="polite"
                 onClick={nextClick}
             >
-                <ClipboardOutlineIcon size={16} className="icon-inline" />
+                <Icon as={ClipboardOutlineIcon} />
             </Button>
             {props.keyboardShortcutForFullCopy.keybindings.map((keybinding, index) => (
                 <Shortcut key={index} {...keybinding} onMatch={copyFullQuery} allowDefault={false} ignoreInput={true} />

@@ -1,5 +1,3 @@
-import classNames from 'classnames'
-import CloseIcon from 'mdi-react/CloseIcon'
 import React, {
     useCallback,
     useRef,
@@ -9,32 +7,39 @@ import React, {
     useMemo,
     useState,
 } from 'react'
+
+import classNames from 'classnames'
+import CloseIcon from 'mdi-react/CloseIcon'
+// eslint-disable-next-line no-restricted-imports
 import { DropdownItem } from 'reactstrap'
 import { BehaviorSubject, combineLatest, of, timer } from 'rxjs'
 import { catchError, debounce, switchMap, tap } from 'rxjs/operators'
 
 import { asError, isErrorLike } from '@sourcegraph/common'
-import { SearchContextInputProps, SearchContextFields } from '@sourcegraph/search'
+import { SearchContextInputProps, SearchContextMinimalFields } from '@sourcegraph/search'
 import { AuthenticatedUser } from '@sourcegraph/shared/src/auth'
 import { PlatformContextProps } from '@sourcegraph/shared/src/platform/context'
 import { ISearchContext } from '@sourcegraph/shared/src/schema'
 import { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryService'
-import { Badge, Button, useObservable, Link } from '@sourcegraph/wildcard'
+import { Badge, Button, useObservable, Link, Icon } from '@sourcegraph/wildcard'
 
 import { HighlightedSearchContextSpec } from './HighlightedSearchContextSpec'
+
 import styles from './SearchContextMenu.module.scss'
 
 export const SearchContextMenuItem: React.FunctionComponent<
-    {
-        spec: string
-        description: string
-        query: string
-        selected: boolean
-        isDefault: boolean
-        selectSearchContextSpec: (spec: string) => void
-        searchFilter: string
-        onKeyDown: (key: string) => void
-    } & TelemetryProps
+    React.PropsWithChildren<
+        {
+            spec: string
+            description: string
+            query: string
+            selected: boolean
+            isDefault: boolean
+            selectSearchContextSpec: (spec: string) => void
+            searchFilter: string
+            onKeyDown: (key: string) => void
+        } & TelemetryProps
+    >
 > = ({
     spec,
     description,
@@ -111,7 +116,7 @@ const searchContextsPerPageToLoad = 15
 const getSearchContextMenuItem = (spec: string): HTMLButtonElement | null =>
     document.querySelector(`[data-search-context-spec="${spec}"]`)
 
-export const SearchContextMenu: React.FunctionComponent<SearchContextMenuProps> = ({
+export const SearchContextMenu: React.FunctionComponent<React.PropsWithChildren<SearchContextMenuProps>> = ({
     authenticatedUser,
     selectedSearchContextSpec,
     defaultSearchContextSpec,
@@ -158,7 +163,7 @@ export const SearchContextMenu: React.FunctionComponent<SearchContextMenuProps> 
 
     const [loadingState, setLoadingState] = useState<LoadingState>('DONE')
     const [searchFilter, setSearchFilter] = useState('')
-    const [searchContexts, setSearchContexts] = useState<SearchContextFields[]>([])
+    const [searchContexts, setSearchContexts] = useState<SearchContextMinimalFields[]>([])
     const [lastPageInfo, setLastPageInfo] = useState<PageInfo | null>(null)
 
     const loadNextPageUpdates = useRef(
@@ -198,6 +203,7 @@ export const SearchContextMenu: React.FunctionComponent<SearchContextMenuProps> 
                             after: cursor,
                             namespaces: getUserSearchContextNamespaces(authenticatedUser),
                             platformContext,
+                            useMinimalFields: true,
                         }),
                     ])
                 ),
@@ -231,10 +237,13 @@ export const SearchContextMenu: React.FunctionComponent<SearchContextMenuProps> 
     ])
 
     const autoDefinedSearchContexts = useObservable(
-        useMemo(() => fetchAutoDefinedSearchContexts(platformContext).pipe(catchError(error => [asError(error)])), [
-            fetchAutoDefinedSearchContexts,
-            platformContext,
-        ])
+        useMemo(
+            () =>
+                fetchAutoDefinedSearchContexts({ platformContext, useMinimalFields: true }).pipe(
+                    catchError(error => [asError(error)])
+                ),
+            [fetchAutoDefinedSearchContexts, platformContext]
+        )
     )
     const filteredAutoDefinedSearchContexts = useMemo(
         () =>
@@ -284,7 +293,7 @@ export const SearchContextMenu: React.FunctionComponent<SearchContextMenuProps> 
             <div className={styles.title}>
                 <small>Choose search context</small>
                 <Button onClick={() => closeMenu()} variant="icon" className={styles.titleClose} aria-label="Close">
-                    <CloseIcon className="icon-inline" />
+                    <Icon as={CloseIcon} />
                 </Button>
             </div>
             <div className={classNames('d-flex', styles.header)}>

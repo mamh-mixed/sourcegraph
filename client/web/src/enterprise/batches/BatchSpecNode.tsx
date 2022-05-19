@@ -1,3 +1,5 @@
+import React, { useCallback, useState } from 'react'
+
 import classNames from 'classnames'
 import { parseISO } from 'date-fns'
 import { upperFirst } from 'lodash'
@@ -8,16 +10,16 @@ import ChevronDownIcon from 'mdi-react/ChevronDownIcon'
 import ChevronRightIcon from 'mdi-react/ChevronRightIcon'
 import StarIcon from 'mdi-react/StarIcon'
 import TimerSandIcon from 'mdi-react/TimerSandIcon'
-import React, { useCallback, useState } from 'react'
 
 import { BatchSpecState } from '@sourcegraph/shared/src/graphql-operations'
 import { ThemeProps } from '@sourcegraph/shared/src/theme'
-import { Timestamp } from '@sourcegraph/web/src/components/time/Timestamp'
-import { Button, Link } from '@sourcegraph/wildcard'
+import { Button, Link, Icon, Typography } from '@sourcegraph/wildcard'
 
+import { Timestamp } from '../../components/time/Timestamp'
 import { BatchSpecListFields, Scalars } from '../../graphql-operations'
 
 import { BatchSpec } from './BatchSpec'
+
 import styles from './BatchSpecNode.module.scss'
 
 export interface BatchSpecNodeProps extends ThemeProps {
@@ -27,7 +29,7 @@ export interface BatchSpecNodeProps extends ThemeProps {
     now?: () => Date
 }
 
-export const BatchSpecNode: React.FunctionComponent<BatchSpecNodeProps> = ({
+export const BatchSpecNode: React.FunctionComponent<React.PropsWithChildren<BatchSpecNodeProps>> = ({
     node,
     currentSpecID,
     isLightTheme,
@@ -47,9 +49,9 @@ export const BatchSpecNode: React.FunctionComponent<BatchSpecNodeProps> = ({
                 onClick={toggleIsExpanded}
             >
                 {isExpanded ? (
-                    <ChevronDownIcon className="icon-inline" aria-label="Close section" />
+                    <Icon aria-label="Close section" as={ChevronDownIcon} />
                 ) : (
-                    <ChevronRightIcon className="icon-inline" aria-label="Expand section" />
+                    <Icon aria-label="Expand section" as={ChevronRightIcon} />
                 )}
             </Button>
             <div className="d-flex flex-column justify-content-center align-items-center px-2 pb-1">
@@ -57,14 +59,14 @@ export const BatchSpecNode: React.FunctionComponent<BatchSpecNodeProps> = ({
                 <span className="text-muted">{upperFirst(node.state.toLowerCase())}</span>
             </div>
             <div className="px-2 pb-1">
-                <h3 className="pr-2">
+                <Typography.H3 className="pr-2">
                     {currentSpecID === node.id && (
                         <>
-                            <StarIcon className="icon-inline text-warning" data-tooltip="Currently applied spec" />{' '}
+                            <Icon className="text-warning" data-tooltip="Currently applied spec" as={StarIcon} />{' '}
                         </>
                     )}
                     {currentSpecID && (
-                        <Link to={`/batch-changes/executions/${node.id}`}>
+                        <Link to={`${node.namespace.url}/batch-changes/${node.description.name}/executions/${node.id}`}>
                             Executed by <strong>{node.creator?.username}</strong>{' '}
                             <Timestamp date={node.createdAt} now={now} />
                         </Link>
@@ -75,10 +77,14 @@ export const BatchSpecNode: React.FunctionComponent<BatchSpecNodeProps> = ({
                                 {node.namespace.namespaceName}
                             </Link>
                             <span className="text-muted d-inline-block mx-1">/</span>
-                            <Link to={`/batch-changes/executions/${node.id}`}>{node.description.name || '-'}</Link>
+                            <Link
+                                to={`${node.namespace.url}/batch-changes/${node.description.name}/executions/${node.id}`}
+                            >
+                                {node.description.name || '-'}
+                            </Link>
                         </>
                     )}
-                </h3>
+                </Typography.H3>
                 {!currentSpecID && (
                     <small className="text-muted d-block">
                         Executed by <strong>{node.creator?.username}</strong>{' '}
@@ -91,7 +97,7 @@ export const BatchSpecNode: React.FunctionComponent<BatchSpecNodeProps> = ({
             </div>
             {isExpanded && (
                 <div className={styles.nodeExpandedSection}>
-                    <h4>Input spec</h4>
+                    <Typography.H4>Input spec</Typography.H4>
                     <BatchSpec
                         isLightTheme={isLightTheme}
                         name={node.description.name}
@@ -104,26 +110,26 @@ export const BatchSpecNode: React.FunctionComponent<BatchSpecNodeProps> = ({
     )
 }
 
-const StateIcon: React.FunctionComponent<{ state: BatchSpecState }> = ({ state }) => {
+const StateIcon: React.FunctionComponent<React.PropsWithChildren<{ state: BatchSpecState }>> = ({ state }) => {
     switch (state) {
         case BatchSpecState.COMPLETED:
-            return <CheckCircleIcon className={classNames(styles.nodeStateIcon, 'icon-inline text-success mb-1')} />
+            return <Icon className={classNames(styles.nodeStateIcon, 'text-success mb-1')} as={CheckCircleIcon} />
 
         case BatchSpecState.PROCESSING:
         case BatchSpecState.QUEUED:
-            return <TimerSandIcon className={classNames(styles.nodeStateIcon, 'icon-inline text-muted mb-1')} />
+            return <Icon className={classNames(styles.nodeStateIcon, 'text-muted mb-1')} as={TimerSandIcon} />
 
         case BatchSpecState.CANCELED:
         case BatchSpecState.CANCELING:
-            return <CancelIcon className={classNames(styles.nodeStateIcon, 'icon-inline text-muted mb-1')} />
+            return <Icon className={classNames(styles.nodeStateIcon, 'text-muted mb-1')} as={CancelIcon} />
 
         case BatchSpecState.FAILED:
         default:
-            return <AlertCircleIcon className={classNames(styles.nodeStateIcon, 'icon-inline text-danger mb-1')} />
+            return <Icon className={classNames(styles.nodeStateIcon, 'text-danger mb-1')} as={AlertCircleIcon} />
     }
 }
 
-const Duration: React.FunctionComponent<{ start: Date; end: Date }> = ({ start, end }) => {
+const Duration: React.FunctionComponent<React.PropsWithChildren<{ start: Date; end: Date }>> = ({ start, end }) => {
     // The duration in seconds.
     let duration = (end.getTime() - start.getTime()) / 1000
     const hours = Math.floor(duration / (60 * 60))

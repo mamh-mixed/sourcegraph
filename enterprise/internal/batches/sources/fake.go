@@ -3,8 +3,6 @@ package sources
 import (
 	"context"
 
-	"github.com/cockroachdb/errors"
-
 	"github.com/sourcegraph/sourcegraph/enterprise/internal/batches/store"
 	btypes "github.com/sourcegraph/sourcegraph/enterprise/internal/batches/types"
 	"github.com/sourcegraph/sourcegraph/internal/database"
@@ -12,6 +10,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/gitserver/protocol"
 	"github.com/sourcegraph/sourcegraph/internal/repos"
 	"github.com/sourcegraph/sourcegraph/internal/types"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 type fakeSourcer struct {
@@ -59,7 +58,7 @@ type FakeChangesetSource struct {
 
 	// The metadata the FakeChangesetSource should set on the created/updated
 	// Changeset with changeset.SetMetadata.
-	FakeMetadata interface{}
+	FakeMetadata any
 
 	// Whether or not the changeset already ChangesetExists on the code host at the time
 	// when CreateChangeset is called.

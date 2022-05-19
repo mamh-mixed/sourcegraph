@@ -7,14 +7,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cockroachdb/errors"
 	"github.com/google/zoekt"
 	zoektquery "github.com/google/zoekt/query"
 
 	"github.com/sourcegraph/sourcegraph/internal/api"
 	"github.com/sourcegraph/sourcegraph/internal/database"
+	"github.com/sourcegraph/sourcegraph/internal/gitserver"
 	"github.com/sourcegraph/sourcegraph/internal/types"
 	"github.com/sourcegraph/sourcegraph/internal/vcs/git"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 type repoListerMock struct{}
@@ -39,7 +40,7 @@ func (r repoListerMock) List(ctx context.Context, q zoektquery.Q, opts *zoekt.Li
 func TestRetrievingAndDeduplicatingIndexedRefs(t *testing.T) {
 	db := database.NewDB(nil)
 	defaultBranchRef := "refs/heads/main"
-	git.Mocks.ResolveRevision = func(rev string, opt git.ResolveRevisionOptions) (api.CommitID, error) {
+	gitserver.Mocks.ResolveRevision = func(rev string, opt gitserver.ResolveRevisionOptions) (api.CommitID, error) {
 		if rev != defaultBranchRef && strings.HasSuffix(rev, defaultBranchRef) {
 			return "", errors.New("x")
 		}

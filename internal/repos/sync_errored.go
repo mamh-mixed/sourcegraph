@@ -4,14 +4,13 @@ import (
 	"context"
 	"time"
 
+	"github.com/inconshreveable/log15"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-
-	"github.com/cockroachdb/errors"
-	"github.com/inconshreveable/log15"
 	"golang.org/x/time/rate"
 
 	"github.com/sourcegraph/sourcegraph/internal/types"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 const syncInterval = 5 * time.Minute
@@ -19,6 +18,11 @@ const syncInterval = 5 * time.Minute
 var erroredRepoGauge = promauto.NewGauge(prometheus.GaugeOpts{
 	Name: "src_repoupdater_syncer_sync_repos_with_last_error_total",
 	Help: "Counts number of repos with non empty_last errors which have been synced.",
+})
+
+var totalErroredRepos = promauto.NewGauge(prometheus.GaugeOpts{
+	Name: "src_repoupdater_syncer_total_errored_repos",
+	Help: "Total number of repos with last error currently.",
 })
 
 func (s *Syncer) RunSyncReposWithLastErrorsWorker(ctx context.Context, rateLimiter *rate.Limiter) {
@@ -40,7 +44,8 @@ func (s *Syncer) RunSyncReposWithLastErrorsWorker(ctx context.Context, rateLimit
 // Dot com mode.
 func (s *Syncer) SyncReposWithLastErrors(ctx context.Context, rateLimiter *rate.Limiter) error {
 	erroredRepoGauge.Set(0)
-	err := s.Store.GitserverReposStore.IterateWithNonemptyLastError(ctx, func(repo types.RepoGitserverStatus) error {
+	s.setTotalErroredRepos(ctx)
+	err := s.Store.GitserverReposStore().IterateWithNonemptyLastError(ctx, func(repo types.RepoGitserverStatus) error {
 		err := rateLimiter.Wait(ctx)
 		if err != nil {
 			return errors.Errorf("error waiting for rate limiter: %s", err)
@@ -49,8 +54,17 @@ func (s *Syncer) SyncReposWithLastErrors(ctx context.Context, rateLimiter *rate.
 		if err != nil {
 			log15.Error("error syncing repo", "repo", repo.Name, "err", err)
 		}
-		erroredRepoGauge.Add(1)
+		erroredRepoGauge.Inc()
 		return nil
 	})
 	return err
+}
+
+func (s *Syncer) setTotalErroredRepos(ctx context.Context) {
+	totalErrored, err := s.Store.GitserverReposStore().TotalErroredCloudDefaultRepos(ctx)
+	if err != nil {
+		log15.Error("error fetching count of total errored repos", "err", err)
+		return
+	}
+	totalErroredRepos.Set(float64(totalErrored))
 }

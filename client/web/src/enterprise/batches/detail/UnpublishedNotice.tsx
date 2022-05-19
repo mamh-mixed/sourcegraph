@@ -1,6 +1,6 @@
 import React from 'react'
 
-import { pluralize } from '@sourcegraph/shared/src/util/strings'
+import { pluralize } from '@sourcegraph/common'
 import { AlertLink, Alert } from '@sourcegraph/wildcard'
 
 interface UnpublishedNoticeProps {
@@ -9,7 +9,7 @@ interface UnpublishedNoticeProps {
     className?: string
 }
 
-export const UnpublishedNotice: React.FunctionComponent<UnpublishedNoticeProps> = ({
+export const UnpublishedNotice: React.FunctionComponent<React.PropsWithChildren<UnpublishedNoticeProps>> = ({
     unpublished,
     total,
     className,

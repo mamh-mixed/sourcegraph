@@ -1,5 +1,6 @@
-import classNames from 'classnames'
 import React, { ReactElement, useCallback } from 'react'
+
+import classNames from 'classnames'
 
 import {
     BuildSearchQueryURLParameters,
@@ -21,6 +22,11 @@ export interface SearchTypeLinksProps extends Pick<SearchContextProps, 'selected
     query: string
     onNavbarQueryChange: (queryState: QueryState) => void
     buildSearchURLQueryFromQueryState: (queryParameters: BuildSearchQueryURLParameters) => string
+    /**
+     * Force search type links to be rendered as buttons.
+     * Used e.g. in the VS Code extension to update search query state.
+     */
+    forceButton?: boolean
 }
 
 interface SearchTypeLinkProps extends SearchTypeLinksProps {
@@ -32,7 +38,7 @@ interface SearchTypeLinkProps extends SearchTypeLinksProps {
  * SearchTypeLink renders to a Link which immediately triggers a new search when
  * clicked.
  */
-const SearchTypeLink: React.FunctionComponent<SearchTypeLinkProps> = ({
+const SearchTypeLink: React.FunctionComponent<React.PropsWithChildren<SearchTypeLinkProps>> = ({
     type,
     query,
     selectedSearchContextSpec,
@@ -60,7 +66,10 @@ interface SearchTypeButtonProps {
  * SearchTypeButton renders to a button which updates the query state without
  * triggering a search. This allows users to adjust the query.
  */
-const SearchTypeButton: React.FunctionComponent<SearchTypeButtonProps> = ({ children, onClick }) => (
+const SearchTypeButton: React.FunctionComponent<React.PropsWithChildren<SearchTypeButtonProps>> = ({
+    children,
+    onClick,
+}) => (
     <Button
         className={classNames(styles.sidebarSectionListItem, styles.sidebarSectionButtonLink, 'flex-1')}
         value={children}
@@ -77,7 +86,7 @@ const SearchTypeButton: React.FunctionComponent<SearchTypeButtonProps> = ({ chil
  * patterns) or whether to allow the user to complete query and triggering it
  * themselves.
  */
-const SearchSymbol: React.FunctionComponent<Omit<SearchTypeLinkProps, 'type'>> = props => {
+const SearchSymbol: React.FunctionComponent<React.PropsWithChildren<Omit<SearchTypeLinkProps, 'type'>>> = props => {
     const type = 'symbol'
     const { query, onNavbarQueryChange } = props
 
@@ -87,7 +96,7 @@ const SearchSymbol: React.FunctionComponent<Omit<SearchTypeLinkProps, 'type'>> =
         })
     }, [query, onNavbarQueryChange])
 
-    if (containsLiteralOrPattern(query)) {
+    if (!props.forceButton && containsLiteralOrPattern(query)) {
         return (
             <SearchTypeLink {...props} type={type}>
                 {props.children}
@@ -98,6 +107,7 @@ const SearchSymbol: React.FunctionComponent<Omit<SearchTypeLinkProps, 'type'>> =
 }
 
 const repoExample = createQueryExampleFromString('{regexp-pattern}')
+const repoDependenciesExample = createQueryExampleFromString('deps({})')
 
 export const getSearchTypeLinks = (props: SearchTypeLinksProps): ReactElement[] => {
     function updateQueryWithRepoExample(): void {
@@ -115,18 +125,45 @@ export const getSearchTypeLinks = (props: SearchTypeLinksProps): ReactElement[] 
         })
     }
 
+    function updateQueryWithRepoDependenciesExample(): void {
+        const updatedQuery = updateQueryWithFilterAndExample(props.query, FilterType.repo, repoDependenciesExample, {
+            singular: true,
+            negate: false,
+            emptyValue: false,
+        })
+        props.onNavbarQueryChange({
+            changeSource: QueryChangeSource.searchTypes,
+            query: updatedQuery.query,
+            selectionRange: updatedQuery.placeholderRange,
+            revealRange: updatedQuery.filterRange,
+            showSuggestions: false,
+        })
+    }
+
+    const SearchTypeLinkOrButton = props.forceButton ? SearchTypeButton : SearchTypeLink
+
+    /** Click handler for `SearchTypeLinkOrButton` (when rendered as button) */
+    function updateQueryWithType(type: string): void {
+        props.onNavbarQueryChange({
+            query: updateFilter(props.query, FilterType.type, type),
+        })
+    }
+
     return [
         <SearchTypeButton onClick={updateQueryWithRepoExample} key="repo">
             Search repos by org or name
         </SearchTypeButton>,
+        <SearchTypeButton onClick={updateQueryWithRepoDependenciesExample} key="repo-dependencies">
+            Search repo dependencies
+        </SearchTypeButton>,
         <SearchSymbol {...props} key="symbol">
             Find a symbol
         </SearchSymbol>,
-        <SearchTypeLink {...props} type="diff" key="diff">
+        <SearchTypeLinkOrButton {...props} type="diff" key="diff" onClick={() => updateQueryWithType('diff')}>
             Search diffs
-        </SearchTypeLink>,
-        <SearchTypeLink {...props} type="commit" key="commit">
+        </SearchTypeLinkOrButton>,
+        <SearchTypeLinkOrButton {...props} type="commit" key="commit" onClick={() => updateQueryWithType('commit')}>
             Search commit messages
-        </SearchTypeLink>,
+        </SearchTypeLinkOrButton>,
     ]
 }

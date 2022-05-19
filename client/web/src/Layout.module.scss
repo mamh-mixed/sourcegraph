@@ -1,3 +1,4 @@
+// NOTE: Consider defining this as non-module SCSS and import it into modules that use it instead
 .layout {
     display: flex;
     width: 100%;
@@ -8,4 +9,14 @@
     // Prevent any internal z-index (heavily used by Bootstrap) from interfering
     // with global React Portal UI such a Reach modals or Shepherd search onboarding tour.
     isolation: isolate;
+}
+
+.panel {
+    isolation: isolate;
+    min-height: 6rem;
+    max-height: calc(100% - 3rem);
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--color-bg-1);
 }

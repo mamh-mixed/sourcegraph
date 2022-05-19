@@ -1,6 +1,6 @@
 import React from 'react'
 
-import { pluralize } from '@sourcegraph/shared/src/util/strings'
+import { pluralize } from '@sourcegraph/common'
 import { Alert, Link } from '@sourcegraph/wildcard'
 
 import { AuthenticatedUser } from '../../../auth'
@@ -12,10 +12,9 @@ export interface MissingCredentialsAlertProps {
     authenticatedUser: Pick<AuthenticatedUser, 'url'>
 }
 
-export const MissingCredentialsAlert: React.FunctionComponent<MissingCredentialsAlertProps> = ({
-    viewerBatchChangesCodeHosts,
-    authenticatedUser,
-}) => {
+export const MissingCredentialsAlert: React.FunctionComponent<
+    React.PropsWithChildren<MissingCredentialsAlertProps>
+> = ({ viewerBatchChangesCodeHosts, authenticatedUser }) => {
     if (viewerBatchChangesCodeHosts.totalCount === 0) {
         return <></>
     }
