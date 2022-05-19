@@ -2,13 +2,10 @@ package enqueuer
 
 import (
 	"context"
-	"os"
 
-	"github.com/inconshreveable/log15"
 	"github.com/opentracing/opentracing-go/log"
 	"golang.org/x/time/rate"
 
-	"github.com/sourcegraph/sourcegraph/internal/api"
 	"github.com/sourcegraph/sourcegraph/internal/codeintel/autoindexing"
 	store "github.com/sourcegraph/sourcegraph/internal/codeintel/stores/dbstore"
 	"github.com/sourcegraph/sourcegraph/internal/database"
@@ -24,6 +21,7 @@ type IndexEnqueuer struct {
 	gitserverClient    GitserverClient
 	repoUpdater        RepoUpdaterClient
 	inferenceService   InferenceService
+	svc                *autoindexing.Service
 	config             *Config
 	gitserverLimiter   *rate.Limiter
 	repoUpdaterLimiter *rate.Limiter
@@ -60,6 +58,7 @@ func newIndexEnqueuer(
 		gitserverClient:    gitClient,
 		repoUpdater:        repoUpdater,
 		inferenceService:   inferenceService,
+		svc:                autoindexing.GetService(database.NewDB(dbStore.Handle().DB()), dbStore, repoUpdater, gitClient, inferenceService),
 		config:             config,
 		gitserverLimiter:   rate.NewLimiter(config.MaximumRepositoriesInspectedPerSecond, 1),
 		repoUpdaterLimiter: rate.NewLimiter(config.MaximumRepositoriesUpdatedPerSecond, 1),
@@ -95,12 +94,12 @@ func (s *IndexEnqueuer) InferIndexConfiguration(ctx context.Context, repositoryI
 	}
 	trace.Log(log.String("commit", commit))
 
-	indexJobs, err := s.inferIndexJobsFromRepositoryStructure(ctx, repositoryID, commit)
+	indexJobs, err := s.svc.InferIndexJobsFromRepositoryStructure(ctx, repositoryID, commit)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	indexJobHints, err := s.inferIndexJobHintsFromRepositoryStructure(ctx, repositoryID, commit)
+	indexJobHints, err := s.svc.InferIndexJobHintsFromRepositoryStructure(ctx, repositoryID, commit)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -187,75 +186,6 @@ func (s *IndexEnqueuer) QueueIndexesForPackage(ctx context.Context, pkg precise.
 	return err
 }
 
-// queueIndexForRepositoryAndCommit determines a set of index jobs to enqueue for the given repository and commit.
-//
-// If the force flag is false, then the presence of an upload or index record for this given repository and commit
-// will cause this method to no-op. Note that this is NOT a guarantee that there will never be any duplicate records
-// when the flag is false.
 func (s *IndexEnqueuer) queueIndexForRepositoryAndCommit(ctx context.Context, repositoryID int, commit, configuration string, force bool, trace observation.TraceLogger) ([]store.Index, error) {
-	if !force {
-		isQueued, err := s.dbStore.IsQueued(ctx, repositoryID, commit)
-		if err != nil {
-			return nil, errors.Wrap(err, "dbstore.IsQueued")
-		}
-		if isQueued {
-			return nil, nil
-		}
-	}
-
-	indexes, err := s.getIndexRecords(ctx, repositoryID, commit, configuration)
-	if err != nil {
-		return nil, err
-	}
-	if len(indexes) == 0 {
-		return nil, nil
-	}
-	trace.Log(log.Int("numIndexes", len(indexes)))
-
-	return s.dbStore.InsertIndexes(ctx, indexes)
-}
-
-var overrideScript = os.Getenv("SRC_CODEINTEL_INFERENCE_OVERRIDE_SCRIPT")
-
-// inferIndexJobsFromRepositoryStructure collects the result of  InferIndexJobs over all registered recognizers.
-func (s *IndexEnqueuer) inferIndexJobsFromRepositoryStructure(ctx context.Context, repositoryID int, commit string) ([]config.IndexJob, error) {
-	if err := s.gitserverLimiter.Wait(ctx); err != nil {
-		return nil, err
-	}
-
-	repoName, err := s.dbStore.RepoName(ctx, repositoryID)
-	if err != nil {
-		return nil, err
-	}
-
-	indexes, err := s.inferenceService.InferIndexJobs(ctx, api.RepoName(repoName), commit, overrideScript)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(indexes) > s.config.MaximumIndexJobsPerInferredConfiguration {
-		log15.Info("Too many inferred roots. Scheduling no index jobs for repository.", "repository_id", repositoryID)
-		return nil, nil
-	}
-
-	return indexes, nil
-}
-
-// inferIndexJobsFromRepositoryStructure collects the result of  InferIndexJobHints over all registered recognizers.
-func (s *IndexEnqueuer) inferIndexJobHintsFromRepositoryStructure(ctx context.Context, repositoryID int, commit string) ([]config.IndexJobHint, error) {
-	if err := s.gitserverLimiter.Wait(ctx); err != nil {
-		return nil, err
-	}
-
-	repoName, err := s.dbStore.RepoName(ctx, repositoryID)
-	if err != nil {
-		return nil, err
-	}
-
-	indexes, err := s.inferenceService.InferIndexJobHints(ctx, api.RepoName(repoName), commit, overrideScript)
-	if err != nil {
-		return nil, err
-	}
-
-	return indexes, nil
+	return s.svc.QueueIndexForRepositoryAndCommit(ctx, repositoryID, commit, configuration, force, trace)
 }
