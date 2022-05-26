@@ -19,9 +19,9 @@ trap finish EXIT
 ./tmp-sg migration squash-all -skip-teardown -db codeintel -f migrations/codeintel/squashed.sql
 ./tmp-sg migration squash-all -skip-teardown -db codeinsights -f migrations/codeinsights/squashed.sql
 
-export PGDATASOURCE="postgres://${PGUSER}:${PGPASSWORD}@${PGHOST}:${PGPORT}/sg-squasher-frontend"
-export CODEINTEL_PGDATASOURCE="postgres://${PGUSER}:${PGPASSWORD}@${PGHOST}:${PGPORT}/sg-squasher-codeintel"
-export CODEINSIGHTS_PGDATASOURCE="postgres://${PGUSER}:${PGPASSWORD}@${PGHOST}:${PGPORT}/sg-squasher-codeinsights"
+export PGDATASOURCE="${PGDATASOURCE:-postgres://${PGUSER}:${PGPASSWORD}@${PGHOST}:${PGPORT}/sg-squasher-frontend}"
+export CODEINTEL_PGDATASOURCE="${PGDATASOURCE:-postgres://${PGUSER}:${PGPASSWORD}@${PGHOST}:${PGPORT}/sg-squasher-codeintel}"
+export CODEINSIGHTS_PGDATASOURCE="${PGDATASOURCE:-postgres://${PGUSER}:${PGPASSWORD}@${PGHOST}:${PGPORT}/sg-squasher-codeinsights}"
 
 # Output-psql formatted schema description
 ./tmp-sg migration describe -db frontend --format=psql -force -out internal/database/schema.md
