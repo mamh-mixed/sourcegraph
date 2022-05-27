@@ -30,12 +30,14 @@ func TestNewPlanJob(t *testing.T) {
     (LIMIT
       500
       (PARALLEL
-        (REPOPAGER
-          ZoektRepoSubsetSearchJob)
+        (SEQUENTIAL
+          (REPOPAGER
+            ZoektRepoSubsetSearchJob)
+          (REPOPAGER
+            SearcherJob))
         ComputeExcludedReposJob
         (PARALLEL
-          (REPOPAGER
-            SearcherJob)
+          NoopJob
           RepoSearchJob)))))`),
 	}, {
 		query:      `foo context:global`,
@@ -76,12 +78,14 @@ func TestNewPlanJob(t *testing.T) {
     (LIMIT
       500
       (PARALLEL
-        (REPOPAGER
-          ZoektRepoSubsetSearchJob)
+        (SEQUENTIAL
+          (REPOPAGER
+            ZoektRepoSubsetSearchJob)
+          (REPOPAGER
+            SearcherJob))
         ComputeExcludedReposJob
         (PARALLEL
-          (REPOPAGER
-            SearcherJob)
+          NoopJob
           RepoSearchJob)))))`),
 	}, {
 		query:      `ok ok`,
@@ -207,15 +211,17 @@ func TestNewPlanJob(t *testing.T) {
     (LIMIT
       500
       (PARALLEL
-        (REPOPAGER
-          ZoektRepoSubsetSearchJob)
+        (SEQUENTIAL
+          (REPOPAGER
+            ZoektRepoSubsetSearchJob)
+          (REPOPAGER
+            SearcherJob))
         (REPOPAGER
           ZoektSymbolSearchJob)
         CommitSearchJob
         ComputeExcludedReposJob
         (PARALLEL
-          (REPOPAGER
-            SearcherJob)
+          NoopJob
           (REPOPAGER
             SymbolSearcherJob)
           RepoSearchJob)))))`),
@@ -245,15 +251,17 @@ func TestNewPlanJob(t *testing.T) {
     (LIMIT
       500
       (PARALLEL
-        (REPOPAGER
-          ZoektRepoSubsetSearchJob)
+        (SEQUENTIAL
+          (REPOPAGER
+            ZoektRepoSubsetSearchJob)
+          (REPOPAGER
+            SearcherJob))
         (REPOPAGER
           ZoektSymbolSearchJob)
         CommitSearchJob
         ComputeExcludedReposJob
         (PARALLEL
-          (REPOPAGER
-            SearcherJob)
+          NoopJob
           (REPOPAGER
             SymbolSearcherJob)
           RepoSearchJob)))))`),
