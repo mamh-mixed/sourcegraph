@@ -238,7 +238,14 @@ func orderSearcherJob(j job.Job) job.Job {
 		},
 	}
 
-	return orderer.Map(newJob)
+	newJob = orderer.Map(newJob)
+
+	if !seenZoektRepoSearch && !seenZoektGlobalSearch {
+		// There were no Zoekt jobs, so no need to modify the tree. Return original.
+		return j
+	}
+
+	return newJob
 }
 
 // NewFlatJob creates all jobs that are built from a query.Flat.
