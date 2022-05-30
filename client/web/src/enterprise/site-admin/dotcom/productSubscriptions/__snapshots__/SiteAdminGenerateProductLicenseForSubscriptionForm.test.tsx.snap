@@ -21,7 +21,7 @@ exports[`SiteAdminGenerateProductLicenseForSubscriptionForm renders 1`] = `
           class="container d-flex form-control"
         >
           <input
-            class="form-control with-invalid-icon"
+            class="form-control loader-input with-invalid-icon"
             id="site-admin-create-product-subscription-page__tags"
             list="knownPlans"
             type="text"
@@ -84,7 +84,7 @@ exports[`SiteAdminGenerateProductLicenseForSubscriptionForm renders 1`] = `
           class="container d-flex"
         >
           <input
-            class="form-control with-invalid-icon"
+            class="form-control loader-input with-invalid-icon"
             id="site-admin-create-product-subscription-page__userCount"
             min="1"
             type="number"
@@ -105,7 +105,7 @@ exports[`SiteAdminGenerateProductLicenseForSubscriptionForm renders 1`] = `
           class="container d-flex"
         >
           <input
-            class="form-control with-invalid-icon"
+            class="form-control loader-input with-invalid-icon"
             id="site-admin-create-product-subscription-page__validDays"
             max="2000"
             min="1"

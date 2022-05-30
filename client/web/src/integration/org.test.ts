@@ -98,7 +98,7 @@ describe('Organizations', () => {
                 newText: testOrg.name,
             })
             await driver.replaceText({
-                selector: '.test-new-org-display-name-input',
+                selector: '[data-testid="test-new-org-display-name-input"]',
                 newText: testOrg.displayName,
             })
 

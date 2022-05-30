@@ -21,7 +21,7 @@ describe('Input', () => {
               class="container d-flex"
             >
               <input
-                class="inputLoading form-control with-invalid-icon"
+                class="inputLoading form-control loader-input with-invalid-icon"
                 placeholder="loading status input"
                 title="Input loading"
                 type="text"
@@ -59,7 +59,7 @@ describe('Input', () => {
                 class="container d-flex"
               >
                 <input
-                  class="inputLoading form-control with-invalid-icon"
+                  class="inputLoading form-control loader-input with-invalid-icon"
                   placeholder="loading status input"
                   title="Input loading"
                   type="text"

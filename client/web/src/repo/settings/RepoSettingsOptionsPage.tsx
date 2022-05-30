@@ -7,7 +7,7 @@ import { switchMap } from 'rxjs/operators'
 import { ErrorAlert } from '@sourcegraph/branded/src/components/alerts'
 import { Form } from '@sourcegraph/branded/src/components/Form'
 import { asError } from '@sourcegraph/common'
-import { Container, PageHeader, LoadingSpinner, Typography, Text } from '@sourcegraph/wildcard'
+import { Container, PageHeader, LoadingSpinner, Input, Text } from '@sourcegraph/wildcard'
 
 import { ExternalServiceCard } from '../../components/externalServices/ExternalServiceCard'
 import { defaultExternalServices } from '../../components/externalServices/externalServices'
@@ -95,13 +95,8 @@ export class RepoSettingsOptionsPage extends React.PureComponent<Props, State> {
                     )}
                     <Form>
                         <div className="form-group mb-0">
-                            <Typography.Label htmlFor="repo-settings-options-page__name">
-                                Repository name
-                            </Typography.Label>
-                            <input
+                            <Input
                                 id="repo-settings-options-page__name"
-                                type="text"
-                                className="form-control"
                                 readOnly={true}
                                 disabled={true}
                                 value={this.state.repo.name}
@@ -109,6 +104,8 @@ export class RepoSettingsOptionsPage extends React.PureComponent<Props, State> {
                                 spellCheck={false}
                                 autoCapitalize="off"
                                 autoCorrect="off"
+                                label="Repository name"
+                                className="mb-0"
                             />
                         </div>
                     </Form>

@@ -12,7 +12,7 @@ import { gql } from '@sourcegraph/http-client'
 import { Scalars, SearchPatternType } from '@sourcegraph/shared/src/graphql-operations'
 import * as GQL from '@sourcegraph/shared/src/schema'
 import { buildSearchURLQuery } from '@sourcegraph/shared/src/util/url'
-import { Button, ButtonGroup, Link, CardHeader, CardBody, Card, Typography } from '@sourcegraph/wildcard'
+import { Button, ButtonGroup, Link, CardHeader, CardBody, Card, Input, Typography } from '@sourcegraph/wildcard'
 
 import { queryGraphQL } from '../../backend/graphql'
 import { FilteredConnection } from '../../components/FilteredConnection'
@@ -226,7 +226,7 @@ export class RepositoryStatsContributorsPage extends React.PureComponent<Props, 
                     <CardHeader>Contributions filter</CardHeader>
                     <CardBody>
                         <Form onSubmit={this.onSubmit}>
-                            <div className={classNames(styles.row, 'form-inline')}>
+                            <div className={classNames(styles.row, 'form-inline mb-2')}>
                                 <div className="input-group mb-2 mr-sm-2">
                                     <div className="input-group-prepend">
                                         <Typography.Label
@@ -236,9 +236,7 @@ export class RepositoryStatsContributorsPage extends React.PureComponent<Props, 
                                             Time period
                                         </Typography.Label>
                                     </div>
-                                    <input
-                                        type="text"
-                                        className="form-control"
+                                    <Input
                                         name="after"
                                         size={12}
                                         id={RepositoryStatsContributorsPage.AFTER_INPUT_ID}
@@ -293,9 +291,7 @@ export class RepositoryStatsContributorsPage extends React.PureComponent<Props, 
                                             Revision range
                                         </Typography.Label>
                                     </div>
-                                    <input
-                                        type="text"
-                                        className="form-control"
+                                    <Input
                                         name="revision-range"
                                         size={18}
                                         id={RepositoryStatsContributorsPage.REVISION_RANGE_INPUT_ID}
@@ -317,9 +313,7 @@ export class RepositoryStatsContributorsPage extends React.PureComponent<Props, 
                                             Path
                                         </Typography.Label>
                                     </div>
-                                    <input
-                                        type="text"
-                                        className="form-control"
+                                    <Input
                                         name="path"
                                         size={18}
                                         id={RepositoryStatsContributorsPage.PATH_INPUT_ID}

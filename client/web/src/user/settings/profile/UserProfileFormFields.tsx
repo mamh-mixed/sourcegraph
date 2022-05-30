@@ -3,7 +3,7 @@ import React, { useCallback } from 'react'
 import classNames from 'classnames'
 
 import * as GQL from '@sourcegraph/shared/src/schema'
-import { Typography } from '@sourcegraph/wildcard'
+import { Input, Typography } from '@sourcegraph/wildcard'
 
 import { USER_DISPLAY_NAME_MAX_LENGTH } from '../..'
 import { UsernameInput } from '../../../auth/SignInSignUpCommon'
@@ -58,31 +58,32 @@ export const UserProfileFormFields: React.FunctionComponent<React.PropsWithChild
                 </small>
             </div>
             <div className="form-group">
-                <Typography.Label htmlFor="UserProfileFormFields__displayName">Display name</Typography.Label>
-                <input
+                <Input
                     id="UserProfileFormFields__displayName"
-                    type="text"
-                    className="form-control test-UserProfileFormFields__displayName"
+                    inputClassName="test-UserProfileFormFields__displayName"
                     value={value.displayName || ''}
                     onChange={onDisplayNameChange}
                     disabled={disabled}
                     spellCheck={false}
                     placeholder="Display name"
                     maxLength={USER_DISPLAY_NAME_MAX_LENGTH}
+                    className="mb-0"
+                    label="Display name"
                 />
             </div>
             <div className="d-flex align-items-center">
                 <div className="form-group w-100">
-                    <Typography.Label htmlFor="UserProfileFormFields__avatarURL">Avatar URL</Typography.Label>
-                    <input
+                    <Input
                         id="UserProfileFormFields__avatarURL"
                         type="url"
-                        className="form-control test-UserProfileFormFields__avatarURL"
+                        inputClassName="test-UserProfileFormFields__avatarURL"
                         value={value.avatarURL || ''}
                         onChange={onAvatarURLChange}
                         disabled={disabled}
                         spellCheck={false}
                         placeholder="URL to avatar photo"
+                        className="mb-0"
+                        label="Avatar URL"
                     />
                 </div>
                 {value.avatarURL && <UserAvatar user={value} className={classNames('ml-2', styles.avatar)} />}

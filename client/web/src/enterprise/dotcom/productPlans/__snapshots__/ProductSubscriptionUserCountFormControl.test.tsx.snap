@@ -18,7 +18,7 @@ exports[`ProductSubscriptionUserCountFormControl renders 1`] = `
         class="container d-flex w-auto"
       >
         <input
-          class="form-control with-invalid-icon"
+          class="form-control loader-input with-invalid-icon"
           id="product-subscription-user-count-control__userCount"
           max="50000"
           min="25"

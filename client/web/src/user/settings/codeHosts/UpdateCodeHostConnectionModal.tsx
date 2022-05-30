@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react'
 
 import { Form } from '@sourcegraph/branded/src/components/Form'
 import { asError, ErrorLike } from '@sourcegraph/common'
-import { Button, Modal, Link, Alert, Typography, Text } from '@sourcegraph/wildcard'
+import { Button, Modal, Link, Alert, Typography, Input, Text } from '@sourcegraph/wildcard'
 
 import { updateExternalService } from '../../../components/externalServices/backend'
 import { LoaderButton } from '../../../components/LoaderButton'
@@ -98,16 +98,16 @@ export const UpdateCodeHostConnectionModal: React.FunctionComponent<
                         {didAckMachineUserHint ? (
                             <>
                                 {' '}
-                                <Typography.Label htmlFor="code-host-token">Access token</Typography.Label>
                                 <div className="position-relative">
-                                    <input
+                                    <Input
                                         id="code-host-token"
                                         name="code-host-token"
-                                        type="text"
                                         value={token}
                                         onChange={onChangeToken}
-                                        className="form-control pr-4"
+                                        inputClassName="pr-4"
                                         autoComplete="off"
+                                        className="mb-0"
+                                        label="Access token"
                                     />
                                     <EncryptedDataIcon />
                                 </div>

@@ -74,6 +74,7 @@ export const Input = forwardRef((props, reference) => {
                         inputClassName,
                         status === InputStatus.loading && styles.inputLoading,
                         'form-control',
+                        'loader-input',
                         'with-invalid-icon',
                         {
                             'is-valid': status === InputStatus.valid,

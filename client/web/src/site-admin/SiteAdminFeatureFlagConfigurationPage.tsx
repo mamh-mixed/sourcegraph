@@ -364,7 +364,7 @@ const AddFeatureFlagOverride: FunctionComponent<
                         />
                     </Typography.Label>
                     <Input
-                        className="mt-2"
+                        inputClassName="mt-2"
                         label={`${overrideType} ID`}
                         type="number"
                         value={namespaceID}
@@ -621,17 +621,14 @@ const CreateFeatureFlag: React.FunctionComponent<
 > = ({ name, setFlagName, type, setFlagType, value, setFlagValue }) => (
     <>
         <div className="form-group d-flex flex-column">
-            <Typography.Label htmlFor="name">
-                <Typography.H3>Name</Typography.H3>
-            </Typography.Label>
-            <input
+            <Input
                 id="name"
-                type="text"
-                className="form-control"
                 value={name}
                 onChange={({ target: { value } }) => {
                     setFlagName(value)
                 }}
+                className="mb-0"
+                label={<Typography.H3>Name</Typography.H3>}
             />
             <small className="form-text text-muted">Required.</small>
         </div>
@@ -705,17 +702,16 @@ const FeatureFlagRolloutValueSettings: React.FunctionComponent<
     }>
 > = ({ value, update }) => (
     <div className="form-group d-flex flex-column">
-        <Typography.Label htmlFor="rollout-value">
-            <Typography.H3>Value</Typography.H3>
-        </Typography.Label>
-        <input
+        <Input
             type="range"
             id="rollout-value"
             name="rollout-value"
             step="10"
             min="0"
             max="10000"
-            className="w-25"
+            className="mb-0"
+            label={<Typography.H3>Value</Typography.H3>}
+            inputClassName="w-25"
             value={value.rolloutBasisPoints}
             onChange={({ target }) => {
                 update({ rolloutBasisPoints: parseInt(target.value, 10) })
