@@ -5,7 +5,7 @@ import * as H from 'history'
 
 import { Form } from '@sourcegraph/branded/src/components/Form'
 import { asError } from '@sourcegraph/common'
-import { Button, LoadingSpinner, Link, Typography } from '@sourcegraph/wildcard'
+import { Button, LoadingSpinner, Link, Label } from '@sourcegraph/wildcard'
 
 import { SourcegraphContext } from '../jscontext'
 import { eventLogger } from '../tracking/eventLogger'
@@ -95,9 +95,9 @@ export const UsernamePasswordSignInForm: React.FunctionComponent<React.PropsWith
         <>
             <Form onSubmit={handleSubmit}>
                 <div className="form-group d-flex flex-column align-content-start">
-                    <Typography.Label htmlFor="username-or-email" className="align-self-start">
+                    <Label htmlFor="username-or-email" className="align-self-start">
                         Username or email
-                    </Typography.Label>
+                    </Label>
                     <input
                         id="username-or-email"
                         className="form-control"
@@ -115,9 +115,9 @@ export const UsernamePasswordSignInForm: React.FunctionComponent<React.PropsWith
                     />
                 </div>
                 <div className="form-group d-flex flex-column align-content-start position-relative">
-                    <Typography.Label htmlFor="password" className="align-self-start">
+                    <Label htmlFor="password" className="align-self-start">
                         Password
-                    </Typography.Label>
+                    </Label>
                     <PasswordInput
                         onChange={onPasswordFieldChange}
                         value={password}

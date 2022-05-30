@@ -6,7 +6,7 @@ import PlusThickIcon from 'mdi-react/PlusThickIcon'
 import FocusLock from 'react-focus-lock'
 
 import { ExternalServiceKind } from '@sourcegraph/shared/src/schema'
-import { ButtonLink, PopoverContent, Position, Typography, Text } from '@sourcegraph/wildcard'
+import { ButtonLink, PopoverContent, Position, H3, Text } from '@sourcegraph/wildcard'
 
 import { SourcegraphIcon } from '../../auth/icons'
 
@@ -43,9 +43,9 @@ export const InstallBrowserExtensionPopover: React.FunctionComponent<React.Props
         >
             <FocusLock returnFocus={true}>
                 <div className="p-3 text-wrap  test-install-browser-extension-popover">
-                    <Typography.H3 className="mb-0 test-install-browser-extension-popover-header">
+                    <H3 className="mb-0 test-install-browser-extension-popover-header">
                         Take Sourcegraph's code intelligence to {displayName}!
-                    </Typography.H3>
+                    </H3>
                     <Text className="py-3">
                         Install Sourcegraph browser extension to add code intelligence{' '}
                         {serviceKind === ExternalServiceKind.PHABRICATOR
