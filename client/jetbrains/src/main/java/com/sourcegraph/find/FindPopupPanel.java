@@ -1,8 +1,15 @@
 package com.sourcegraph.find;
 
+import com.intellij.diff.DiffManager;
+import com.intellij.diff.DiffRequestFactory;
+import com.intellij.diff.DiffRequestPanel;
+import com.intellij.diff.requests.ContentDiffRequest;
+import com.intellij.diff.util.DiffUserDataKeys;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Splitter;
+import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.testFramework.LightVirtualFile;
 import com.intellij.ui.OnePixelSplitter;
 import com.intellij.ui.PopupBorder;
 import com.intellij.ui.components.JBPanel;
@@ -58,8 +65,25 @@ public class FindPopupPanel extends JBPanel<FindPopupPanel> implements Disposabl
     }
 
     private void createPreviewPanel() {
+        JBPanel bottomPanel = new JBPanel(new BorderLayout());
+
+        VirtualFile file1 = new LightVirtualFile("file.java", "Test content 1");
+        VirtualFile file2 = new LightVirtualFile("file.java", "Test content 2");
+        ContentDiffRequest diffRequest = DiffRequestFactory.getInstance().createFromFiles(project, file1, file2);
+
+        diffRequest.putUserData(DiffUserDataKeys.FORCE_READ_ONLY, true);
+
+        DiffRequestPanel diffRequestPanel = DiffManager.getInstance().createRequestPanel(project, this, null);
+        diffRequestPanel.setRequest(diffRequest);
+
+        bottomPanel.add(diffRequestPanel.getComponent(), BorderLayout.CENTER);
+
+        //DiffManager.getInstance().showDiff(project, diffRequest);
+
         previewPanel = new PreviewPanel(project);
-        splitter.setSecondComponent(previewPanel);
+
+        //splitter.setSecondComponent(previewPanel);
+        splitter.setSecondComponent(bottomPanel);
     }
 
     @Nullable
