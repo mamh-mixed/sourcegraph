@@ -1,9 +1,7 @@
 import * as React from 'react'
 
 import classNames from 'classnames'
-import * as H from 'history'
-// eslint-disable-next-line no-restricted-imports
-import { Link } from 'react-router-dom'
+import { Link, useHref } from 'react-router-dom-v5-compat'
 
 import { useWildcardTheme } from '../../../hooks/useWildcardTheme'
 import { ForwardReferenceComponent } from '../../../types'
@@ -11,9 +9,10 @@ import type { LinkProps } from '../Link'
 
 import styles from './AnchorLink.module.scss'
 
+type LinkType = typeof Link
 export type AnchorLinkProps = LinkProps
 
-export const AnchorLink = React.forwardRef(({ to, as: Component, children, className, ...rest }, reference) => {
+export const AnchorLink = React.forwardRef(({ as: Component, children, className, ...rest }, reference) => {
     const { isBranded } = useWildcardTheme()
 
     const commonProps = {
@@ -22,19 +21,24 @@ export const AnchorLink = React.forwardRef(({ to, as: Component, children, class
     }
 
     if (!Component) {
-        return (
-            // eslint-disable-next-line react/forbid-elements
-            <a href={to && typeof to !== 'string' ? H.createPath(to) : to} {...rest} {...commonProps}>
-                {children}
-            </a>
-        )
+        return <PlainLink {...rest} {...commonProps} />
     }
 
     return (
-        <Component to={to} {...rest} {...commonProps}>
+        <Component {...rest} {...commonProps}>
             {children}
         </Component>
     )
-}) as ForwardReferenceComponent<Link<unknown>, AnchorLinkProps>
+}) as ForwardReferenceComponent<LinkType, AnchorLinkProps>
+
+const PlainLink = React.forwardRef(({ children, to, className, ...rest }, reference) => {
+    const href = useHref(to)
+    return (
+        // eslint-disable-next-line react/forbid-elements
+        <a href={href} className={className} ref={reference} {...rest}>
+            {children}
+        </a>
+    )
+}) as ForwardReferenceComponent<LinkType, AnchorLinkProps>
 
 AnchorLink.displayName = 'AnchorLink'
