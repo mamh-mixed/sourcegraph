@@ -69,6 +69,7 @@ function handleRequest(
         }
 
         case 'preview': {
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
             const { content, absoluteOffsetAndLengths } = (request as MatchRequest).arguments
 
             const start = absoluteOffsetAndLengths.length > 0 ? absoluteOffsetAndLengths[0][0] : 0
@@ -95,6 +96,7 @@ function handleRequest(
         }
 
         case 'open': {
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
             const { path } = (request as MatchRequest).arguments
             alert(`Opening ${path}`)
             onSuccessCallback('{}')
@@ -102,6 +104,7 @@ function handleRequest(
         }
 
         case 'saveLastSearch': {
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
             savedSearch = (request as SaveLastSearchRequest).arguments
             onSuccessCallback('{}')
             break
@@ -118,6 +121,7 @@ function handleRequest(
         }
 
         case 'openSourcegraphUrl': {
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
             const { relativeUrl } = (request as OpenSourcegraphUrlRequest).arguments
             window.open(instanceURL + relativeUrl, '_blank')
             onSuccessCallback('null')
