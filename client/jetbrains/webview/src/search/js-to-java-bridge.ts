@@ -139,12 +139,15 @@ export async function createPreviewOrOpenRequest(
     action: MatchRequest['action']
 ): Promise<MatchRequest> {
     if (match.type === 'commit') {
+        const content = match.content.startsWith('```COMMIT_EDITMSG')
+            ? match.content.replace(/^```COMMIT_EDITMSG\n([\S\s]*)\n```$/, '$1')
+            : match.content.replace(/^```diff\n([\S\s]*)\n```$/, '$1')
         return {
             action,
             arguments: {
                 fileName: '',
                 path: '',
-                content: match.message,
+                content,
                 lineNumber: -1,
                 absoluteOffsetAndLengths: [],
             },
@@ -178,7 +181,6 @@ export async function createPreviewOrOpenRequest(
 
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore This is here in preparation for future match types
-    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
     console.log(`Unknown match type: “${match.type}”`)
 
     return {
