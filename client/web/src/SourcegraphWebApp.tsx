@@ -139,6 +139,7 @@ export interface SourcegraphWebAppProps
     repoHeaderActionButtons: readonly RepoHeaderActionButton[]
     repoSettingsAreaRoutes: readonly RepoSettingsAreaRoute[]
     repoSettingsSidebarGroups: readonly RepoSettingsSideBarGroup[]
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     routes: readonly LayoutRouteProps<any>[]
 }
 
