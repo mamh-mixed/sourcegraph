@@ -26,9 +26,17 @@ export const AnchorLink = React.forwardRef(({ as: Component, children, className
         // Link inside Router. Now it's not the case because for
         // tour (onboarding) components, it's rendered by renderBrandedToString
         if (typeof to === 'string') {
-            return <PlainLinkWithHref to={to} {...rest} {...commonProps} />
+            return (
+                <PlainLinkWithHref to={to} {...rest} {...commonProps}>
+                    {children}
+                </PlainLinkWithHref>
+            )
         }
-        return <PlainLinkWithTo to={to} {...rest} {...commonProps} />
+        return (
+            <PlainLinkWithTo to={to} {...rest} {...commonProps}>
+                {children}
+            </PlainLinkWithTo>
+        )
     }
 
     return (
