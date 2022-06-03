@@ -34,7 +34,6 @@ export const BrandedStory: React.FunctionComponent<React.PropsWithChildren<Brand
         <MockedStoryProvider mocks={mocks} useStrictMocking={useStrictMocking}>
             <WildcardThemeContext.Provider value={{ isBranded: true }}>
                 <MemoryRouter {...memoryRouterProps}>
-                    <Children isLightTheme={isLightTheme} />
                     <CompatRouter>
                         <DeprecatedTooltip />
                         <Children isLightTheme={isLightTheme} />
