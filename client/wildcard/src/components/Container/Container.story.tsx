@@ -3,7 +3,7 @@ import { DecoratorFn, Meta, Story } from '@storybook/react'
 import { BrandedStory } from '@sourcegraph/branded/src/components/BrandedStory'
 import webStyles from '@sourcegraph/web/src/SourcegraphWebApp.scss'
 
-import { H1, H2, H3, Text } from '..'
+import { H1, H2, H3, Text, Input } from '..'
 import { Alert } from '../Alert'
 import { Button } from '../Button'
 
@@ -47,15 +47,9 @@ export const Overview: Story = () => (
         <Text className="text-muted">Optional: Add some descriptive text about what this page does.</Text>
         <Container className="mb-3">
             <H3>Section I</H3>
-            <Text>Here you change the username.</Text>
-            <div className="form-group">
-                <input type="text" className="form-control" />
-            </div>
+            <Input className="form-group" label={<Text weight="regular">Here you change the username.</Text>} />
             <H3>Section II</H3>
-            <Text>Here you change your email.</Text>
-            <div className="form-group mb-0">
-                <input type="text" className="form-control" />
-            </div>
+            <Input className="form-group mb-0" label={<Text weight="regular">Here you change your email.</Text>} />
         </Container>
         <div className="mb-3">
             <Button variant="primary" className="mr-2">
@@ -69,19 +63,13 @@ export const Overview: Story = () => (
         <Text className="text-muted">Optional: Add some descriptive text about what this page does.</Text>
         <Container className="mb-3">
             <H3>Section I</H3>
-            <Text>Here you change the username.</Text>
-            <div className="form-group">
-                <input type="text" className="form-control" />
-            </div>
+            <Input className="form-group" label={<Text weight="regular">Here you change the username.</Text>} />
             <Button className="mb-2" variant="secondary">
                 Save
             </Button>
             <hr className="mb-2" />
             <H3>Section II</H3>
-            <Text>Here you change your email.</Text>
-            <div className="form-group">
-                <input type="text" className="form-control" />
-            </div>
+            <Input className="form-group" label={<Text weight="regular">Here you change your email.</Text>} />
             <Button variant="secondary">Save</Button>
         </Container>
     </>

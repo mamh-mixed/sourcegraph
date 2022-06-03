@@ -68,6 +68,7 @@ export const AddInsightModalContent: React.FunctionComponent<
             <fieldset className={styles.insightsContainer}>
                 {filteredInsights.map(insight => (
                     <Label key={insight.id} weight="medium" className={styles.insightItem}>
+                        {/* eslint-disable-next-line react/forbid-elements */}
                         <input
                             type="checkbox"
                             name="insightIds"
