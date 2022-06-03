@@ -12,7 +12,6 @@ import styles from './AnchorLink.module.scss'
 type LinkType = typeof Link
 export type AnchorLinkProps = LinkProps
 
-// eslint-disable-next-line react/display-name
 export const AnchorLink = React.forwardRef(({ as: Component, children, className, to, ...rest }, reference) => {
     const { isBranded } = useWildcardTheme()
 
@@ -22,8 +21,8 @@ export const AnchorLink = React.forwardRef(({ as: Component, children, className
     }
 
     if (!Component) {
-        // We may be able to get rid of this branching if we start always rendering
-        // Link inside Router. Now it's not the case because for
+        // We may be able to get rid of this branching when we start always
+        // rendering Link inside Router. Now it's not the case because for
         // tour (onboarding) components, it's rendered by renderBrandedToString
         if (typeof to === 'string') {
             return (
@@ -47,7 +46,6 @@ export const AnchorLink = React.forwardRef(({ as: Component, children, className
 }) as ForwardReferenceComponent<LinkType, AnchorLinkProps>
 AnchorLink.displayName = 'AnchorLink'
 
-// eslint-disable-next-line react/display-name
 const PlainLinkWithTo = React.forwardRef(({ children, to, className, ...rest }, reference) => {
     const href = useHref(to)
     return (
@@ -59,7 +57,6 @@ const PlainLinkWithTo = React.forwardRef(({ children, to, className, ...rest }, 
 }) as ForwardReferenceComponent<LinkType, AnchorLinkProps>
 PlainLinkWithTo.displayName = 'PlainLinkWithTo'
 
-// eslint-disable-next-line react/display-name
 const PlainLinkWithHref = React.forwardRef(({ children, to, className, ...rest }, reference) => (
     // eslint-disable-next-line react/forbid-elements
     <a href={to} className={className} ref={reference} {...rest}>

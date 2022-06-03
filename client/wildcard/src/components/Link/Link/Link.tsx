@@ -45,8 +45,6 @@ export let Link: typeof AnchorLink
 
 if (process.env.NODE_ENV !== 'production') {
     // Fail with helpful message if setLinkComponent has not been called when the <Link> component is used.
-
-    // eslint-disable-next-line react/display-name
     Link = React.forwardRef(() => {
         throw new Error('No Link component set. You must call setLinkComponent to set the Link component to use.')
     }) as typeof Link
