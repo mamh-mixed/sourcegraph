@@ -31,6 +31,7 @@ func NewFeelingLuckySearchJob(inputs *run.SearchInputs, plan query.Plan) []job.J
 
 var rulesList = [][]rule{
 	{unquotePatterns},
+	{unorderedPatterns},
 }
 
 // rule represents a transformation function on a Basic query. Applying rules
@@ -104,6 +105,60 @@ func unquotePatterns(b query.Basic) *query.Basic {
 
 	if !changed {
 		// No unquoting happened, so we don't run the search.
+		return nil
+	}
+
+	newNodes, err := query.Sequence(query.For(query.SearchTypeLiteralDefault))(newParseTree)
+	if err != nil {
+		return nil
+	}
+
+	newBasic, err := query.ToBasicQuery(newNodes)
+	if err != nil {
+		return nil
+	}
+
+	return &newBasic
+}
+
+// UnorderedPatterns generates a query that interprets all recognized patterns
+// as unordered terms (`and`-ed terms). The implementation detail is that we
+// simply map all `concat` nodes (after a raw parse) to `and` nodes. This works
+// because parsing maintains the invariant that `concat` nodes only ever have
+// pattern children.
+func unorderedPatterns(b query.Basic) *query.Basic {
+	rawParseTree, err := query.Parse(query.StringHuman(b.ToParseTree()), query.SearchTypeRegex)
+	if err != nil {
+		return nil
+	}
+
+	changed := false
+
+	newParseTree := query.MapOperator(rawParseTree, func(kind query.OperatorKind, operands []query.Node) []query.Node {
+		if kind == query.Concat {
+			ps := []query.Node{}
+			for _, n := range operands {
+				if p, ok := n.(query.Pattern); ok {
+					ps = append(ps, p)
+				}
+			}
+			changed = true
+			return []query.Node{
+				query.Operator{
+					Kind:     query.And,
+					Operands: ps,
+				},
+			}
+		}
+		return []query.Node{
+			query.Operator{
+				Kind:     kind,
+				Operands: operands,
+			},
+		}
+	})
+
+	if !changed {
 		return nil
 	}
 

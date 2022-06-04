@@ -5,7 +5,7 @@ package query
 // returned value.
 type Mapper interface {
 	MapNodes(m Mapper, node []Node) []Node
-	MapOperator(m Mapper, kind operatorKind, operands []Node) []Node
+	MapOperator(m Mapper, kind OperatorKind, operands []Node) []Node
 	MapParameter(m Mapper, field, value string, negated bool, annotation Annotation) Node
 	MapPattern(m Mapper, value string, negated bool, annotation Annotation) Node
 }
@@ -16,7 +16,7 @@ type Mapper interface {
 // methods return nil, the respective node is removed.
 type BaseMapper struct{}
 
-func (*BaseMapper) MapNodes(mapper Mapper, nodes []Node) []Node {
+func (b *BaseMapper) MapNodes(mapper Mapper, nodes []Node) []Node {
 	mapped := []Node{}
 	for _, node := range nodes {
 		switch v := node.(type) {
@@ -29,7 +29,8 @@ func (*BaseMapper) MapNodes(mapper Mapper, nodes []Node) []Node {
 				mapped = append(mapped, result)
 			}
 		case Operator:
-			if result := mapper.MapOperator(mapper, v.Kind, v.Operands); result != nil {
+			operands := b.MapNodes(mapper, v.Operands)
+			if result := mapper.MapOperator(mapper, v.Kind, operands); result != nil {
 				mapped = append(mapped, result...)
 			}
 		}
@@ -38,7 +39,7 @@ func (*BaseMapper) MapNodes(mapper Mapper, nodes []Node) []Node {
 }
 
 // Base mapper for Operators. Reduces operands if changed.
-func (*BaseMapper) MapOperator(mapper Mapper, kind operatorKind, operands []Node) []Node {
+func (*BaseMapper) MapOperator(mapper Mapper, kind OperatorKind, operands []Node) []Node {
 	return NewOperator(mapper.MapNodes(mapper, operands), kind)
 }
 
@@ -57,12 +58,12 @@ func (*BaseMapper) MapPattern(mapper Mapper, value string, negated bool, annotat
 // value.
 type OperatorMapper struct {
 	BaseMapper
-	callback func(kind operatorKind, operands []Node) []Node
+	callback func(kind OperatorKind, operands []Node) []Node
 }
 
 // MapOperator implements OperatorMapper by overriding the BaseMapper's value to
 // substitute a node computed by the callback. It reduces any substituted node.
-func (s *OperatorMapper) MapOperator(mapper Mapper, kind operatorKind, operands []Node) []Node {
+func (s *OperatorMapper) MapOperator(mapper Mapper, kind OperatorKind, operands []Node) []Node {
 	return NewOperator(s.callback(kind, operands), And)
 }
 
@@ -111,7 +112,7 @@ func (s *FieldMapper) MapParameter(mapper Mapper, field, value string, negated b
 // MapOperator is a convenience function that calls callback on all operator
 // nodes, substituting them for callback's return value. callback supplies the
 // node's kind and operands.
-func MapOperator(nodes []Node, callback func(kind operatorKind, operands []Node) []Node) []Node {
+func MapOperator(nodes []Node, callback func(kind OperatorKind, operands []Node) []Node) []Node {
 	mapper := &OperatorMapper{callback: callback}
 	return mapper.MapNodes(mapper, nodes)
 }
