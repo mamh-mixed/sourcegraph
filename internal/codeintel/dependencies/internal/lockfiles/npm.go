@@ -63,11 +63,14 @@ func parsePackageLockDependencies(in map[string]*packageLockDependency) ([]repos
 // yarn.lock
 //
 
-func parseYarnLockFile(r io.Reader) (deps []reposource.PackageVersion, err error) {
+func parseYarnLockFile(r io.Reader) (deps []reposource.PackageVersion, graph *DependencyGraph, err error) {
 	var (
 		name string
 		skip bool
 		errs errors.MultiError
+
+		current             *reposource.NpmPackageVersion
+		parsingDependencies bool
 	)
 
 	/* yarn.lock
@@ -84,6 +87,11 @@ func parseYarnLockFile(r io.Reader) (deps []reposource.PackageVersion, err error
 	  linkType: hard
 	*/
 
+	var (
+		byName          = map[string]*reposource.NpmPackageVersion{}
+		dependencyNames = map[*reposource.NpmPackageVersion][]*reposource.NpmPackageVersion{}
+	)
+
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -98,7 +106,7 @@ func parseYarnLockFile(r io.Reader) (deps []reposource.PackageVersion, err error
 			}
 
 			if name == "" {
-				return nil, errors.New("invalid yarn.lock format")
+				return nil, nil, errors.New("invalid yarn.lock format")
 			}
 
 			dep, err := reposource.ParseNpmPackageVersion(name + "@" + version)
@@ -106,6 +114,9 @@ func parseYarnLockFile(r io.Reader) (deps []reposource.PackageVersion, err error
 				errs = errors.Append(errs, err)
 			} else {
 				deps = append(deps, dep)
+				byName[name] = dep
+				current = dep
+				dependencyNames[current] = []*reposource.NpmPackageVersion{}
 				name = ""
 			}
 			continue
@@ -116,6 +127,8 @@ func parseYarnLockFile(r io.Reader) (deps []reposource.PackageVersion, err error
 		}
 
 		if line[:1] != " " && line[:1] != "#" { // e.g. "asap@npm:~2.0.6":
+			parsingDependencies = false
+
 			var packagename, protocol string
 			if packagename, protocol, err = parsePackageLocator(line); err != nil {
 				continue
@@ -124,14 +137,48 @@ func parseYarnLockFile(r io.Reader) (deps []reposource.PackageVersion, err error
 				continue
 			}
 			name = packagename
+			current = nil
+		}
+
+		if line == "  dependencies:" {
+			parsingDependencies = true
+		}
+
+		if line[:4] == "    " && parsingDependencies && current != nil {
+			depName, depVersion, err := parsePackageDependency(line)
+			if err != nil {
+				continue
+			}
+
+			dep, err := reposource.ParseNpmPackageVersion(depName + "@" + depVersion)
+			if err != nil {
+				errs = errors.Append(errs, err)
+			}
+
+			if deps, ok := dependencyNames[current]; !ok {
+				dependencyNames[current] = []*reposource.NpmPackageVersion{dep}
+			} else {
+				dependencyNames[current] = append(deps, dep)
+			}
 		}
 	}
-	return deps, errs
+
+	graph = newDependencyGraph()
+	for pkg, deps := range dependencyNames {
+		graph.addPackage(pkg)
+
+		for _, dep := range deps {
+			graph.addDependency(pkg, dep)
+		}
+	}
+
+	return deps, graph, errs
 }
 
 var (
-	yarnLocatorRegexp = lazyregexp.New(`"?(?P<package>.+?)@(?:(?P<protocol>.+?):)?.+`)
-	yarnVersionRegexp = lazyregexp.New(`\s+"?version:?"?\s+"?(?P<version>[^"]+)"?`)
+	yarnLocatorRegexp    = lazyregexp.New(`"?(?P<package>.+?)@(?:(?P<protocol>.+?):)?.+`)
+	yarnDependencyRegexp = lazyregexp.New(`\s{4}"?(?P<package>.+?)"?\s"?(?P<version>[^"]+)"?`)
+	yarnVersionRegexp    = lazyregexp.New(`\s+"?version:?"?\s+"?(?P<version>[^"]+)"?`)
 )
 
 func parsePackageLocator(target string) (packagename, protocol string, err error) {
@@ -145,6 +192,22 @@ func parsePackageLocator(target string) (packagename, protocol string, err error
 			packagename = capture[i]
 		case "protocol":
 			protocol = capture[i]
+		}
+	}
+	return
+}
+
+func parsePackageDependency(target string) (dependencyname, version string, err error) {
+	capture := yarnDependencyRegexp.FindStringSubmatch(target)
+	if len(capture) < 2 {
+		return "", "", errors.New("not package format")
+	}
+	for i, group := range yarnDependencyRegexp.SubexpNames() {
+		switch group {
+		case "package":
+			dependencyname = capture[i]
+		case "version":
+			version = capture[i]
 		}
 	}
 	return
