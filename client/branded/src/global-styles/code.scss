@@ -50,3 +50,52 @@ kbd {
 .search-filter-separator {
     color: var(--search-filter-separator-color);
 }
+
+// Color of the `/` separator in path-like values (e.g., repo or path filters).
+.search-path-separator {
+    color: var(--search-filter-separator-color);
+}
+
+.search-regexp-meta-assertion {
+    color: var(--search-regexp-meta-assertion-color);
+}
+
+.search-regexp-meta-alternative {
+    color: var(--search-regexp-meta-alternative-color);
+}
+
+.search-regexp-meta-delimited {
+    color: var(--search-regexp-meta-delimited-color);
+}
+
+.search-regexp-meta-escaped-character {
+    color: var(--search-regexp-meta-escaped-character-color);
+}
+
+.search-regexp-meta-character-set {
+    color: var(--search-regexp-meta-character-set-color);
+}
+
+.search-regexp-meta-character-class {
+    color: var(--search-regexp-meta-character-class-color);
+}
+
+.search-regexp-meta-character-class-range {
+    color: var(--search-regexp-meta-character-class-range-color);
+}
+
+.search-regexp-meta-character-class-range-hyphen {
+    color: var(--search-regexp-meta-character-class-range-hyphen-color);
+}
+
+.search-regexp-meta-character-class-member {
+    color: var(--search-regexp-meta-character-class-member-color);
+}
+
+.search-regexp-meta-lazy-quantifier {
+    color: var(--search-regexp-meta-character-lazy-quantifier-color);
+}
+
+.search-regexp-meta-range-quantifier {
+    color: var(--search-regexp-meta-character-range-quantifier-color);
+}

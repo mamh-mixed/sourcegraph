@@ -59,7 +59,7 @@ const darkRules: monaco.editor.ITokenThemeRule[] = [
     { token: 'metaRegexpAssertion', foreground: '#ff6b6b' }, // --oc-red-5
     { token: 'metaRegexpLazyQuantifier', foreground: '#ff6b6b' }, // --oc-red-5
     { token: 'metaRegexpEscapedCharacter', foreground: '#ffa8a8' }, // --oc-red-3
-    { token: 'metaRegexpCharacterSet', foreground: '#d68cf3' }, // --search-keyword-color
+    { token: 'metaRegexpCharacterSet', foreground: '#d68cf3' }, // --pink
     { token: 'metaRegexpCharacterClass', foreground: '#da77f2' }, // --oc-grape-4
     { token: 'metaRegexpCharacterClassMember', foreground: '#dbe2f0' }, // --search-query-text-color
     { token: 'metaRegexpCharacterClassRange', foreground: '#dbe2f0' }, // --search-query-text-color
