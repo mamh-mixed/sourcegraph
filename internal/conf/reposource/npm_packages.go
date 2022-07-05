@@ -24,6 +24,9 @@ var (
 		`^(@` + NpmScopeRegexString + `/)?` +
 			npmPackageNameRegexString +
 			`@(?P<version>[\w\-]+(\.[\w\-]+)*)$`)
+	scopedPackageNameWithoutVersionRegex = lazyregexp.New(
+		`^(@` + NpmScopeRegexString + `/)?` +
+			npmPackageNameRegexString)
 	npmURLRegex = lazyregexp.New(
 		`^npm/(` + NpmScopeRegexString + `/)?` +
 			npmPackageNameRegexString + `$`)
@@ -233,4 +236,28 @@ func (d *NpmPackageVersion) Less(other PackageVersion) bool {
 	}
 
 	return d.scope > o.scope
+}
+
+// NpmPackageVersionConstraint TODO
+type NpmPackageVersionConstraint struct {
+	*NpmPackageName
+
+	// The version constraint (such as "^4.6.0") for a dependency.
+	VersionConstraint string
+}
+
+// ParseNpmPackageVersionConstraint TODO
+func ParseNpmPackageVersionConstraint(dependency, constraint string) (*NpmPackageVersionConstraint, error) {
+	match := scopedPackageNameWithoutVersionRegex.FindStringSubmatch(dependency)
+	if match == nil {
+		return nil, errors.Errorf("expected dependency in (@scope/)?name format but found %s", dependency)
+	}
+	result := make(map[string]string)
+	for i, groupName := range scopedPackageNameWithoutVersionRegex.SubexpNames() {
+		if i != 0 && groupName != "" {
+			result[groupName] = match[i]
+		}
+	}
+	scope, name := result["scope"], result["name"]
+	return &NpmPackageVersionConstraint{NpmPackageName: &NpmPackageName{scope, name}, VersionConstraint: constraint}, nil
 }

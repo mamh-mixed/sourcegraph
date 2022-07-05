@@ -85,6 +85,7 @@ func printDependencies(out io.Writer, graph *DependencyGraph, level int, node re
 	sort.Slice(sortedDeps, func(i, j int) bool { return sortedDeps[i].Less(sortedDeps[j]) })
 
 	for _, dep := range sortedDeps {
+		fmt.Printf("dep=%+v\n", dep)
 		printDependencies(out, graph, level+1, dep)
 	}
 }

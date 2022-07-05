@@ -3,6 +3,7 @@ package lockfiles
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"io"
 	"strings"
 
@@ -89,7 +90,7 @@ func parseYarnLockFile(r io.Reader) (deps []reposource.PackageVersion, graph *De
 
 	var (
 		byName          = map[string]*reposource.NpmPackageVersion{}
-		dependencyNames = map[*reposource.NpmPackageVersion][]*reposource.NpmPackageVersion{}
+		dependencyNames = map[*reposource.NpmPackageVersion][]*reposource.NpmPackageVersionConstraint{}
 	)
 
 	scanner := bufio.NewScanner(r)
@@ -116,7 +117,7 @@ func parseYarnLockFile(r io.Reader) (deps []reposource.PackageVersion, graph *De
 				deps = append(deps, dep)
 				byName[name] = dep
 				current = dep
-				dependencyNames[current] = []*reposource.NpmPackageVersion{}
+				dependencyNames[current] = []*reposource.NpmPackageVersionConstraint{}
 				name = ""
 			}
 			continue
@@ -129,11 +130,19 @@ func parseYarnLockFile(r io.Reader) (deps []reposource.PackageVersion, graph *De
 		if line[:1] != " " && line[:1] != "#" { // e.g. "asap@npm:~2.0.6":
 			parsingDependencies = false
 
-			var packagename, protocol string
-			if packagename, protocol, err = parsePackageLocator(line); err != nil {
+			var packagename string
+			var protocols []string
+			if packagename, protocols, err = parsePackageLocatorLine(line); err != nil {
 				continue
 			}
-			if skip = !validProtocol(protocol); skip {
+			fmt.Printf("packagename=%q, protocols=%+v\n", packagename, protocols)
+			skipOuter := false
+			for _, protocol := range protocols {
+				if skip = !validProtocol(protocol); skip {
+					skipOuter = true
+				}
+			}
+			if skipOuter {
 				continue
 			}
 			name = packagename
@@ -145,18 +154,19 @@ func parseYarnLockFile(r io.Reader) (deps []reposource.PackageVersion, graph *De
 		}
 
 		if line[:4] == "    " && parsingDependencies && current != nil {
-			depName, depVersion, err := parsePackageDependency(line)
+			depName, versionConstraint, err := parsePackageDependency(line)
 			if err != nil {
 				continue
 			}
 
-			dep, err := reposource.ParseNpmPackageVersion(depName + "@" + depVersion)
+			fmt.Printf("depName=%s, depVersion=%s\n", depName, versionConstraint)
+			dep, err := reposource.ParseNpmPackageVersionConstraint(depName, versionConstraint)
 			if err != nil {
 				errs = errors.Append(errs, err)
 			}
 
 			if deps, ok := dependencyNames[current]; !ok {
-				dependencyNames[current] = []*reposource.NpmPackageVersion{dep}
+				dependencyNames[current] = []*reposource.NpmPackageVersionConstraint{dep}
 			} else {
 				dependencyNames[current] = append(deps, dep)
 			}
@@ -168,7 +178,8 @@ func parseYarnLockFile(r io.Reader) (deps []reposource.PackageVersion, graph *De
 		graph.addPackage(pkg)
 
 		for _, dep := range deps {
-			graph.addDependency(pkg, dep)
+			fmt.Printf("dep = %+v\n", dep)
+			// graph.addDependency(pkg, dep)
 		}
 	}
 
@@ -176,22 +187,27 @@ func parseYarnLockFile(r io.Reader) (deps []reposource.PackageVersion, graph *De
 }
 
 var (
-	yarnLocatorRegexp    = lazyregexp.New(`"?(?P<package>.+?)@(?:(?P<protocol>.+?):)?.+`)
+	yarnLocatorRegexp    = lazyregexp.New(`"?(?P<package>.+?)@(?P<protocol>[^"]+)"?`)
 	yarnDependencyRegexp = lazyregexp.New(`\s{4}"?(?P<package>.+?)"?\s"?(?P<version>[^"]+)"?`)
 	yarnVersionRegexp    = lazyregexp.New(`\s+"?version:?"?\s+"?(?P<version>[^"]+)"?`)
 )
 
-func parsePackageLocator(target string) (packagename, protocol string, err error) {
-	capture := yarnLocatorRegexp.FindStringSubmatch(target)
-	if len(capture) < 2 {
-		return "", "", errors.New("not package format")
-	}
-	for i, group := range yarnLocatorRegexp.SubexpNames() {
-		switch group {
-		case "package":
-			packagename = capture[i]
-		case "protocol":
-			protocol = capture[i]
+func parsePackageLocatorLine(target string) (packagename string, protocols []string, err error) {
+	trimmed := strings.TrimSuffix(target, ":")
+	elems := strings.Split(trimmed, ", ")
+
+	for _, elem := range elems {
+		capture := yarnLocatorRegexp.FindStringSubmatch(elem)
+		if len(capture) < 2 {
+			return "", protocols, errors.New("not package format")
+		}
+		for i, group := range yarnLocatorRegexp.SubexpNames() {
+			switch group {
+			case "package":
+				packagename = capture[i]
+			case "protocol":
+				protocols = append(protocols, capture[i])
+			}
 		}
 	}
 	return
