@@ -53,7 +53,7 @@ npm/jquery
 `,
 		},
 		{
-			lockfile: "testdata/parse/yarn.lock/yarn_lock_thorsten.lock",
+			lockfile: "testdata/parse/yarn.lock/yarn_multiple_versions.lock",
 			wantDeps: `@babel/code-frame 7.16.7
 @babel/helper-validator-identifier 7.16.7
 @babel/highlight 7.17.12
