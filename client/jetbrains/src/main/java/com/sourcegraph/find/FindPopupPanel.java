@@ -26,6 +26,7 @@ public class FindPopupPanel extends BorderLayoutPanel implements Disposable {
     private final BrowserAndLoadingPanel browserAndLoadingPanel;
     private final SelectionMetadataPanel selectionMetadataPanel;
     private final FooterPanel footerPanel;
+    private final HeaderPanel headerPanel;
     private Date lastPreviewUpdate;
 
     public FindPopupPanel(@NotNull Project project, @NotNull FindService findService) {
@@ -54,11 +55,14 @@ public class FindPopupPanel extends BorderLayoutPanel implements Disposable {
             browserAndLoadingPanel.setBrowser(browser);
         }
 
+        headerPanel = new HeaderPanel(project);
+
         // The border is needed because without it, window and splitter resize don't work because the JCEF
         // doesn't properly pass the mouse events to Swing.
         // 4px is the minimum amount to make it work for the window resize, and 5px for the splitter.
         BorderLayoutPanel topPanel = new BorderLayoutPanel();
         topPanel.setBorder(JBUI.Borders.empty(0, 4, 5, 4));
+        topPanel.add(headerPanel, BorderLayout.NORTH);
         topPanel.add(browserAndLoadingPanel, BorderLayout.CENTER);
         topPanel.setMinimumSize(JBUI.size(750, 200));
 
@@ -79,6 +83,8 @@ public class FindPopupPanel extends BorderLayoutPanel implements Disposable {
     }
 
     public void indicateAuthenticationStatus(boolean wasServerAccessSuccessful, boolean authenticated) {
+        headerPanel.setAuthenticated(authenticated);
+
         browserAndLoadingPanel.setState(wasServerAccessSuccessful
             ? (authenticated ? BrowserAndLoadingPanel.State.AUTHENTICATED : BrowserAndLoadingPanel.State.COULD_CONNECT_BUT_NOT_AUTHENTICATED)
             : BrowserAndLoadingPanel.State.COULD_NOT_CONNECT);
