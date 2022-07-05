@@ -45,7 +45,6 @@ public class FindService implements Disposable {
         hideMaterialUiOverlay();
     }
 
-    @NotNull
     private void createOrShowPopup() {
         if (popup != null) {
             if (!popup.isVisible()) {
