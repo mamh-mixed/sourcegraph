@@ -1,1 +1,10 @@
--- Undo the changes made in the up migration
+ALTER TABLE changeset_specs DROP COLUMN IF EXISTS head_repo_id;
+ALTER TABLE changeset_specs DROP COLUMN IF EXISTS base_rev;
+ALTER TABLE changeset_specs DROP COLUMN IF EXISTS base_ref;
+ALTER TABLE changeset_specs DROP COLUMN IF EXISTS body;
+ALTER TABLE changeset_specs DROP COLUMN IF EXISTS published;
+ALTER TABLE changeset_specs DROP COLUMN IF EXISTS commit_message;
+ALTER TABLE changeset_specs DROP COLUMN IF EXISTS commit_author_name;
+ALTER TABLE changeset_specs DROP COLUMN IF EXISTS commit_author_email;
+ALTER TABLE changeset_specs DROP COLUMN IF EXISTS type;
+ALTER TABLE changeset_specs DROP COLUMN IF EXISTS migrated;
