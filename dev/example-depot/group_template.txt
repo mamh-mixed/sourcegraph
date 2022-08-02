@@ -1,4 +1,4 @@
 Group: ${GROUP}
 Timeout: 43200
-Users:
-    ${P4_TEST_USERNAME}
+Owners: ${P4USER}
+Users: ${USERNAME}

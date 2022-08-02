@@ -79,8 +79,6 @@
 #
 #      Path:    The part of the depot being granted access.
 
-Update:	2022/04/20 17:28:57
-
 Protections:
 	list user * * -//...	## DO NOT DELETE This is used for backend integration tests
 	super user admin * //...	## DO NOT DELETE This is used for backend integration tests
@@ -98,4 +96,6 @@ Protections:
 	write group TestGroup * //mike-test/branches/cygnus/boehm-gc/...	## edge case testing
 # AWK-START
 	read group all * //${DEPOT_NAME}/...
+    =read group readonly * //${DEPOT_NAME}/secret...
+    read group foo *  //${DEPOT_NAME}/secret...
 # AWK-END

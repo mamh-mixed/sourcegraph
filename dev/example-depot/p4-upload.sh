@@ -5,21 +5,47 @@ cd "${SCRIPT_ROOT}"
 
 set -euxo pipefail
 
-export P4USER="${P4USER:-"admin"}"                          # the name of the Perforce superuser that the script will use to create the depot
-export P4PORT="${P4PORT:-"perforce.sgdev.org:1666"}"        # the address of the Perforce server to connect to
-export P4CLIENT="${P4CLIENT:-"integration-test-client"}"    # the name of the client that the script will use while it creates the depot
+export P4USER="${P4USER:-"admin"}"                   # the name of the Perforce superuser that the script will use to create the depot
+export P4PORT="${P4PORT:-"perforce.sgdev.org:1666"}" # the address of the Perforce server to connect to
+
+export P4CLIENT="${P4CLIENT:-"integration-test-client"}"    # the name of the temporary client that the script will use while it creates the depot
 export DEPOT_NAME="${DEPOT_NAME:-"integration-test-depot"}" # the name of the depot that the script will create on the server
 
-run_parallel() {
-  if ! command -v parallel &>/dev/null; then
-    printf "'%s' command not installed. Please install '%s' by:\n\t- (macOS): running %s\n\t- (Linux): installing it via your distribution's package manager\nSee %s for more information.\n" \
-      "parallel" \
-      "GNU parallel" \
-      "brew install parallel" \
-      "https://www.gnu.org/software/parallel/"
+declare -A dependencies=(
+  ["p4"]="$(printf "Please install '%s' by:\n\t- (macOS): running %s\n\t- (Linux): installing it via your distribution's package manager\nSee %s for more information.\n" \
+    "p4" \
+    "brew install p4" \
+    "https://www.perforce.com/downloads/helix-command-line-client-p4")"
+
+  ["parallel"]="$(printf "Please install '%s' by:\n\t- (macOS): running %s\n\t- (Linux): installing it via your distribution's package manager\nSee %s for more information.\n" \
+    "GNU parallel" \
+    "brew install parallel" \
+    "https://www.gnu.org/software/parallel/")"
+
+  ["gum"]="$(printf "Please install '%s' by:\n\t- (macOS): running %s\n\t- (Linux): installing it via your distribution's package manager\nSee %s for more information.\n" \
+    "gum" \
+    "brew install gum" \
+    "https://github.com/charmbracelet/gum#installation")"
+)
+
+for d in "${!dependencies[@]}"; do
+  if ! command -v "$d" >/dev/null 2>&1; then
+    instructions="${dependencies[$d]}"
+    printf "command %s is not installed.\n%s" "$d" "$instructions"
     exit 1
   fi
+done
 
+my_chronic() {
+  tmp=$(mktemp) || return # this will be the temp file w/ the output
+  "$@" >"$tmp" 2>&1       # this should run the command, respecting all arguments
+  ret=$?
+  [ "$ret" -eq 0 ] || cat "$tmp" # if $? (the return of the last run command) is not zero, cat the temp file
+  rm -f "$tmp"
+}
+export -f my_chronic
+
+run_parallel() {
   # Remove parallel citation log spam.
   echo 'will cite' | parallel --citation &>/dev/null
 
@@ -78,7 +104,7 @@ envsubst <"${SCRIPT_ROOT}/depot_template.txt" | p4 depot -i
 delete_perforce_client
 
 # create new client
-# shellcheck disable=SC2034 # (used by envsubst)
+# shellcheck disable=SC2034 ## (used by envsubst)
 P4_CLIENT_HOST="$(hostname)"
 envsubst <"${SCRIPT_ROOT}/client_template.txt" | p4 client -i
 
@@ -86,4 +112,4 @@ envsubst <"${SCRIPT_ROOT}/client_template.txt" | p4 client -i
 trap delete_perforce_client EXIT
 
 # discover every file in example depot and submit it to the Perforce server
-find . -type f -print0 | run_parallel push_file_to_perforce {}
+find . -type f -print0 | run_parallel my_chronic push_file_to_perforce {}
