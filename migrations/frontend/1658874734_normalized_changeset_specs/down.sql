@@ -1,6 +1,5 @@
 ALTER TABLE changeset_specs
     DROP COLUMN IF EXISTS diff,
-    DROP COLUMN IF EXISTS head_repo_id,
     DROP COLUMN IF EXISTS base_rev,
     DROP COLUMN IF EXISTS base_ref,
     DROP COLUMN IF EXISTS body,

@@ -31,9 +31,6 @@ const (
 	// site credential migration. It is defined in
 	// `1528395821_oob_site_credential_encryption_up.sql`.
 	BatchChangesSiteCredentialMigrationID = 10
-
-	// BatchChangesChangesetSpecsMigrationID is the ID of the changeset_specs migration.
-	BatchChangesChangesetSpecsMigrationID = 17
 )
 
 func RegisterMigrations(db database.DB, outOfBandMigrationRunner *oobmigration.Runner) error {
@@ -64,9 +61,6 @@ func Register(bstore *store.Store, outOfBandMigrationRunner *oobmigration.Runner
 		BatchChangesSiteCredentialMigrationID: &siteCredentialMigrator{
 			store:        bstore,
 			allowDecrypt: allowDecrypt,
-		},
-		BatchChangesChangesetSpecsMigrationID: &changesetSpecMigrator{
-			store: bstore,
 		},
 	}
 
