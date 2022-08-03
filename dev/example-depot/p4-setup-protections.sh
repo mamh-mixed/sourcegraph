@@ -19,11 +19,6 @@ declare -A dependencies=(
     "brew install p4" \
     "https://www.perforce.com/downloads/helix-command-line-client-p4")"
 
-  ["gum"]="$(printf "Please install '%s' by:\n\t- (macOS): running %s\n\t- (Linux): installing it via your distribution's package manager\nSee %s for more information.\n" \
-    "gum" \
-    "brew install gum" \
-    "https://github.com/charmbracelet/gum#installation")"
-
   ["fzf"]="$(printf "Please install '%s' by:\n\t- (macOS): running %s\n\t- (Linux): installing it via your distribution's package manager\nSee %s for more information.\n" \
     "fzf" \
     "brew install fzf" \
@@ -105,20 +100,15 @@ END
   printf "Which group(s) would you like '%s' to be a member of? (tab to select, enter to continue)\n" "$P4_TEST_USERNAME"
   selected_groups="$(fzf --multi --height=40% --layout=reverse <<<"$all_integration_test_groups" | sort | uniq)"
 
+  printf "(re)creating test groups (* == is member):...\n"
+
   awk_program=$(
     cat <<-'END'
-BEGIN             {
-                    print "| Name | IsMember |"
-                    print "|:---  |      ---:|"
-                  }
 NR==FNR            { groups[$1]=1 ; next }
-                   { if (groups[$1]==1) printf "| *%s* | :radio-button: |\n", $1; else printf "| `%s` | |\n", $1 }
+                   { if (groups[$1]==1) printf "    %s *\n", $1; else printf "    %s\n", $1 }
 END
   )
-
   awk "$awk_program" <(printf "%s" "$selected_groups") <(printf "%s" "$all_integration_test_groups")
-  printf "(re)creating test groups:\n"
-  awk "$awk_program" <(printf "%s" "$selected_groups") <(printf "%s" "$all_integration_test_groups") | gum format --type markdown
 
   # delete any pre-existing test groups from the server
   mapfile -t groups_to_delete < <(comm -12 <(p4 groups | sort) <(printf "%s" "$all_integration_test_groups"))
@@ -138,7 +128,6 @@ END
     USERNAME="$user" GROUP="$group" envsubst <"${SCRIPT_ROOT}/group_template.txt" | my_chronic p4 group -i
   done
 
-  printf "..."
   printf "done\n"
 }
 
