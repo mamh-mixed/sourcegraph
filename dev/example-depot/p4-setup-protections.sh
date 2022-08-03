@@ -19,10 +19,10 @@ declare -A dependencies=(
     "brew install p4" \
     "https://www.perforce.com/downloads/helix-command-line-client-p4")"
 
-  ["gum"]="$(printf "Please install '%s' by:\n\t- (macOS): running %s\n\t- (Linux): installing it via your distribution's package manager\nSee %s for more information.\n" \
-    "gum" \
-    "brew install gum" \
-    "https://github.com/charmbracelet/gum#installation")"
+  ["fzf"]="$(printf "Please install '%s' by:\n\t- (macOS): running %s\n\t- (Linux): installing it via your distribution's package manager\nSee %s for more information.\n" \
+    "fzf" \
+    "brew install fzf" \
+    "https://github.com/junegunn/fzf#installation")"
 )
 
 for d in "${!dependencies[@]}"; do
@@ -76,7 +76,7 @@ fi
 }
 
 {
-  printf "loading protection rules file..."
+  printf "loading protection rules file ..."
 
   protection_rules_text="$(envsubst <"${SCRIPT_ROOT}/p4_protects.txt")"
 
@@ -97,17 +97,17 @@ END
   mapfile -t all_integration_test_groups < <(awk "$awk_program" <<<"${protection_rules_text}" | sort | uniq)
 
   # ask the user which groups they'd like the test user to be a member of
-  printf "Which group(s) would you like '%s' to be a member of?\n" "$P4_TEST_USERNAME"
-  selected_groups="$(gum choose --no-limit "${all_integration_test_groups[@]}" | sort)"
+  printf "Which group(s) would you like '%s' to be a member of? (tab to select, enter to continue)\n" "$P4_TEST_USERNAME"
+  selected_groups="$(fzf --multi --height=20% --layout=reverse <<<"$(join $'\n' "${all_integration_test_groups[@]}")" | sort | uniq)"
 
   printf "(re)creating test groups (%s) with appropriate memberships (%s) ..." \
     "$(join ', ' "${all_integration_test_groups[@]}")" \
-    "$(paste -s -d ',' - <<<"${selected_groups}")"
+    "${selected_groups/$'\n'/, }"
 
   # delete any pre-existing test groups from the server
   mapfile -t groups_to_delete < <(comm -12 <(p4 groups | sort) <(printf "%s\n" "${all_integration_test_groups[@]}"))
   for group in "${groups_to_delete[@]}"; do
-    my_chronic p4 group -dF "$group" >/dev/null
+    my_chronic p4 group -dF "$group"
   done
 
   # create all the test groups, making sure to add the test user
@@ -125,7 +125,7 @@ END
 }
 
 {
-  printf "uploading protections table..."
+  printf "uploading protections table ..."
 
   my_chronic p4 protect -i <<<"${protection_rules_text}"
 

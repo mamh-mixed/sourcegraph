@@ -21,11 +21,6 @@ declare -A dependencies=(
     "GNU parallel" \
     "brew install parallel" \
     "https://www.gnu.org/software/parallel/")"
-
-  ["gum"]="$(printf "Please install '%s' by:\n\t- (macOS): running %s\n\t- (Linux): installing it via your distribution's package manager\nSee %s for more information.\n" \
-    "gum" \
-    "brew install gum" \
-    "https://github.com/charmbracelet/gum#installation")"
 )
 
 for d in "${!dependencies[@]}"; do
