@@ -33,18 +33,26 @@ for d in "${!dependencies[@]}"; do
   fi
 done
 
+function join {
+  local d=${1-} f=${2-}
+  if shift 2; then
+    printf %s "$f" "${@/#/$d}"
+  fi
+}
+export -f join
+
 my_chronic() {
   tmp=$(mktemp) || return # this will be the temp file w/ the output
   "$@" >"$tmp" 2>&1       # this should run the command, respecting all arguments
   ret=$?
-  [ "$ret" -eq 0 ] || cat "$tmp" # if $? (the return of the last run command) is not zero, cat the temp file
+  [ "$ret" -eq 0 ] || (echo && cat "$tmp") # if $? (the return of the last run command) is not zero, cat the temp file
   rm -f "$tmp"
 }
 export -f my_chronic
 
 # check to see if user is logged in
-if ! p4 ping >/dev/null; then
-  printf "'%s' command failed. This indicates that you might not be logged into %s@%s.\nTry using %s to generate a session ticket. See %s for more information.\n" \
+if ! p4 ping &>/dev/null; then
+  printf "'%s' command failed. This indicates that you might not be logged into %s@%s.\nTry using %s to generate a session ticket.\nSee %s for more information.\n" \
     "p4 ping" \
     "${P4USER}" \
     "${P4PORT}" \
@@ -53,31 +61,26 @@ if ! p4 ping >/dev/null; then
   exit 1
 fi
 
-# (re)creating test user
 {
+  printf "(re)creating test user '%s' ..." "$P4_TEST_USERNAME"
+
   # delete test user (if it exists already)
-  if p4 users | awk '{print $1}' | grep -q "${P4_TEST_USERNAME}"; then
-    my_chronic p4 user -yD "${P4_TEST_USERNAME}"
+  if p4 users | awk '{print $1}' | grep -Fxq "$P4_TEST_USERNAME"; then
+    my_chronic p4 user -yD "$P4_TEST_USERNAME"
   fi
 
   # create test user
   envsubst <"${SCRIPT_ROOT}/user_template.txt" | my_chronic p4 user -i -f
+
+  printf "done\n"
 }
 
-# load the protection rules file
-protection_rules_text="$(envsubst <"${SCRIPT_ROOT}/p4_protects.txt")"
-
 {
-  protection_rules_text="$(envsubst <"${SCRIPT_ROOT}/p4_protects.txt")"
-  awk_program=$(
-    cat <<-'END'
-/# AWK-START/ {flag=1; next}
-/# AWK-END/ {flag=0}
-{ if (flag && $2 == "group") {print $3} }
-END
-  )
+  printf "loading protection rules file..."
 
-  mapfile -t all_integration_test_groups < <(awk "$awk_program" <<<"${protection_rules_text}" | sort | uniq)
+  protection_rules_text="$(envsubst <"${SCRIPT_ROOT}/p4_protects.txt")"
+
+  printf "done\n"
 }
 
 {
@@ -93,26 +96,38 @@ END
 
   mapfile -t all_integration_test_groups < <(awk "$awk_program" <<<"${protection_rules_text}" | sort | uniq)
 
+  # ask the user which groups they'd like the test user to be a member of
+  printf "Which group(s) would you like '%s' to be a member of?\n" "$P4_TEST_USERNAME"
+  selected_groups="$(gum choose --no-limit "${all_integration_test_groups[@]}" | sort)"
+
+  printf "(re)creating test groups (%s) with appropriate memberships (%s) ..." \
+    "$(join ', ' "${all_integration_test_groups[@]}")" \
+    "$(paste -s -d ',' - <<<"${selected_groups}")"
+
   # delete any pre-existing test groups from the server
   mapfile -t groups_to_delete < <(comm -12 <(p4 groups | sort) <(printf "%s\n" "${all_integration_test_groups[@]}"))
   for group in "${groups_to_delete[@]}"; do
-    my_chronic p4 group -dF "${group}"
+    my_chronic p4 group -dF "$group" >/dev/null
   done
-
-  # ask the user which groups  they'd like the test user to be a member of
-  printf "Which group(s) would you like '%s' to be a member of?\n" "$P4_TEST_USERNAME"
-  selected_groups="$(gum choose --no-limit "${all_integration_test_groups[@]}" | sort)"
 
   # create all the test groups, making sure to add the test user
   # as members of all the groups the user selected
   for group in "${all_integration_test_groups[@]}"; do
-    username=""
+    user=""
     if grep -Fxq "$group" <<<"$selected_groups"; then
-      username="$P4_TEST_USERNAME"
+      user="$P4_TEST_USERNAME"
     fi
 
-    USERNAME="$username" GROUP="$group" envsubst <"${SCRIPT_ROOT}/group_template.txt" | my_chronic p4 group -i
+    USERNAME="$user" GROUP="$group" envsubst <"${SCRIPT_ROOT}/group_template.txt" | my_chronic p4 group -i
   done
+
+  printf "done\n"
 }
 
-p4 protect -i <<<"${protection_rules_text}"
+{
+  printf "uploading protections table..."
+
+  my_chronic p4 protect -i <<<"${protection_rules_text}"
+
+  printf "done\n"
+}
