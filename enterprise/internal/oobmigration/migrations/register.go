@@ -1,7 +1,7 @@
 package migrations
 
 import (
-	"github.com/sourcegraph/sourcegraph/enterprise/internal/insights"
+	codeinsightsmightrations "github.com/sourcegraph/sourcegraph/enterprise/internal/insights"
 	batchesmigrations "github.com/sourcegraph/sourcegraph/enterprise/internal/oobmigration/migrations/batches"
 	codeintelmigrations "github.com/sourcegraph/sourcegraph/enterprise/internal/oobmigration/migrations/codeintel"
 	"github.com/sourcegraph/sourcegraph/enterprise/internal/productsubscription"
@@ -18,8 +18,11 @@ func RegisterEnterpriseMigrations(db database.DB, outOfBandMigrationRunner *oobm
 		return err
 	}
 
-	if err := insights.RegisterMigrations(db, outOfBandMigrationRunner); err != nil {
-		return err
+	if false {
+		// TODO - cannot even register without conf
+		if err := codeinsightsmightrations.RegisterMigrations(db, outOfBandMigrationRunner); err != nil {
+			return err
+		}
 	}
 
 	if err := productsubscription.RegisterMigrations(db, outOfBandMigrationRunner); err != nil {

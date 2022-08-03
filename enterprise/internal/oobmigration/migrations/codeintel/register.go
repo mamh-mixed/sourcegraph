@@ -1,11 +1,20 @@
 package codeintel
 
 import (
-	"github.com/sourcegraph/sourcegraph/cmd/worker/shared/init/codeintel"
+	"github.com/opentracing/opentracing-go"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/sourcegraph/log"
+
+	"github.com/sourcegraph/sourcegraph/internal/codeintel/stores"
+	"github.com/sourcegraph/sourcegraph/internal/codeintel/stores/dbstore"
 	dbmigrations "github.com/sourcegraph/sourcegraph/internal/codeintel/stores/dbstore/migration"
+	"github.com/sourcegraph/sourcegraph/internal/codeintel/stores/gitserver"
+	"github.com/sourcegraph/sourcegraph/internal/codeintel/stores/lsifstore"
 	lsifmigrations "github.com/sourcegraph/sourcegraph/internal/codeintel/stores/lsifstore/migration"
 	"github.com/sourcegraph/sourcegraph/internal/database"
+	"github.com/sourcegraph/sourcegraph/internal/observation"
 	"github.com/sourcegraph/sourcegraph/internal/oobmigration"
+	"github.com/sourcegraph/sourcegraph/internal/trace"
 )
 
 // RegisterMigrations registers all code intel related out-of-band migration instances that should run for the current version of Sourcegraph.
@@ -14,20 +23,14 @@ func RegisterMigrations(db database.DB, outOfBandMigrationRunner *oobmigration.R
 		return err
 	}
 
-	dbStore, err := codeintel.InitDBStore()
-	if err != nil {
-		return err
+	observationContext := &observation.Context{
+		Logger:     log.Scoped("store", "codeintel db store"), // TODO
+		Tracer:     &trace.Tracer{Tracer: opentracing.GlobalTracer()},
+		Registerer: prometheus.DefaultRegisterer,
 	}
-
-	lsifStore, err := codeintel.InitLSIFStore()
-	if err != nil {
-		return err
-	}
-
-	gitserverClient, err := codeintel.InitGitserverClient()
-	if err != nil {
-		return err
-	}
+	dbStore := dbstore.NewWithDB(db, observationContext)
+	lsifStore := lsifstore.NewStore(stores.NewCodeIntelDBWith(db), nil, observationContext)
+	gitserverClient := gitserver.New(db, dbStore, observationContext)
 
 	if err := outOfBandMigrationRunner.Register(
 		lsifmigrations.DiagnosticsCountMigrationID, // 1
