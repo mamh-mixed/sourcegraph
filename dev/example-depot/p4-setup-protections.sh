@@ -41,12 +41,19 @@ function join {
 }
 export -f join
 
+# https://unix.stackexchange.com/a/256201
 my_chronic() {
-  tmp=$(mktemp) || return # this will be the temp file w/ the output
-  "$@" >"$tmp" 2>&1       # this should run the command, respecting all arguments
+  tmp="$(mktemp)" || return # this will be the temp file w/ the output
+
+  set +e
+  "$@" >"$tmp" 2>&1 # this should run the command, respecting all arguments
   ret=$?
+  set -e
+
   [ "$ret" -eq 0 ] || (echo && cat "$tmp") # if $? (the return of the last run command) is not zero, cat the temp file
   rm -f "$tmp"
+
+  return "$ret"
 }
 export -f my_chronic
 
@@ -102,10 +109,11 @@ END
 
   printf "(re)creating test groups (* == is member):...\n"
 
+  # print a list of all the groups we're creating (along with an '*' if the test user is a member of the group)
   awk_program=$(
     cat <<-'END'
-NR==FNR            { groups[$1]=1 ; next }
-                   { if (groups[$1]==1) printf "    %s *\n", $1; else printf "    %s\n", $1 }
+NR==FNR            { selected[$1]=1 ; next }
+                   { if (selected[$1]) printf "    %s *\n", $1; else printf "    %s\n", $1 }
 END
   )
   awk "$awk_program" <(printf "%s" "$selected_groups") <(printf "%s" "$all_integration_test_groups")
