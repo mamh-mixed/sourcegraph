@@ -59,7 +59,6 @@ class TextDocumentDecorationManager implements PluginValue {
     private reset: number | null = null
 
     constructor(private readonly view: EditorView) {}
-
     public update(update: ViewUpdate): void {
         const currentDecorations = update.state.facet(showTextDocumentDecorations)
         const currentEnabledColumnView = update.state.facet(enableExtensionsDecorationsColumnView)
@@ -255,6 +254,7 @@ class LineDecorationWidget extends WidgetType {
     public toDOM(): HTMLElement {
         if (!this.container) {
             this.container = document.createElement('span')
+            this.container.dataset.testid = 'line-decoration'
             this.reactRoot = createRoot(this.container)
             this.reactRoot.render(
                 <LineDecoratorContents decorations={this.decorations} isLightTheme={this.isLightTheme} />

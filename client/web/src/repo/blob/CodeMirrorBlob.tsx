@@ -61,6 +61,7 @@ export const Blob: React.FunctionComponent<BlobProps> = ({
     location,
     history,
     blameDecorations,
+    'data-testid': dataTestId,
 
     // These props don't have to be supported yet because the CodeMirror blob
     // view is only used on the blob page where these are always true
@@ -180,5 +181,14 @@ export const Blob: React.FunctionComponent<BlobProps> = ({
         // logic whenever the content changes
     }, [editor, position, blobInfo])
 
-    return <div ref={setContainer} aria-label={ariaLabel} role={role} className={`${className} overflow-hidden`} />
+    return (
+        <div
+            ref={setContainer}
+            data-testid={dataTestId}
+            aria-label={ariaLabel}
+            role={role}
+            className={`${className} overflow-hidden`}
+            data-editor="codemirror6"
+        />
+    )
 }
