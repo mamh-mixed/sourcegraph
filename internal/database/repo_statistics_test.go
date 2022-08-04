@@ -41,10 +41,10 @@ func TestRepoStatistics(t *testing.T) {
 
 	createTestRepos(ctx, t, db, repos)
 
-	assertRepoStatistics(t, ctx, s, repoStatistics{
+	assertRepoStatistics(t, ctx, s, RepoStatistics{
 		Total: 6, SoftDeleted: 0,
 	})
-	assertGitserverReposStatistics(t, ctx, s, []gitserverReposStatistics{
+	assertGitserverReposStatistics(t, ctx, s, []GitserverReposStatistics{
 		{ShardID: "", Total: 6, NotCloned: 6},
 	})
 
@@ -52,7 +52,7 @@ func TestRepoStatistics(t *testing.T) {
 	setCloneStatus(t, db, repos[0].Name, shards[0], types.CloneStatusCloning)
 	setCloneStatus(t, db, repos[1].Name, shards[0], types.CloneStatusCloning)
 
-	assertGitserverReposStatistics(t, ctx, s, []gitserverReposStatistics{
+	assertGitserverReposStatistics(t, ctx, s, []GitserverReposStatistics{
 		{ShardID: "", Total: 4, NotCloned: 4},
 		{ShardID: shards[0], Total: 2, Cloning: 2},
 	})
@@ -64,7 +64,7 @@ func TestRepoStatistics(t *testing.T) {
 	setCloneStatus(t, db, repos[4].Name, shards[2], types.CloneStatusCloning)
 	setCloneStatus(t, db, repos[5].Name, shards[2], types.CloneStatusCloning)
 
-	assertGitserverReposStatistics(t, ctx, s, []gitserverReposStatistics{
+	assertGitserverReposStatistics(t, ctx, s, []GitserverReposStatistics{
 		{ShardID: ""},
 		{ShardID: shards[0], Total: 2, Cloning: 2},
 		{ShardID: shards[1], Total: 2, Cloning: 2},
@@ -73,7 +73,7 @@ func TestRepoStatistics(t *testing.T) {
 
 	// Move from shards[0] to shards[2] and change status
 	setCloneStatus(t, db, repos[2].Name, shards[2], types.CloneStatusCloned)
-	assertGitserverReposStatistics(t, ctx, s, []gitserverReposStatistics{
+	assertGitserverReposStatistics(t, ctx, s, []GitserverReposStatistics{
 		{ShardID: ""},
 		{ShardID: shards[0], Total: 2, Cloning: 2},
 		{ShardID: shards[1], Total: 1, Cloning: 1},
@@ -87,11 +87,11 @@ func TestRepoStatistics(t *testing.T) {
 	deletedRepoName := queryRepoName(t, ctx, s, repos[2].ID)
 
 	// Deletion is reflected in repoStatistics
-	assertRepoStatistics(t, ctx, s, repoStatistics{
+	assertRepoStatistics(t, ctx, s, RepoStatistics{
 		Total: 5, SoftDeleted: 1,
 	})
 	// But gitserverReposStatistics is unchanged
-	assertGitserverReposStatistics(t, ctx, s, []gitserverReposStatistics{
+	assertGitserverReposStatistics(t, ctx, s, []GitserverReposStatistics{
 		{ShardID: ""},
 		{ShardID: shards[0], Total: 2, Cloning: 2},
 		{ShardID: shards[1], Total: 1, Cloning: 1},
@@ -100,7 +100,7 @@ func TestRepoStatistics(t *testing.T) {
 	// Until we remove it from disk in gitserver, which causes the clone status
 	// to be set to not_cloned:
 	setCloneStatus(t, db, deletedRepoName, shards[2], types.CloneStatusNotCloned)
-	assertGitserverReposStatistics(t, ctx, s, []gitserverReposStatistics{
+	assertGitserverReposStatistics(t, ctx, s, []GitserverReposStatistics{
 		{ShardID: ""},
 		{ShardID: shards[0], Total: 2, Cloning: 2},
 		{ShardID: shards[1], Total: 1, Cloning: 1},
@@ -125,7 +125,7 @@ func setCloneStatus(t *testing.T, db DB, repoName api.RepoName, shard string, st
 	}
 }
 
-func assertRepoStatistics(t *testing.T, ctx context.Context, s *repoStatisticsStore, want repoStatistics) {
+func assertRepoStatistics(t *testing.T, ctx context.Context, s *repoStatisticsStore, want RepoStatistics) {
 	t.Helper()
 
 	have, err := s.GetRepoStatistics(ctx)
@@ -138,7 +138,7 @@ func assertRepoStatistics(t *testing.T, ctx context.Context, s *repoStatisticsSt
 	}
 }
 
-func assertGitserverReposStatistics(t *testing.T, ctx context.Context, s *repoStatisticsStore, want []gitserverReposStatistics) {
+func assertGitserverReposStatistics(t *testing.T, ctx context.Context, s *repoStatisticsStore, want []GitserverReposStatistics) {
 	t.Helper()
 
 	have, err := s.GetGitserverReposStatistics(ctx)

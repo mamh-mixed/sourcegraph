@@ -28,6 +28,7 @@ type DB interface {
 	ExternalServices() ExternalServiceStore
 	FeatureFlags() FeatureFlagStore
 	GitserverRepos() GitserverRepoStore
+	RepoStatisticsStore() RepoStatisticsStore
 	GitserverLocalClone() GitserverLocalCloneStore
 	GlobalState() GlobalStateStore
 	Namespaces() NamespaceStore
@@ -128,6 +129,10 @@ func (d *db) FeatureFlags() FeatureFlagStore {
 
 func (d *db) GitserverRepos() GitserverRepoStore {
 	return GitserverReposWith(d.Store)
+}
+
+func (d *db) RepoStatisticsStore() RepoStatisticsStore {
+	return RepoStatisticsWith(d.Store)
 }
 
 func (d *db) GitserverLocalClone() GitserverLocalCloneStore {

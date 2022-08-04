@@ -6883,6 +6883,9 @@ type MockEnterpriseDB struct {
 	// QueryRowContextFunc is an instance of a mock function object
 	// controlling the behavior of the method QueryRowContext.
 	QueryRowContextFunc *EnterpriseDBQueryRowContextFunc
+	// RepoStatisticsStoreFunc is an instance of a mock function object
+	// controlling the behavior of the method RepoStatisticsStore.
+	RepoStatisticsStoreFunc *EnterpriseDBRepoStatisticsStoreFunc
 	// ReposFunc is an instance of a mock function object controlling the
 	// behavior of the method Repos.
 	ReposFunc *EnterpriseDBReposFunc
@@ -7043,6 +7046,11 @@ func NewMockEnterpriseDB() *MockEnterpriseDB {
 		},
 		QueryRowContextFunc: &EnterpriseDBQueryRowContextFunc{
 			defaultHook: func(context.Context, string, ...interface{}) (r0 *sql.Row) {
+				return
+			},
+		},
+		RepoStatisticsStoreFunc: &EnterpriseDBRepoStatisticsStoreFunc{
+			defaultHook: func() (r0 database.RepoStatisticsStore) {
 				return
 			},
 		},
@@ -7238,6 +7246,11 @@ func NewStrictMockEnterpriseDB() *MockEnterpriseDB {
 				panic("unexpected invocation of MockEnterpriseDB.QueryRowContext")
 			},
 		},
+		RepoStatisticsStoreFunc: &EnterpriseDBRepoStatisticsStoreFunc{
+			defaultHook: func() database.RepoStatisticsStore {
+				panic("unexpected invocation of MockEnterpriseDB.RepoStatisticsStore")
+			},
+		},
 		ReposFunc: &EnterpriseDBReposFunc{
 			defaultHook: func() database.RepoStore {
 				panic("unexpected invocation of MockEnterpriseDB.Repos")
@@ -7384,6 +7397,9 @@ func NewMockEnterpriseDBFrom(i EnterpriseDB) *MockEnterpriseDB {
 		},
 		QueryRowContextFunc: &EnterpriseDBQueryRowContextFunc{
 			defaultHook: i.QueryRowContext,
+		},
+		RepoStatisticsStoreFunc: &EnterpriseDBRepoStatisticsStoreFunc{
+			defaultHook: i.RepoStatisticsStore,
 		},
 		ReposFunc: &EnterpriseDBReposFunc{
 			defaultHook: i.Repos,
@@ -9764,6 +9780,108 @@ func (c EnterpriseDBQueryRowContextFuncCall) Args() []interface{} {
 // Results returns an interface slice containing the results of this
 // invocation.
 func (c EnterpriseDBQueryRowContextFuncCall) Results() []interface{} {
+	return []interface{}{c.Result0}
+}
+
+// EnterpriseDBRepoStatisticsStoreFunc describes the behavior when the
+// RepoStatisticsStore method of the parent MockEnterpriseDB instance is
+// invoked.
+type EnterpriseDBRepoStatisticsStoreFunc struct {
+	defaultHook func() database.RepoStatisticsStore
+	hooks       []func() database.RepoStatisticsStore
+	history     []EnterpriseDBRepoStatisticsStoreFuncCall
+	mutex       sync.Mutex
+}
+
+// RepoStatisticsStore delegates to the next hook function in the queue and
+// stores the parameter and result values of this invocation.
+func (m *MockEnterpriseDB) RepoStatisticsStore() database.RepoStatisticsStore {
+	r0 := m.RepoStatisticsStoreFunc.nextHook()()
+	m.RepoStatisticsStoreFunc.appendCall(EnterpriseDBRepoStatisticsStoreFuncCall{r0})
+	return r0
+}
+
+// SetDefaultHook sets function that is called when the RepoStatisticsStore
+// method of the parent MockEnterpriseDB instance is invoked and the hook
+// queue is empty.
+func (f *EnterpriseDBRepoStatisticsStoreFunc) SetDefaultHook(hook func() database.RepoStatisticsStore) {
+	f.defaultHook = hook
+}
+
+// PushHook adds a function to the end of hook queue. Each invocation of the
+// RepoStatisticsStore method of the parent MockEnterpriseDB instance
+// invokes the hook at the front of the queue and discards it. After the
+// queue is empty, the default hook function is invoked for any future
+// action.
+func (f *EnterpriseDBRepoStatisticsStoreFunc) PushHook(hook func() database.RepoStatisticsStore) {
+	f.mutex.Lock()
+	f.hooks = append(f.hooks, hook)
+	f.mutex.Unlock()
+}
+
+// SetDefaultReturn calls SetDefaultHook with a function that returns the
+// given values.
+func (f *EnterpriseDBRepoStatisticsStoreFunc) SetDefaultReturn(r0 database.RepoStatisticsStore) {
+	f.SetDefaultHook(func() database.RepoStatisticsStore {
+		return r0
+	})
+}
+
+// PushReturn calls PushHook with a function that returns the given values.
+func (f *EnterpriseDBRepoStatisticsStoreFunc) PushReturn(r0 database.RepoStatisticsStore) {
+	f.PushHook(func() database.RepoStatisticsStore {
+		return r0
+	})
+}
+
+func (f *EnterpriseDBRepoStatisticsStoreFunc) nextHook() func() database.RepoStatisticsStore {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
+	if len(f.hooks) == 0 {
+		return f.defaultHook
+	}
+
+	hook := f.hooks[0]
+	f.hooks = f.hooks[1:]
+	return hook
+}
+
+func (f *EnterpriseDBRepoStatisticsStoreFunc) appendCall(r0 EnterpriseDBRepoStatisticsStoreFuncCall) {
+	f.mutex.Lock()
+	f.history = append(f.history, r0)
+	f.mutex.Unlock()
+}
+
+// History returns a sequence of EnterpriseDBRepoStatisticsStoreFuncCall
+// objects describing the invocations of this function.
+func (f *EnterpriseDBRepoStatisticsStoreFunc) History() []EnterpriseDBRepoStatisticsStoreFuncCall {
+	f.mutex.Lock()
+	history := make([]EnterpriseDBRepoStatisticsStoreFuncCall, len(f.history))
+	copy(history, f.history)
+	f.mutex.Unlock()
+
+	return history
+}
+
+// EnterpriseDBRepoStatisticsStoreFuncCall is an object that describes an
+// invocation of method RepoStatisticsStore on an instance of
+// MockEnterpriseDB.
+type EnterpriseDBRepoStatisticsStoreFuncCall struct {
+	// Result0 is the value of the 1st result returned from this method
+	// invocation.
+	Result0 database.RepoStatisticsStore
+}
+
+// Args returns an interface slice containing the arguments of this
+// invocation.
+func (c EnterpriseDBRepoStatisticsStoreFuncCall) Args() []interface{} {
+	return []interface{}{}
+}
+
+// Results returns an interface slice containing the results of this
+// invocation.
+func (c EnterpriseDBRepoStatisticsStoreFuncCall) Results() []interface{} {
 	return []interface{}{c.Result0}
 }
 
