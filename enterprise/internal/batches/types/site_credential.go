@@ -56,33 +56,12 @@ func (sc *SiteCredential) Authenticator(ctx context.Context) (auth.Authenticator
 // SetAuthenticator encrypts and sets the authenticator within the site
 // credential.
 func (sc *SiteCredential) SetAuthenticator(ctx context.Context, a auth.Authenticator) error {
-	// Set the key ID. This is cargo culted from external_accounts.go, and the
-	// key ID doesn't appear to be actually useful as anything other than a
-	// marker of whether the data is expected to be encrypted or not.
-	id, err := keyID(ctx, sc.Key)
-	if err != nil {
-		return errors.Wrap(err, "getting key version")
-	}
-
-	secret, err := database.EncryptAuthenticator(ctx, sc.Key, a)
+	secret, id, err := database.EncryptAuthenticator(ctx, sc.Key, a)
 	if err != nil {
 		return err
 	}
 
 	sc.EncryptedCredential = secret
 	sc.EncryptionKeyID = id
-
 	return nil
-}
-
-func keyID(ctx context.Context, key encryption.Key) (string, error) {
-	if key != nil {
-		version, err := key.Version(ctx)
-		if err != nil {
-			return "", errors.Wrap(err, "getting key version")
-		}
-		return version.JSON(), nil
-	}
-
-	return "", nil
 }
