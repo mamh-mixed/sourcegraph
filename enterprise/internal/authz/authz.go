@@ -189,6 +189,10 @@ func ProvidersFromConfig(
 		}
 	}
 
+	fmt.Printf("Num providers: %d\n", len(providers))
+	for _, p := range providers {
+		fmt.Printf("provider URN: %s provider service type: %s\n", p.URN(), p.ServiceType())
+	}
 	return allowAccessByDefault, providers, seriousProblems, warnings, invalidConnections
 }
 

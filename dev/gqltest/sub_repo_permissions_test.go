@@ -52,6 +52,7 @@ func TestSubRepoPermissionsPerforce(t *testing.T) {
 
 		if diff := cmp.Diff(wantBlob, blob); diff != "" {
 			checkUserPerms(t, aliceUsername)
+			checkSiteConfig(t)
 			t.Fatalf("Blob mismatch (-want +got):\n%s", diff)
 		}
 	})
@@ -71,6 +72,7 @@ func TestSubRepoPermissionsPerforce(t *testing.T) {
 
 		if diff := cmp.Diff(wantFiles, files); diff != "" {
 			checkUserPerms(t, aliceUsername)
+			checkSiteConfig(t)
 			t.Fatalf("fileNames mismatch (-want +got):\n%s", diff)
 		}
 	})
@@ -345,6 +347,19 @@ func checkUserPerms(t *testing.T, userName string) {
 		fmt.Printf("user perms were synced at %v\n", userPermsInfo.SyncedAt)
 	} else {
 		t.Fatalf("user perms synced at was zero for user %v", username)
+	}
+}
+
+func checkSiteConfig(t *testing.T) {
+	t.Helper()
+	cfg, err := client.SiteConfiguration()
+	if err != nil {
+		t.Errorf("error getting site config: %s", err)
+	}
+	if cfg.ExperimentalFeatures.SubRepoPermissions.Enabled {
+		fmt.Println("Sub repo perms enabled")
+	} else {
+		fmt.Println("Sub repo perms NOT enabled")
 	}
 }
 
