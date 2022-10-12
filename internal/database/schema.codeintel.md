@@ -16,11 +16,11 @@ Referenced by:
 
 A lookup of SCIP [Document](https://sourcegraph.com/search?q=context:%40sourcegraph/all+repo:%5Egithub%5C.com/sourcegraph/scip%24+file:%5Escip%5C.proto+message+Document&amp;patternType=standard) payloads by their hash.
 
-**id**: An auto-generated identifier. This column is used as a foreign key to reduce occurrences of the hash value.
+**id**: An auto-generated identifier. This column is used as a foreign key target to reduce occurrences of the full payload hash value.
 
-**payload_hash**: A deterministic hash of the raw SCIP payload. We use this as a unique value to enforce deduplication of semantically equivalent document payloads.
+**payload_hash**: A deterministic hash of the raw SCIP payload. We use this as a unique value to enforce deduplication between indexes with the same document data.
 
-**raw_scip_payload**: The raw, canonicalized SCIP Document payload.
+**raw_scip_payload**: The raw, canonicalized SCIP [Document](https://sourcegraph.com/search?q=context:%40sourcegraph/all+repo:%5Egithub%5C.com/sourcegraph/scip%24+file:%5Escip%5C.proto+message+Document&amp;patternType=standard) payload.
 
 **schema_version**: The schema version of this row - used to determine presence and encoding of (future) denormalized data.
 
@@ -48,7 +48,7 @@ A mapping from file paths to document references within a particular SCIP index.
 
 **document_path**: The root-relative file path to the document.
 
-**id**: An auto-generated identifier. This column is used as a foreign key to reduce occurrences of the path value.
+**id**: An auto-generated identifier. This column is used as a foreign key target to reduce occurrences of the full document path value.
 
 **upload_id**: The identifier of the upload that provided this SCIP index.
 

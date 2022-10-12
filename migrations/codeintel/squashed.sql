@@ -230,13 +230,13 @@ CREATE TABLE codeintel_scip_documents (
 
 COMMENT ON TABLE codeintel_scip_documents IS 'A lookup of SCIP [Document](https://sourcegraph.com/search?q=context:%40sourcegraph/all+repo:%5Egithub%5C.com/sourcegraph/scip%24+file:%5Escip%5C.proto+message+Document&patternType=standard) payloads by their hash.';
 
-COMMENT ON COLUMN codeintel_scip_documents.id IS 'An auto-generated identifier. This column is used as a foreign key to reduce occurrences of the hash value.';
+COMMENT ON COLUMN codeintel_scip_documents.id IS 'An auto-generated identifier. This column is used as a foreign key target to reduce occurrences of the full payload hash value.';
 
-COMMENT ON COLUMN codeintel_scip_documents.payload_hash IS 'A deterministic hash of the raw SCIP payload. We use this as a unique value to enforce deduplication of semantically equivalent document payloads.';
+COMMENT ON COLUMN codeintel_scip_documents.payload_hash IS 'A deterministic hash of the raw SCIP payload. We use this as a unique value to enforce deduplication between indexes with the same document data.';
 
 COMMENT ON COLUMN codeintel_scip_documents.schema_version IS 'The schema version of this row - used to determine presence and encoding of (future) denormalized data.';
 
-COMMENT ON COLUMN codeintel_scip_documents.raw_scip_payload IS 'The raw, canonicalized SCIP Document payload.';
+COMMENT ON COLUMN codeintel_scip_documents.raw_scip_payload IS 'The raw, canonicalized SCIP [Document](https://sourcegraph.com/search?q=context:%40sourcegraph/all+repo:%5Egithub%5C.com/sourcegraph/scip%24+file:%5Escip%5C.proto+message+Document&patternType=standard) payload.';
 
 CREATE SEQUENCE codeintel_scip_documents_id_seq
     START WITH 1
@@ -256,7 +256,7 @@ CREATE TABLE codeintel_scip_index_documents (
 
 COMMENT ON TABLE codeintel_scip_index_documents IS 'A mapping from file paths to document references within a particular SCIP index.';
 
-COMMENT ON COLUMN codeintel_scip_index_documents.id IS 'An auto-generated identifier. This column is used as a foreign key to reduce occurrences of the path value.';
+COMMENT ON COLUMN codeintel_scip_index_documents.id IS 'An auto-generated identifier. This column is used as a foreign key target to reduce occurrences of the full document path value.';
 
 COMMENT ON COLUMN codeintel_scip_index_documents.upload_id IS 'The identifier of the upload that provided this SCIP index.';
 

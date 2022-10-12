@@ -237,7 +237,7 @@
           "IdentityGeneration": "",
           "IsGenerated": "NEVER",
           "GenerationExpression": "",
-          "Comment": "An auto-generated identifier. This column is used as a foreign key to reduce occurrences of the hash value."
+          "Comment": "An auto-generated identifier. This column is used as a foreign key target to reduce occurrences of the full payload hash value."
         },
         {
           "Name": "payload_hash",
@@ -250,7 +250,7 @@
           "IdentityGeneration": "",
           "IsGenerated": "NEVER",
           "GenerationExpression": "",
-          "Comment": "A deterministic hash of the raw SCIP payload. We use this as a unique value to enforce deduplication of semantically equivalent document payloads."
+          "Comment": "A deterministic hash of the raw SCIP payload. We use this as a unique value to enforce deduplication between indexes with the same document data."
         },
         {
           "Name": "raw_scip_payload",
@@ -263,7 +263,7 @@
           "IdentityGeneration": "",
           "IsGenerated": "NEVER",
           "GenerationExpression": "",
-          "Comment": "The raw, canonicalized SCIP Document payload."
+          "Comment": "The raw, canonicalized SCIP [Document](https://sourcegraph.com/search?q=context:%40sourcegraph/all+repo:%5Egithub%5C.com/sourcegraph/scip%24+file:%5Escip%5C.proto+message+Document\u0026patternType=standard) payload."
         },
         {
           "Name": "schema_version",
@@ -345,7 +345,7 @@
           "IdentityGeneration": "",
           "IsGenerated": "NEVER",
           "GenerationExpression": "",
-          "Comment": "An auto-generated identifier. This column is used as a foreign key to reduce occurrences of the path value."
+          "Comment": "An auto-generated identifier. This column is used as a foreign key target to reduce occurrences of the full document path value."
         },
         {
           "Name": "upload_id",

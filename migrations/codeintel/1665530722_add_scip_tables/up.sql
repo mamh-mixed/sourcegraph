@@ -9,10 +9,10 @@ CREATE TABLE IF NOT EXISTS codeintel_scip_documents(
 );
 
 COMMENT ON TABLE codeintel_scip_documents IS 'A lookup of SCIP [Document](https://sourcegraph.com/search?q=context:%40sourcegraph/all+repo:%5Egithub%5C.com/sourcegraph/scip%24+file:%5Escip%5C.proto+message+Document&patternType=standard) payloads by their hash.';
-COMMENT ON COLUMN codeintel_scip_documents.id IS 'An auto-generated identifier. This column is used as a foreign key to reduce occurrences of the hash value.';
-COMMENT ON COLUMN codeintel_scip_documents.payload_hash IS 'A deterministic hash of the raw SCIP payload. We use this as a unique value to enforce deduplication of semantically equivalent document payloads.';
+COMMENT ON COLUMN codeintel_scip_documents.id IS 'An auto-generated identifier. This column is used as a foreign key target to reduce occurrences of the full payload hash value.';
+COMMENT ON COLUMN codeintel_scip_documents.payload_hash IS 'A deterministic hash of the raw SCIP payload. We use this as a unique value to enforce deduplication between indexes with the same document data.';
 COMMENT ON COLUMN codeintel_scip_documents.schema_version IS 'The schema version of this row - used to determine presence and encoding of (future) denormalized data.';
-COMMENT ON COLUMN codeintel_scip_documents.raw_scip_payload IS 'The raw, canonicalized SCIP Document payload.';
+COMMENT ON COLUMN codeintel_scip_documents.raw_scip_payload IS 'The raw, canonicalized SCIP [Document](https://sourcegraph.com/search?q=context:%40sourcegraph/all+repo:%5Egithub%5C.com/sourcegraph/scip%24+file:%5Escip%5C.proto+message+Document&patternType=standard) payload.';
 
 CREATE TABLE IF NOT EXISTS codeintel_scip_index_documents(
     id bigserial,
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS codeintel_scip_index_documents(
 );
 
 COMMENT ON TABLE codeintel_scip_index_documents IS 'A mapping from file paths to document references within a particular SCIP index.';
-COMMENT ON COLUMN codeintel_scip_index_documents.id IS 'An auto-generated identifier. This column is used as a foreign key to reduce occurrences of the path value.';
+COMMENT ON COLUMN codeintel_scip_index_documents.id IS 'An auto-generated identifier. This column is used as a foreign key target to reduce occurrences of the full document path value.';
 COMMENT ON COLUMN codeintel_scip_index_documents.upload_id IS 'The identifier of the upload that provided this SCIP index.';
 COMMENT ON COLUMN codeintel_scip_index_documents.document_path IS 'The root-relative file path to the document.';
 COMMENT ON COLUMN codeintel_scip_index_documents.document_id IS 'The foreign key to the shared document payload (see the table [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents)).';
@@ -63,8 +63,6 @@ END $$;
 DROP TRIGGER IF EXISTS codeintel_scip_index_documents_schema_versions_insert ON codeintel_scip_index_documents_schema_versions;
 CREATE TRIGGER codeintel_scip_index_documents_schema_versions_insert AFTER INSERT ON codeintel_scip_index_documents_schema_versions
 REFERENCING NEW TABLE AS newtab FOR EACH STATEMENT EXECUTE FUNCTION update_codeintel_scip_index_documents_schema_versions_insert();
-
--- TODO: additional indexes on symbol name for tsvector searching?
 
 CREATE TABLE IF NOT EXISTS codeintel_scip_symbols(
     upload_id integer NOT NULL,
