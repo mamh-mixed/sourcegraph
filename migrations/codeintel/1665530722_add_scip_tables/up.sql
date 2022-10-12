@@ -81,7 +81,7 @@ COMMENT ON TABLE codeintel_scip_symbols IS 'A mapping from SCIP [Symbol names](h
 COMMENT ON COLUMN codeintel_scip_symbols.upload_id IS 'The identifier of the upload that provided this SCIP index.';
 COMMENT ON COLUMN codeintel_scip_symbols.symbol_name IS 'The SCIP [Symbol names](https://sourcegraph.com/search?q=context:%40sourcegraph/all+repo:%5Egithub%5C.com/sourcegraph/scip%24+file:%5Escip%5C.proto+message+Symbol&patternType=standard).';
 COMMENT ON COLUMN codeintel_scip_symbols.index_document_id IS 'A reference to the `id` column of [`codeintel_scip_index_documents`](#table-publiccodeintel_scip_index_documents). Joining on this table yields the document path relative to the index root.';
-COMMENT ON COLUMN codeintel_scip_symbols.schema_version IS 'The schema version of this row - used to determine presence and encoding of data.';
+COMMENT ON COLUMN codeintel_scip_symbols.schema_version IS 'The schema version of this row - used to determine presence and encoding of denormalized data.';
 COMMENT ON COLUMN codeintel_scip_symbols.definition_ranges IS 'An encoded set of ranges within the associated document that have a **definition** relationship to the associated symbol.';
 COMMENT ON COLUMN codeintel_scip_symbols.reference_ranges IS 'An encoded set of ranges within the associated document that have a **reference** relationship to the associated symbol.';
 COMMENT ON COLUMN codeintel_scip_symbols.implementation_ranges IS 'An encoded set of ranges within the associated document that have a **implementation** relationship to the associated symbol.';

@@ -103,7 +103,7 @@ A mapping from SCIP [Symbol names](https://sourcegraph.com/search?q=context:%40s
 
 **reference_ranges**: An encoded set of ranges within the associated document that have a **reference** relationship to the associated symbol.
 
-**schema_version**: The schema version of this row - used to determine presence and encoding of data.
+**schema_version**: The schema version of this row - used to determine presence and encoding of denormalized data.
 
 **symbol_name**: The SCIP [Symbol names](https://sourcegraph.com/search?q=context:%40sourcegraph/all+repo:%5Egithub%5C.com/sourcegraph/scip%24+file:%5Escip%5C.proto+message+Symbol&amp;patternType=standard).
 

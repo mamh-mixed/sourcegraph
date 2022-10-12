@@ -525,7 +525,7 @@
           "IdentityGeneration": "",
           "IsGenerated": "NEVER",
           "GenerationExpression": "",
-          "Comment": "The schema version of this row - used to determine presence and encoding of data."
+          "Comment": "The schema version of this row - used to determine presence and encoding of denormalized data."
         },
         {
           "Name": "symbol_name",
