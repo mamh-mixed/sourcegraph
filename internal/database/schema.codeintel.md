@@ -66,13 +66,13 @@ Triggers:
 
 ```
 
-Tracks the range of schema_versions associated with each SCIP index in the [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) table.
+Tracks the range of `schema_versions` values associated with each SCIP index in the [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) table.
 
-**max_schema_version**: An upper-bound on the `schema_version` values of the records in the table [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) where the `upload_id` columns match.
+**max_schema_version**: An upper-bound on the `schema_version` values of the records in the table [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) where the `upload_id` columns match the associated SCIP index.
 
-**min_schema_version**: A lower-bound on the `schema_version` values of the records in the table [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) where the `upload_id` columns match.
+**min_schema_version**: A lower-bound on the `schema_version` values of the records in the table [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) where the `upload_id` columns match the associated SCIP index.
 
-**upload_id**: The identifier of the associated `upload_id` in the [`codeintel_scip_index_documents`](#table-publiccodeintel_scip_index_documents) table.
+**upload_id**: The identifier of the associated SCIP index.
 
 # Table "public.codeintel_scip_symbols"
 ```

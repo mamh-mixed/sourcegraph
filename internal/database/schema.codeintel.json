@@ -396,7 +396,7 @@
     },
     {
       "Name": "codeintel_scip_index_documents_schema_versions",
-      "Comment": "Tracks the range of schema_versions associated with each SCIP index in the [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) table.",
+      "Comment": "Tracks the range of `schema_versions` values associated with each SCIP index in the [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) table.",
       "Columns": [
         {
           "Name": "max_schema_version",
@@ -409,7 +409,7 @@
           "IdentityGeneration": "",
           "IsGenerated": "NEVER",
           "GenerationExpression": "",
-          "Comment": "An upper-bound on the `schema_version` values of the records in the table [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) where the `upload_id` columns match."
+          "Comment": "An upper-bound on the `schema_version` values of the records in the table [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) where the `upload_id` columns match the associated SCIP index."
         },
         {
           "Name": "min_schema_version",
@@ -422,7 +422,7 @@
           "IdentityGeneration": "",
           "IsGenerated": "NEVER",
           "GenerationExpression": "",
-          "Comment": "A lower-bound on the `schema_version` values of the records in the table [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) where the `upload_id` columns match."
+          "Comment": "A lower-bound on the `schema_version` values of the records in the table [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) where the `upload_id` columns match the associated SCIP index."
         },
         {
           "Name": "upload_id",
@@ -435,7 +435,7 @@
           "IdentityGeneration": "",
           "IsGenerated": "NEVER",
           "GenerationExpression": "",
-          "Comment": "The identifier of the associated `upload_id` in the [`codeintel_scip_index_documents`](#table-publiccodeintel_scip_index_documents) table."
+          "Comment": "The identifier of the associated SCIP index."
         }
       ],
       "Indexes": [
