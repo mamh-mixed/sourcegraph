@@ -396,7 +396,7 @@
     },
     {
       "Name": "codeintel_scip_index_documents_schema_versions",
-      "Comment": "Tracks the range of schema_versions for each index in the `codeintel_scip_index_documents` table.",
+      "Comment": "Tracks the range of schema_versions associated with each SCIP index in the `codeintel_scip_documents` table.",
       "Columns": [
         {
           "Name": "max_schema_version",
@@ -409,7 +409,7 @@
           "IdentityGeneration": "",
           "IsGenerated": "NEVER",
           "GenerationExpression": "",
-          "Comment": "An upper-bound on the `codeintel_scip_index_documents.schema_version` where `codeintel_scip_index_documents.upload_id = upload_id`."
+          "Comment": "An upper-bound on the `schema_version` values of the records in [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) where `upload_id` columns match."
         },
         {
           "Name": "min_schema_version",
@@ -422,7 +422,7 @@
           "IdentityGeneration": "",
           "IsGenerated": "NEVER",
           "GenerationExpression": "",
-          "Comment": "A lower-bound on the `codeintel_scip_index_documents.schema_version` where `codeintel_scip_index_documents.upload_id = upload_id`."
+          "Comment": "A lower-bound on the `schema_version` values of the records in [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) where `upload_id` columns match."
         },
         {
           "Name": "upload_id",
@@ -499,7 +499,7 @@
           "IdentityGeneration": "",
           "IsGenerated": "NEVER",
           "GenerationExpression": "",
-          "Comment": "Refers to the corresponding `codeintel_scip_index_documents.id` record (see `document_path`)."
+          "Comment": "A reference to the `id` column of [`codeintel_scip_index_documents`](#table-publiccodeintel_scip_index_documents). Joining on this table yields the document path relative to the index root."
         },
         {
           "Name": "reference_ranges",
@@ -538,7 +538,7 @@
           "IdentityGeneration": "",
           "IsGenerated": "NEVER",
           "GenerationExpression": "",
-          "Comment": "The SCIP Symbol name."
+          "Comment": "The SCIP [Symbol names](https://sourcegraph.com/search?q=context:%40sourcegraph/all+repo:%5Egithub%5C.com/sourcegraph/scip%24+file:%5Escip%5C.proto+message+Symbol\u0026patternType=standard)."
         },
         {
           "Name": "type_definition_ranges",
@@ -592,7 +592,7 @@
     },
     {
       "Name": "codeintel_scip_symbols_schema_versions",
-      "Comment": "Tracks the range of schema_versions for each index in the `codeintel_scip_symbols` table.",
+      "Comment": "Tracks the range of schema_versions for each index in the [`codeintel_scip_symbols`](#table-publiccodeintel_scip_symbols) table.",
       "Columns": [
         {
           "Name": "max_schema_version",
@@ -605,7 +605,7 @@
           "IdentityGeneration": "",
           "IsGenerated": "NEVER",
           "GenerationExpression": "",
-          "Comment": "An upper-bound on the `codeintel_scip_symbols.schema_version` where `codeintel_scip_symbols.upload_id = upload_id`."
+          "Comment": "An upper-bound on the `schema_version` values of the records in [`codeintel_scip_symbols`](#table-publiccodeintel_scip_symbols) where `upload_id` columns match."
         },
         {
           "Name": "min_schema_version",
@@ -618,7 +618,7 @@
           "IdentityGeneration": "",
           "IsGenerated": "NEVER",
           "GenerationExpression": "",
-          "Comment": "A lower-bound on the `codeintel_scip_symbols.schema_version` where `codeintel_scip_symbols.upload_id = upload_id`."
+          "Comment": "A lower-bound on the `schema_version` values of the records in [`codeintel_scip_symbols`](#table-publiccodeintel_scip_symbols) where `upload_id` columns match."
         },
         {
           "Name": "upload_id",
@@ -631,7 +631,7 @@
           "IdentityGeneration": "",
           "IsGenerated": "NEVER",
           "GenerationExpression": "",
-          "Comment": "The identifier of the associated `upload_id` in the `codeintel_scip_symbols` table."
+          "Comment": "The identifier of the associated `upload_id` in the [`codeintel_scip_symbols`](#table-publiccodeintel_scip_symbols) table."
         }
       ],
       "Indexes": [

@@ -66,11 +66,11 @@ Triggers:
 
 ```
 
-Tracks the range of schema_versions for each index in the `codeintel_scip_index_documents` table.
+Tracks the range of schema_versions associated with each SCIP index in the `codeintel_scip_documents` table.
 
-**max_schema_version**: An upper-bound on the `codeintel_scip_index_documents.schema_version` where `codeintel_scip_index_documents.upload_id = upload_id`.
+**max_schema_version**: An upper-bound on the `schema_version` values of the records in [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) where `upload_id` columns match.
 
-**min_schema_version**: A lower-bound on the `codeintel_scip_index_documents.schema_version` where `codeintel_scip_index_documents.upload_id = upload_id`.
+**min_schema_version**: A lower-bound on the `schema_version` values of the records in [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) where `upload_id` columns match.
 
 **upload_id**: The identifier of the associated `upload_id` in the `codeintel_scip_index_documents` table.
 
@@ -99,13 +99,13 @@ A mapping from SCIP [Symbol names](https://sourcegraph.com/search?q=context:%40s
 
 **implementation_ranges**: An encoded set of ranges within the associated document that have a **implementation** relationship to the associated symbol.
 
-**index_document_id**: Refers to the corresponding `codeintel_scip_index_documents.id` record (see `document_path`).
+**index_document_id**: A reference to the `id` column of [`codeintel_scip_index_documents`](#table-publiccodeintel_scip_index_documents). Joining on this table yields the document path relative to the index root.
 
 **reference_ranges**: An encoded set of ranges within the associated document that have a **reference** relationship to the associated symbol.
 
 **schema_version**: The schema version of this row - used to determine presence and encoding of data.
 
-**symbol_name**: The SCIP Symbol name.
+**symbol_name**: The SCIP [Symbol names](https://sourcegraph.com/search?q=context:%40sourcegraph/all+repo:%5Egithub%5C.com/sourcegraph/scip%24+file:%5Escip%5C.proto+message+Symbol&amp;patternType=standard).
 
 **type_definition_ranges**: An encoded set of ranges within the associated document that have a **type definition** relationship to the associated symbol.
 
@@ -125,13 +125,13 @@ Triggers:
 
 ```
 
-Tracks the range of schema_versions for each index in the `codeintel_scip_symbols` table.
+Tracks the range of schema_versions for each index in the [`codeintel_scip_symbols`](#table-publiccodeintel_scip_symbols) table.
 
-**max_schema_version**: An upper-bound on the `codeintel_scip_symbols.schema_version` where `codeintel_scip_symbols.upload_id = upload_id`.
+**max_schema_version**: An upper-bound on the `schema_version` values of the records in [`codeintel_scip_symbols`](#table-publiccodeintel_scip_symbols) where `upload_id` columns match.
 
-**min_schema_version**: A lower-bound on the `codeintel_scip_symbols.schema_version` where `codeintel_scip_symbols.upload_id = upload_id`.
+**min_schema_version**: A lower-bound on the `schema_version` values of the records in [`codeintel_scip_symbols`](#table-publiccodeintel_scip_symbols) where `upload_id` columns match.
 
-**upload_id**: The identifier of the associated `upload_id` in the `codeintel_scip_symbols` table.
+**upload_id**: The identifier of the associated `upload_id` in the [`codeintel_scip_symbols`](#table-publiccodeintel_scip_symbols) table.
 
 # Table "public.lsif_data_apidocs_num_dumps"
 ```
