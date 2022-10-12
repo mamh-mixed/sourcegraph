@@ -60,5 +60,6 @@ func favicon(w http.ResponseWriter, r *http.Request) {
 	if branding := globals.Branding(); branding.Favicon != "" {
 		path = branding.Favicon
 	}
+	fmt.Printf("path=%s, globals.Brandin()=%+v\n", path, globals.Branding())
 	http.Redirect(w, r, path, http.StatusMovedPermanently)
 }

@@ -68,6 +68,19 @@ func FetchStatusMessages(ctx context.Context, db database.DB) ([]StatusMessage, 
 		})
 	}
 
+	zoektRepoStats, err := db.ZoektRepos().GetStatistics(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "loading repo statistics")
+	}
+	if zoektRepoStats.NotIndexed > 0 {
+		messages = append(messages, StatusMessage{
+			Indexing: &IndexingProgress{
+				NotIndexed: zoektRepoStats.NotIndexed,
+				Indexed:    zoektRepoStats.Indexed,
+			},
+		})
+	}
+
 	return messages, nil
 }
 
@@ -95,4 +108,10 @@ type StatusMessage struct {
 	Cloning                  *CloningProgress          `json:"cloning"`
 	ExternalServiceSyncError *ExternalServiceSyncError `json:"external_service_sync_error"`
 	SyncError                *SyncError                `json:"sync_error"`
+	Indexing                 *IndexingProgress         `json:"indexing"`
+}
+
+type IndexingProgress struct {
+	NotIndexed int
+	Indexed    int
 }
