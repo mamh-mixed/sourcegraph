@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS codeintel_scip_index_documents(
 COMMENT ON TABLE codeintel_scip_index_documents IS 'A mapping from file paths to document references within a particular SCIP index.';
 COMMENT ON COLUMN codeintel_scip_index_documents.id IS 'An auto-generated identifier. This column is used as a foreign key target to reduce occurrences of the full document path value.';
 COMMENT ON COLUMN codeintel_scip_index_documents.upload_id IS 'The identifier of the upload that provided this SCIP index.';
-COMMENT ON COLUMN codeintel_scip_index_documents.document_path IS 'The root-relative file path to the document.';
+COMMENT ON COLUMN codeintel_scip_index_documents.document_path IS 'The file path to the document relative to the root of the index.';
 COMMENT ON COLUMN codeintel_scip_index_documents.document_id IS 'The foreign key to the shared document payload (see the table [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents)).';
 
 CREATE TABLE IF NOT EXISTS codeintel_scip_index_documents_schema_versions (
@@ -37,8 +37,8 @@ CREATE TABLE IF NOT EXISTS codeintel_scip_index_documents_schema_versions (
     PRIMARY KEY(upload_id)
 );
 
-COMMENT ON TABLE codeintel_scip_index_documents_schema_versions IS 'Tracks the range of schema_versions associated with each SCIP index in the `codeintel_scip_documents` table.';
-COMMENT ON COLUMN codeintel_scip_index_documents_schema_versions.upload_id IS 'The identifier of the associated `upload_id` in the `codeintel_scip_index_documents` table.';
+COMMENT ON TABLE codeintel_scip_index_documents_schema_versions IS 'Tracks the range of schema_versions associated with each SCIP index in the [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) table.';
+COMMENT ON COLUMN codeintel_scip_index_documents_schema_versions.upload_id IS 'The identifier of the associated `upload_id` in the [`codeintel_scip_index_documents`](#table-publiccodeintel_scip_index_documents) table.';
 COMMENT ON COLUMN codeintel_scip_index_documents_schema_versions.min_schema_version IS 'A lower-bound on the `schema_version` values of the records in [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) where `upload_id` columns match.';
 COMMENT ON COLUMN codeintel_scip_index_documents_schema_versions.max_schema_version IS 'An upper-bound on the `schema_version` values of the records in [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) where `upload_id` columns match.';
 

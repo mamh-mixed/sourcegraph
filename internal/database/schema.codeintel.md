@@ -46,7 +46,7 @@ A mapping from file paths to document references within a particular SCIP index.
 
 **document_id**: The foreign key to the shared document payload (see the table [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents)).
 
-**document_path**: The root-relative file path to the document.
+**document_path**: The file path to the document relative to the root of the index.
 
 **id**: An auto-generated identifier. This column is used as a foreign key target to reduce occurrences of the full document path value.
 
@@ -66,13 +66,13 @@ Triggers:
 
 ```
 
-Tracks the range of schema_versions associated with each SCIP index in the `codeintel_scip_documents` table.
+Tracks the range of schema_versions associated with each SCIP index in the [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) table.
 
 **max_schema_version**: An upper-bound on the `schema_version` values of the records in [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) where `upload_id` columns match.
 
 **min_schema_version**: A lower-bound on the `schema_version` values of the records in [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) where `upload_id` columns match.
 
-**upload_id**: The identifier of the associated `upload_id` in the `codeintel_scip_index_documents` table.
+**upload_id**: The identifier of the associated `upload_id` in the [`codeintel_scip_index_documents`](#table-publiccodeintel_scip_index_documents) table.
 
 # Table "public.codeintel_scip_symbols"
 ```
