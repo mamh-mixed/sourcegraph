@@ -1,33 +1,34 @@
 -- TODO: reference counting for expiration
 
 CREATE TABLE IF NOT EXISTS codeintel_scip_documents(
-    payload_hash text PRIMARY KEY,
+    id bigserial,
+    payload_hash bytea NOT NULL UNIQUE,
     schema_version integer NOT NULL,
-    raw_scip_payload bytea NOT NULL
+    raw_scip_payload bytea NOT NULL,
+    PRIMARY KEY(id)
 );
 
 COMMENT ON TABLE codeintel_scip_documents IS 'A lookup of SCIP [Document](https://sourcegraph.com/search?q=context:%40sourcegraph/all+repo:%5Egithub%5C.com/sourcegraph/scip%24+file:%5Escip%5C.proto+message+Document&patternType=standard) payloads by their hash.';
+COMMENT ON COLUMN codeintel_scip_documents.id IS 'An auto-generated identifier. This column is used as a foreign key to reduce occurrences of the hash value.';
 COMMENT ON COLUMN codeintel_scip_documents.payload_hash IS 'A deterministic hash of the raw SCIP payload. To retrieve a SCIP Document the hash must already be known (see the table [`codeintel_scip_index_documents`](#codeintel_scip_index_documents)).';
 COMMENT ON COLUMN codeintel_scip_documents.schema_version IS 'The schema version of this row - used to determine presence and encoding of (future) denormalized data.';
 COMMENT ON COLUMN codeintel_scip_documents.raw_scip_payload IS 'The raw, canonicalized SCIP Document payload.';
 
--- TODO: make payload_hash a fixed size field
-
 CREATE TABLE IF NOT EXISTS codeintel_scip_index_documents(
-    id BIGSERIAL,
+    id bigserial,
     upload_id integer NOT NULL,
     document_path text NOT NULL,
-    payload_hash text NOT NULL,
+    document_id bigint NOT NULL,
     PRIMARY KEY (id),
     UNIQUE (upload_id, document_path),
-    CONSTRAINT codeintel_scip_index_documents_payload_hash_fk FOREIGN KEY(payload_hash) REFERENCES codeintel_scip_documents(payload_hash)
+    CONSTRAINT codeintel_scip_index_documents_document_id_fk FOREIGN KEY(document_id) REFERENCES codeintel_scip_documents(id)
 );
 
-COMMENT ON TABLE codeintel_scip_index_documents IS 'A mapping from file paths to document hashes within a particular SCIP index.';
+COMMENT ON TABLE codeintel_scip_index_documents IS 'A mapping from file paths to document references within a particular SCIP index.';
 COMMENT ON COLUMN codeintel_scip_index_documents.id IS 'An auto-generated identifier. This column is used as a foreign key to reduce occurrences of the path value.';
 COMMENT ON COLUMN codeintel_scip_index_documents.upload_id IS 'The identifier of the upload that provided this SCIP index.';
 COMMENT ON COLUMN codeintel_scip_index_documents.document_path IS 'The root-relative file path to the document.';
-COMMENT ON COLUMN codeintel_scip_index_documents.payload_hash IS 'The hash of the SCIP payload for this document (see the table [`codeintel_scip_documents`](#codeintel_scip_documents)).';
+COMMENT ON COLUMN codeintel_scip_index_documents.document_id IS 'The foreign key to the shared document payload (see the table [`codeintel_scip_documents`](#codeintel_scip_documents)).';
 
 CREATE TABLE IF NOT EXISTS codeintel_scip_index_documents_schema_versions (
     upload_id integer NOT NULL,
@@ -50,7 +51,7 @@ CREATE OR REPLACE FUNCTION update_codeintel_scip_index_documents_schema_versions
         MIN(documents.schema_version) as min_schema_version,
         MAX(documents.schema_version) as max_schema_version
     FROM newtab
-    JOIN codeintel_scip_documents ON codeintel_scip_documents.payload_hash = newtab.payload_hash 
+    JOIN codeintel_scip_documents ON codeintel_scip_documents.id = newtab.document_id
     GROUP BY newtab.upload_id
     ON CONFLICT (upload_id) DO UPDATE SET
         -- Update with min(old_min, new_min) and max(old_max, new_max)
