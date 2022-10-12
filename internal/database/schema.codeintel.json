@@ -592,7 +592,7 @@
     },
     {
       "Name": "codeintel_scip_symbols_schema_versions",
-      "Comment": "Tracks the range of schema_versions for each index in the [`codeintel_scip_symbols`](#table-publiccodeintel_scip_symbols) table.",
+      "Comment": "Tracks the range of `schema_versions` for each index in the [`codeintel_scip_symbols`](#table-publiccodeintel_scip_symbols) table.",
       "Columns": [
         {
           "Name": "max_schema_version",

@@ -322,7 +322,7 @@ CREATE TABLE codeintel_scip_symbols_schema_versions (
     max_schema_version integer
 );
 
-COMMENT ON TABLE codeintel_scip_symbols_schema_versions IS 'Tracks the range of schema_versions for each index in the [`codeintel_scip_symbols`](#table-publiccodeintel_scip_symbols) table.';
+COMMENT ON TABLE codeintel_scip_symbols_schema_versions IS 'Tracks the range of `schema_versions` for each index in the [`codeintel_scip_symbols`](#table-publiccodeintel_scip_symbols) table.';
 
 COMMENT ON COLUMN codeintel_scip_symbols_schema_versions.upload_id IS 'The identifier of the associated `upload_id` in the [`codeintel_scip_symbols`](#table-publiccodeintel_scip_symbols) table.';
 
