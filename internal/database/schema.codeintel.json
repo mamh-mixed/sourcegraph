@@ -250,7 +250,7 @@
           "IdentityGeneration": "",
           "IsGenerated": "NEVER",
           "GenerationExpression": "",
-          "Comment": "A deterministic hash of the raw SCIP payload. To retrieve a SCIP Document the hash must already be known (see the table [`codeintel_scip_index_documents`](#codeintel_scip_index_documents))."
+          "Comment": "A deterministic hash of the raw SCIP payload. We use this as a unique value to enforce deduplication of semantically equivalent document payloads."
         },
         {
           "Name": "raw_scip_payload",
@@ -319,7 +319,7 @@
           "IdentityGeneration": "",
           "IsGenerated": "NEVER",
           "GenerationExpression": "",
-          "Comment": "The foreign key to the shared document payload (see the table [`codeintel_scip_documents`](#codeintel_scip_documents))."
+          "Comment": "The foreign key to the shared document payload (see the table [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents))."
         },
         {
           "Name": "document_path",
@@ -460,7 +460,7 @@
     },
     {
       "Name": "codeintel_scip_symbols",
-      "Comment": "A mapping from SCIP [Symbol names]([Symbol name](https://sourcegraph.com/search?q=context:%40sourcegraph/all+repo:%5Egithub%5C.com/sourcegraph/scip%24+file:%5Escip%5C.proto+message+Symbol\u0026patternType=standard)) to path and ranges where that symbol occurs within a particular SCIP index.",
+      "Comment": "A mapping from SCIP [Symbol names](https://sourcegraph.com/search?q=context:%40sourcegraph/all+repo:%5Egithub%5C.com/sourcegraph/scip%24+file:%5Escip%5C.proto+message+Symbol\u0026patternType=standard) to path and ranges where that symbol occurs within a particular SCIP index.",
       "Columns": [
         {
           "Name": "definition_ranges",

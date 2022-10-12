@@ -232,7 +232,7 @@ COMMENT ON TABLE codeintel_scip_documents IS 'A lookup of SCIP [Document](https:
 
 COMMENT ON COLUMN codeintel_scip_documents.id IS 'An auto-generated identifier. This column is used as a foreign key to reduce occurrences of the hash value.';
 
-COMMENT ON COLUMN codeintel_scip_documents.payload_hash IS 'A deterministic hash of the raw SCIP payload. To retrieve a SCIP Document the hash must already be known (see the table [`codeintel_scip_index_documents`](#codeintel_scip_index_documents)).';
+COMMENT ON COLUMN codeintel_scip_documents.payload_hash IS 'A deterministic hash of the raw SCIP payload. We use this as a unique value to enforce deduplication of semantically equivalent document payloads.';
 
 COMMENT ON COLUMN codeintel_scip_documents.schema_version IS 'The schema version of this row - used to determine presence and encoding of (future) denormalized data.';
 
@@ -262,7 +262,7 @@ COMMENT ON COLUMN codeintel_scip_index_documents.upload_id IS 'The identifier of
 
 COMMENT ON COLUMN codeintel_scip_index_documents.document_path IS 'The root-relative file path to the document.';
 
-COMMENT ON COLUMN codeintel_scip_index_documents.document_id IS 'The foreign key to the shared document payload (see the table [`codeintel_scip_documents`](#codeintel_scip_documents)).';
+COMMENT ON COLUMN codeintel_scip_index_documents.document_id IS 'The foreign key to the shared document payload (see the table [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents)).';
 
 CREATE SEQUENCE codeintel_scip_index_documents_id_seq
     START WITH 1
@@ -298,7 +298,7 @@ CREATE TABLE codeintel_scip_symbols (
     type_definition_ranges bytea
 );
 
-COMMENT ON TABLE codeintel_scip_symbols IS 'A mapping from SCIP [Symbol names]([Symbol name](https://sourcegraph.com/search?q=context:%40sourcegraph/all+repo:%5Egithub%5C.com/sourcegraph/scip%24+file:%5Escip%5C.proto+message+Symbol&patternType=standard)) to path and ranges where that symbol occurs within a particular SCIP index.';
+COMMENT ON TABLE codeintel_scip_symbols IS 'A mapping from SCIP [Symbol names](https://sourcegraph.com/search?q=context:%40sourcegraph/all+repo:%5Egithub%5C.com/sourcegraph/scip%24+file:%5Escip%5C.proto+message+Symbol&patternType=standard) to path and ranges where that symbol occurs within a particular SCIP index.';
 
 COMMENT ON COLUMN codeintel_scip_symbols.upload_id IS 'The identifier of the upload that provided this SCIP index.';
 

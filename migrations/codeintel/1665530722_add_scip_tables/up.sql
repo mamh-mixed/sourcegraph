@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS codeintel_scip_documents(
 
 COMMENT ON TABLE codeintel_scip_documents IS 'A lookup of SCIP [Document](https://sourcegraph.com/search?q=context:%40sourcegraph/all+repo:%5Egithub%5C.com/sourcegraph/scip%24+file:%5Escip%5C.proto+message+Document&patternType=standard) payloads by their hash.';
 COMMENT ON COLUMN codeintel_scip_documents.id IS 'An auto-generated identifier. This column is used as a foreign key to reduce occurrences of the hash value.';
-COMMENT ON COLUMN codeintel_scip_documents.payload_hash IS 'A deterministic hash of the raw SCIP payload. To retrieve a SCIP Document the hash must already be known (see the table [`codeintel_scip_index_documents`](#codeintel_scip_index_documents)).';
+COMMENT ON COLUMN codeintel_scip_documents.payload_hash IS 'A deterministic hash of the raw SCIP payload. We use this as a unique value to enforce deduplication of semantically equivalent document payloads.';
 COMMENT ON COLUMN codeintel_scip_documents.schema_version IS 'The schema version of this row - used to determine presence and encoding of (future) denormalized data.';
 COMMENT ON COLUMN codeintel_scip_documents.raw_scip_payload IS 'The raw, canonicalized SCIP Document payload.';
 
@@ -28,7 +28,7 @@ COMMENT ON TABLE codeintel_scip_index_documents IS 'A mapping from file paths to
 COMMENT ON COLUMN codeintel_scip_index_documents.id IS 'An auto-generated identifier. This column is used as a foreign key to reduce occurrences of the path value.';
 COMMENT ON COLUMN codeintel_scip_index_documents.upload_id IS 'The identifier of the upload that provided this SCIP index.';
 COMMENT ON COLUMN codeintel_scip_index_documents.document_path IS 'The root-relative file path to the document.';
-COMMENT ON COLUMN codeintel_scip_index_documents.document_id IS 'The foreign key to the shared document payload (see the table [`codeintel_scip_documents`](#codeintel_scip_documents)).';
+COMMENT ON COLUMN codeintel_scip_index_documents.document_id IS 'The foreign key to the shared document payload (see the table [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents)).';
 
 CREATE TABLE IF NOT EXISTS codeintel_scip_index_documents_schema_versions (
     upload_id integer NOT NULL,
@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS codeintel_scip_symbols(
     CONSTRAINT codeintel_scip_symbols_index_document_id_fk FOREIGN KEY(index_document_id) REFERENCES codeintel_scip_index_documents(id) ON DELETE CASCADE
 );
 
-COMMENT ON TABLE codeintel_scip_symbols IS 'A mapping from SCIP [Symbol names]([Symbol name](https://sourcegraph.com/search?q=context:%40sourcegraph/all+repo:%5Egithub%5C.com/sourcegraph/scip%24+file:%5Escip%5C.proto+message+Symbol&patternType=standard)) to path and ranges where that symbol occurs within a particular SCIP index.';
+COMMENT ON TABLE codeintel_scip_symbols IS 'A mapping from SCIP [Symbol names](https://sourcegraph.com/search?q=context:%40sourcegraph/all+repo:%5Egithub%5C.com/sourcegraph/scip%24+file:%5Escip%5C.proto+message+Symbol&patternType=standard) to path and ranges where that symbol occurs within a particular SCIP index.';
 COMMENT ON COLUMN codeintel_scip_symbols.upload_id IS 'The identifier of the upload that provided this SCIP index.';
 COMMENT ON COLUMN codeintel_scip_symbols.symbol_name IS 'The SCIP Symbol name.';
 COMMENT ON COLUMN codeintel_scip_symbols.index_document_id IS 'Refers to the corresponding `codeintel_scip_index_documents.id` record (see `document_path`).';

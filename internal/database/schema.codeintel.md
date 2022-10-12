@@ -18,7 +18,7 @@ A lookup of SCIP [Document](https://sourcegraph.com/search?q=context:%40sourcegr
 
 **id**: An auto-generated identifier. This column is used as a foreign key to reduce occurrences of the hash value.
 
-**payload_hash**: A deterministic hash of the raw SCIP payload. To retrieve a SCIP Document the hash must already be known (see the table [`codeintel_scip_index_documents`](#codeintel_scip_index_documents)).
+**payload_hash**: A deterministic hash of the raw SCIP payload. We use this as a unique value to enforce deduplication of semantically equivalent document payloads.
 
 **raw_scip_payload**: The raw, canonicalized SCIP Document payload.
 
@@ -44,7 +44,7 @@ Referenced by:
 
 A mapping from file paths to document references within a particular SCIP index.
 
-**document_id**: The foreign key to the shared document payload (see the table [`codeintel_scip_documents`](#codeintel_scip_documents)).
+**document_id**: The foreign key to the shared document payload (see the table [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents)).
 
 **document_path**: The root-relative file path to the document.
 
@@ -93,7 +93,7 @@ Foreign-key constraints:
 
 ```
 
-A mapping from SCIP [Symbol names]([Symbol name](https://sourcegraph.com/search?q=context:%40sourcegraph/all+repo:%5Egithub%5C.com/sourcegraph/scip%24+file:%5Escip%5C.proto+message+Symbol&amp;patternType=standard)) to path and ranges where that symbol occurs within a particular SCIP index.
+A mapping from SCIP [Symbol names](https://sourcegraph.com/search?q=context:%40sourcegraph/all+repo:%5Egithub%5C.com/sourcegraph/scip%24+file:%5Escip%5C.proto+message+Symbol&amp;patternType=standard) to path and ranges where that symbol occurs within a particular SCIP index.
 
 **definition_ranges**: An encoded set of ranges within the associated document that have a **definition** relationship to the associated symbol.
 
