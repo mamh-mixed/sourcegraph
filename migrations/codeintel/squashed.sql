@@ -283,9 +283,9 @@ COMMENT ON TABLE codeintel_scip_index_documents_schema_versions IS 'Tracks the r
 
 COMMENT ON COLUMN codeintel_scip_index_documents_schema_versions.upload_id IS 'The identifier of the associated `upload_id` in the [`codeintel_scip_index_documents`](#table-publiccodeintel_scip_index_documents) table.';
 
-COMMENT ON COLUMN codeintel_scip_index_documents_schema_versions.min_schema_version IS 'A lower-bound on the `schema_version` values of the records in [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) where `upload_id` columns match.';
+COMMENT ON COLUMN codeintel_scip_index_documents_schema_versions.min_schema_version IS 'A lower-bound on the `schema_version` values of the records in the table [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) where the `upload_id` columns match.';
 
-COMMENT ON COLUMN codeintel_scip_index_documents_schema_versions.max_schema_version IS 'An upper-bound on the `schema_version` values of the records in [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) where `upload_id` columns match.';
+COMMENT ON COLUMN codeintel_scip_index_documents_schema_versions.max_schema_version IS 'An upper-bound on the `schema_version` values of the records in the table [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) where the `upload_id` columns match.';
 
 CREATE TABLE codeintel_scip_symbols (
     upload_id integer NOT NULL,
@@ -326,9 +326,9 @@ COMMENT ON TABLE codeintel_scip_symbols_schema_versions IS 'Tracks the range of 
 
 COMMENT ON COLUMN codeintel_scip_symbols_schema_versions.upload_id IS 'The identifier of the associated `upload_id` in the [`codeintel_scip_symbols`](#table-publiccodeintel_scip_symbols) table.';
 
-COMMENT ON COLUMN codeintel_scip_symbols_schema_versions.min_schema_version IS 'A lower-bound on the `schema_version` values of the records in [`codeintel_scip_symbols`](#table-publiccodeintel_scip_symbols) where `upload_id` columns match.';
+COMMENT ON COLUMN codeintel_scip_symbols_schema_versions.min_schema_version IS 'A lower-bound on the `schema_version` values of the records in the table [`codeintel_scip_symbols`](#table-publiccodeintel_scip_symbols) where the `upload_id` columns match.';
 
-COMMENT ON COLUMN codeintel_scip_symbols_schema_versions.max_schema_version IS 'An upper-bound on the `schema_version` values of the records in [`codeintel_scip_symbols`](#table-publiccodeintel_scip_symbols) where `upload_id` columns match.';
+COMMENT ON COLUMN codeintel_scip_symbols_schema_versions.max_schema_version IS 'An upper-bound on the `schema_version` values of the records in the table [`codeintel_scip_symbols`](#table-publiccodeintel_scip_symbols) where the `upload_id` columns match.';
 
 CREATE TABLE lsif_data_apidocs_num_dumps (
     count bigint

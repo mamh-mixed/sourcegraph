@@ -409,7 +409,7 @@
           "IdentityGeneration": "",
           "IsGenerated": "NEVER",
           "GenerationExpression": "",
-          "Comment": "An upper-bound on the `schema_version` values of the records in [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) where `upload_id` columns match."
+          "Comment": "An upper-bound on the `schema_version` values of the records in the table [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) where the `upload_id` columns match."
         },
         {
           "Name": "min_schema_version",
@@ -422,7 +422,7 @@
           "IdentityGeneration": "",
           "IsGenerated": "NEVER",
           "GenerationExpression": "",
-          "Comment": "A lower-bound on the `schema_version` values of the records in [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) where `upload_id` columns match."
+          "Comment": "A lower-bound on the `schema_version` values of the records in the table [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) where the `upload_id` columns match."
         },
         {
           "Name": "upload_id",
@@ -605,7 +605,7 @@
           "IdentityGeneration": "",
           "IsGenerated": "NEVER",
           "GenerationExpression": "",
-          "Comment": "An upper-bound on the `schema_version` values of the records in [`codeintel_scip_symbols`](#table-publiccodeintel_scip_symbols) where `upload_id` columns match."
+          "Comment": "An upper-bound on the `schema_version` values of the records in the table [`codeintel_scip_symbols`](#table-publiccodeintel_scip_symbols) where the `upload_id` columns match."
         },
         {
           "Name": "min_schema_version",
@@ -618,7 +618,7 @@
           "IdentityGeneration": "",
           "IsGenerated": "NEVER",
           "GenerationExpression": "",
-          "Comment": "A lower-bound on the `schema_version` values of the records in [`codeintel_scip_symbols`](#table-publiccodeintel_scip_symbols) where `upload_id` columns match."
+          "Comment": "A lower-bound on the `schema_version` values of the records in the table [`codeintel_scip_symbols`](#table-publiccodeintel_scip_symbols) where the `upload_id` columns match."
         },
         {
           "Name": "upload_id",

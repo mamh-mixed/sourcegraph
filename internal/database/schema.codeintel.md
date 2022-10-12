@@ -68,9 +68,9 @@ Triggers:
 
 Tracks the range of schema_versions associated with each SCIP index in the [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) table.
 
-**max_schema_version**: An upper-bound on the `schema_version` values of the records in [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) where `upload_id` columns match.
+**max_schema_version**: An upper-bound on the `schema_version` values of the records in the table [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) where the `upload_id` columns match.
 
-**min_schema_version**: A lower-bound on the `schema_version` values of the records in [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) where `upload_id` columns match.
+**min_schema_version**: A lower-bound on the `schema_version` values of the records in the table [`codeintel_scip_documents`](#table-publiccodeintel_scip_documents) where the `upload_id` columns match.
 
 **upload_id**: The identifier of the associated `upload_id` in the [`codeintel_scip_index_documents`](#table-publiccodeintel_scip_index_documents) table.
 
@@ -127,9 +127,9 @@ Triggers:
 
 Tracks the range of schema_versions for each index in the [`codeintel_scip_symbols`](#table-publiccodeintel_scip_symbols) table.
 
-**max_schema_version**: An upper-bound on the `schema_version` values of the records in [`codeintel_scip_symbols`](#table-publiccodeintel_scip_symbols) where `upload_id` columns match.
+**max_schema_version**: An upper-bound on the `schema_version` values of the records in the table [`codeintel_scip_symbols`](#table-publiccodeintel_scip_symbols) where the `upload_id` columns match.
 
-**min_schema_version**: A lower-bound on the `schema_version` values of the records in [`codeintel_scip_symbols`](#table-publiccodeintel_scip_symbols) where `upload_id` columns match.
+**min_schema_version**: A lower-bound on the `schema_version` values of the records in the table [`codeintel_scip_symbols`](#table-publiccodeintel_scip_symbols) where the `upload_id` columns match.
 
 **upload_id**: The identifier of the associated `upload_id` in the [`codeintel_scip_symbols`](#table-publiccodeintel_scip_symbols) table.
 
