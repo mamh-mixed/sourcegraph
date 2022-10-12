@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS codeintel_scip_documents(
 
 COMMENT ON TABLE codeintel_scip_documents IS 'A lookup of SCIP [Document](https://sourcegraph.com/search?q=context:%40sourcegraph/all+repo:%5Egithub%5C.com/sourcegraph/scip%24+file:%5Escip%5C.proto+message+Document&patternType=standard) payloads by their hash.';
 COMMENT ON COLUMN codeintel_scip_documents.payload_hash IS 'A deterministic hash of the raw SCIP payload. To retrieve a SCIP Document the hash must already be known (see the table [`codeintel_scip_index_documents`](#codeintel_scip_index_documents)).';
-COMMENT ON COLUMN codeintel_scip_documents.schema_version IS 'The schema version of this row - used to determine presence and encoding of data.';
+COMMENT ON COLUMN codeintel_scip_documents.schema_version IS 'The schema version of this row - used to determine presence and encoding of (future) denormalized data.';
 COMMENT ON COLUMN codeintel_scip_documents.raw_scip_payload IS 'The raw, canonicalized SCIP Document payload.';
 
 -- TODO: make payload_hash a fixed size field
@@ -28,6 +28,40 @@ COMMENT ON COLUMN codeintel_scip_index_documents.id IS 'An auto-generated identi
 COMMENT ON COLUMN codeintel_scip_index_documents.upload_id IS 'The identifier of the upload that provided this SCIP index.';
 COMMENT ON COLUMN codeintel_scip_index_documents.document_path IS 'The root-relative file path to the document.';
 COMMENT ON COLUMN codeintel_scip_index_documents.payload_hash IS 'The hash of the SCIP payload for this document (see the table [`codeintel_scip_documents`](#codeintel_scip_documents)).';
+
+CREATE TABLE IF NOT EXISTS codeintel_scip_index_documents_schema_versions (
+    upload_id integer NOT NULL,
+    min_schema_version integer,
+    max_schema_version integer,
+    PRIMARY KEY(upload_id)
+);
+
+COMMENT ON TABLE codeintel_scip_index_documents_schema_versions IS 'Tracks the range of schema_versions for each index in the `codeintel_scip_index_documents` table.';
+COMMENT ON COLUMN codeintel_scip_index_documents_schema_versions.upload_id IS 'The identifier of the associated `upload_id` in the `codeintel_scip_index_documents` table.';
+COMMENT ON COLUMN codeintel_scip_index_documents_schema_versions.min_schema_version IS 'A lower-bound on the `codeintel_scip_index_documents.schema_version` where `codeintel_scip_index_documents.upload_id = upload_id`.';
+COMMENT ON COLUMN codeintel_scip_index_documents_schema_versions.max_schema_version IS 'An upper-bound on the `codeintel_scip_index_documents.schema_version` where `codeintel_scip_index_documents.upload_id = upload_id`.';
+
+CREATE OR REPLACE FUNCTION update_codeintel_scip_index_documents_schema_versions_insert() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$ BEGIN
+    INSERT INTO codeintel_scip_index_documents_schema_versions
+    SELECT
+        upload_id,
+        MIN(documents.schema_version) as min_schema_version,
+        MAX(documents.schema_version) as max_schema_version
+    FROM newtab
+    JOIN codeintel_scip_documents ON codeintel_scip_documents.payload_hash = newtab.payload_hash 
+    GROUP BY newtab.upload_id
+    ON CONFLICT (upload_id) DO UPDATE SET
+        -- Update with min(old_min, new_min) and max(old_max, new_max)
+        min_schema_version = LEAST(codeintel_scip_index_documents_schema_versions.min_schema_version, EXCLUDED.min_schema_version),
+        max_schema_version = GREATEST(codeintel_scip_index_documents_schema_versions.max_schema_version, EXCLUDED.max_schema_version);
+    RETURN NULL;
+END $$;
+
+DROP TRIGGER IF EXISTS codeintel_scip_index_documents_schema_versions_insert ON codeintel_scip_index_documents_schema_versions;
+CREATE TRIGGER codeintel_scip_index_documents_schema_versions_insert AFTER INSERT ON codeintel_scip_index_documents_schema_versions
+REFERENCING NEW TABLE AS newtab FOR EACH STATEMENT EXECUTE FUNCTION update_codeintel_scip_index_documents_schema_versions_insert();
 
 -- TODO: additional indexes on symbol name for tsvector searching?
 
@@ -54,47 +88,6 @@ COMMENT ON COLUMN codeintel_scip_symbols.reference_ranges IS 'An encoded set of 
 COMMENT ON COLUMN codeintel_scip_symbols.implementation_ranges IS 'An encoded set of ranges within the associated document that have a **implementation** relationship to the associated symbol.';
 COMMENT ON COLUMN codeintel_scip_symbols.type_definition_ranges IS 'An encoded set of ranges within the associated document that have a **type definition** relationship to the associated symbol.';
 
-CREATE TABLE IF NOT EXISTS codeintel_scip_documents_schema_versions (
-    payload_hash text NOT NULL,
-    min_schema_version integer,
-    max_schema_version integer,
-    PRIMARY KEY(payload_hash)
-);
-
-COMMENT ON TABLE codeintel_scip_documents_schema_versions IS 'Tracks the range of schema_versions for each index in the `codeintel_scip_documents` table.';
-COMMENT ON COLUMN codeintel_scip_documents_schema_versions.payload_hash IS 'The identifier of the associated `payload_hash` in the `codeintel_scip_documents` table.';
-COMMENT ON COLUMN codeintel_scip_documents_schema_versions.min_schema_version IS 'A lower-bound on the `codeintel_scip_documents.schema_version` where `codeintel_scip_documents.payload_hash = payload_hash`.';
-COMMENT ON COLUMN codeintel_scip_documents_schema_versions.max_schema_version IS 'An upper-bound on the `codeintel_scip_documents.schema_version` where `codeintel_scip_documents.payload_hash = payload_hash`.';
-
--- CREATE FUNCTION update_codeintel_scip_documents_schema_versions_insert() RETURNS trigger
---     LANGUAGE plpgsql
---     AS $$ BEGIN
---     INSERT INTO
---         codeintel_scip_documents_schema_versions
---     SELECT
---         payload_hash,
---         MIN(schema_version) as min_schema_version,
---         MAX(schema_version) as max_schema_version
---     FROM
---         newtab
---     GROUP BY
---         payload_hash
---     ON CONFLICT (payload_hash) DO UPDATE SET
---         -- Update with min(old_min, new_min) and max(old_max, new_max)
---         min_schema_version = LEAST(codeintel_scip_documents_schema_versions.min_schema_version, EXCLUDED.min_schema_version),
---         max_schema_version = GREATEST(codeintel_scip_documents_schema_versions.max_schema_version, EXCLUDED.max_schema_version);
---     RETURN NULL;
--- END $$;
-
--- CREATE TRIGGER
---     codeintel_scip_documents_schema_versions_insert 
--- AFTER INSERT ON
---     codeintel_scip_documents_schema_versions
--- REFERENCING
---     NEW TABLE AS newtab
--- FOR EACH STATEMENT
---     EXECUTE FUNCTION update_codeintel_scip_documents_schema_versions_insert();
-
 CREATE TABLE IF NOT EXISTS codeintel_scip_symbols_schema_versions (
     upload_id integer NOT NULL,
     min_schema_version integer,
@@ -110,16 +103,13 @@ COMMENT ON COLUMN codeintel_scip_symbols_schema_versions.max_schema_version IS '
 CREATE OR REPLACE FUNCTION update_codeintel_scip_symbols_schema_versions_insert() RETURNS trigger
     LANGUAGE plpgsql
     AS $$ BEGIN
-    INSERT INTO
-        codeintel_scip_symbols_schema_versions
+    INSERT INTO codeintel_scip_symbols_schema_versions
     SELECT
         upload_id,
         MIN(schema_version) as min_schema_version,
         MAX(schema_version) as max_schema_version
-    FROM
-        newtab
-    GROUP BY
-        upload_id
+    FROM newtab
+    GROUP BY upload_id
     ON CONFLICT (upload_id) DO UPDATE SET
         -- Update with min(old_min, new_min) and max(old_max, new_max)
         min_schema_version = LEAST(codeintel_scip_symbols_schema_versions.min_schema_version, EXCLUDED.min_schema_version),
