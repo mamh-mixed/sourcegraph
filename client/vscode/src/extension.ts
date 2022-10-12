@@ -1,5 +1,3 @@
-import 'cross-fetch/polyfill'
-
 import { of, ReplaySubject } from 'rxjs'
 import vscode from 'vscode'
 
@@ -9,6 +7,7 @@ import { fetchStreamSuggestions } from '@sourcegraph/shared/src/search/suggestio
 
 import { observeAuthenticatedUser } from './backend/authenticatedUser'
 import { logEvent } from './backend/eventLogger'
+import { getProxyAgent } from './backend/fetch'
 import { initializeInstanceVersionNumber } from './backend/instanceVersion'
 import { requestGraphQLFromVSCode } from './backend/requestGraphQl'
 import { initializeSearchContexts } from './backend/searchContexts'
@@ -26,8 +25,9 @@ import { invalidateContextOnSettingsChange } from './settings/invalidation'
 import { LocalStorageService, SELECTED_SEARCH_CONTEXT_SPEC_KEY } from './settings/LocalStorageService'
 import { watchUninstall } from './settings/uninstall'
 import { createVSCEStateMachine, VSCEQueryState } from './state'
-import { focusSearchPanel, openSourcegraphLinks, registerWebviews, copySourcegraphLinks } from './webview/commands'
+import { copySourcegraphLinks, focusSearchPanel, openSourcegraphLinks, registerWebviews } from './webview/commands'
 import { processOldToken, scretTokenKey, SourcegraphAuthProvider } from './webview/platform/AuthProvider'
+
 /**
  * See CONTRIBUTING docs for the Architecture Diagram
  */
@@ -57,7 +57,26 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // Sets global `EventSource` for Node, which is required for streaming search.
     // Add custom headers to `EventSource` Authorization header when provided
     const customHeaders = endpointRequestHeadersSetting()
-    polyfillEventSource(initialAccessToken ? { Authorization: `token ${initialAccessToken}`, ...customHeaders } : {})
+    polyfillEventSource(
+        initialAccessToken ? { Authorization: `token ${initialAccessToken}`, ...customHeaders } : {},
+        getProxyAgent()
+    )
+    // Update `EventSource` Authorization header on access token / headers change.
+    context.subscriptions.push(
+        vscode.workspace.onDidChangeConfiguration(config => {
+            if (
+                config.affectsConfiguration('sourcegraph.accessToken') ||
+                config.affectsConfiguration('sourcegraph.requestHeaders')
+            ) {
+                const newAccessToken = accessTokenSetting()
+                const newCustomHeaders = endpointRequestHeadersSetting()
+                polyfillEventSource(
+                    newAccessToken ? { Authorization: `token ${newAccessToken}`, ...newCustomHeaders } : {},
+                    getProxyAgent()
+                )
+            }
+        })
+    )
     // For search panel webview to signal that it is ready for messages.
     // Replay subject with large buffer size just in case panels are opened in quick succession.
     const initializedPanelIDs = new ReplaySubject<string>(7)
@@ -72,6 +91,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         sourcegraphURL: `${initialInstanceURL}/.api`,
         session,
     })
+
     async function login(newtoken: string, newuri: string): Promise<void> {
         try {
             const newEndpoint = new URL(newuri)
@@ -83,11 +103,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
             console.error(error)
         }
     }
+
     async function logout(): Promise<void> {
         await secretStorage.delete(scretTokenKey)
         await setEndpoint(undefined)
         extensionCoreAPI.reloadWindow()
     }
+
     const extensionCoreAPI: ExtensionCoreAPI = {
         panelInitialized: panelId => initializedPanelIDs.next(panelId),
         observeState: () => proxySubscribable(stateMachine.observeState()),
