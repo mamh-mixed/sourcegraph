@@ -102,6 +102,41 @@ CREATE FUNCTION singleton_integer(value integer) RETURNS integer[]
     RETURN ARRAY[value];
 END; $$;
 
+CREATE FUNCTION update_codeintel_scip_index_documents_schema_versions_insert() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$ BEGIN
+    INSERT INTO codeintel_scip_index_documents_schema_versions
+    SELECT
+        upload_id,
+        MIN(documents.schema_version) as min_schema_version,
+        MAX(documents.schema_version) as max_schema_version
+    FROM newtab
+    JOIN codeintel_scip_documents ON codeintel_scip_documents.id = newtab.document_id
+    GROUP BY newtab.upload_id
+    ON CONFLICT (upload_id) DO UPDATE SET
+        -- Update with min(old_min, new_min) and max(old_max, new_max)
+        min_schema_version = LEAST(codeintel_scip_index_documents_schema_versions.min_schema_version, EXCLUDED.min_schema_version),
+        max_schema_version = GREATEST(codeintel_scip_index_documents_schema_versions.max_schema_version, EXCLUDED.max_schema_version);
+    RETURN NULL;
+END $$;
+
+CREATE FUNCTION update_codeintel_scip_symbols_schema_versions_insert() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$ BEGIN
+    INSERT INTO codeintel_scip_symbols_schema_versions
+    SELECT
+        upload_id,
+        MIN(schema_version) as min_schema_version,
+        MAX(schema_version) as max_schema_version
+    FROM newtab
+    GROUP BY upload_id
+    ON CONFLICT (upload_id) DO UPDATE SET
+        -- Update with min(old_min, new_min) and max(old_max, new_max)
+        min_schema_version = LEAST(codeintel_scip_symbols_schema_versions.min_schema_version, EXCLUDED.min_schema_version),
+        max_schema_version = GREATEST(codeintel_scip_symbols_schema_versions.max_schema_version, EXCLUDED.max_schema_version);
+    RETURN NULL;
+END $$;
+
 CREATE FUNCTION update_lsif_data_definitions_schema_versions_insert() RETURNS trigger
     LANGUAGE plpgsql
     AS $$ BEGIN
@@ -185,6 +220,115 @@ CREATE FUNCTION update_lsif_data_references_schema_versions_insert() RETURNS tri
 
     RETURN NULL;
 END $$;
+
+CREATE TABLE codeintel_scip_documents (
+    id bigint NOT NULL,
+    payload_hash bytea NOT NULL,
+    schema_version integer NOT NULL,
+    raw_scip_payload bytea NOT NULL
+);
+
+COMMENT ON TABLE codeintel_scip_documents IS 'A lookup of SCIP [Document](https://sourcegraph.com/search?q=context:%40sourcegraph/all+repo:%5Egithub%5C.com/sourcegraph/scip%24+file:%5Escip%5C.proto+message+Document&patternType=standard) payloads by their hash.';
+
+COMMENT ON COLUMN codeintel_scip_documents.id IS 'An auto-generated identifier. This column is used as a foreign key to reduce occurrences of the hash value.';
+
+COMMENT ON COLUMN codeintel_scip_documents.payload_hash IS 'A deterministic hash of the raw SCIP payload. To retrieve a SCIP Document the hash must already be known (see the table [`codeintel_scip_index_documents`](#codeintel_scip_index_documents)).';
+
+COMMENT ON COLUMN codeintel_scip_documents.schema_version IS 'The schema version of this row - used to determine presence and encoding of (future) denormalized data.';
+
+COMMENT ON COLUMN codeintel_scip_documents.raw_scip_payload IS 'The raw, canonicalized SCIP Document payload.';
+
+CREATE SEQUENCE codeintel_scip_documents_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE codeintel_scip_documents_id_seq OWNED BY codeintel_scip_documents.id;
+
+CREATE TABLE codeintel_scip_index_documents (
+    id bigint NOT NULL,
+    upload_id integer NOT NULL,
+    document_path text NOT NULL,
+    document_id bigint NOT NULL
+);
+
+COMMENT ON TABLE codeintel_scip_index_documents IS 'A mapping from file paths to document references within a particular SCIP index.';
+
+COMMENT ON COLUMN codeintel_scip_index_documents.id IS 'An auto-generated identifier. This column is used as a foreign key to reduce occurrences of the path value.';
+
+COMMENT ON COLUMN codeintel_scip_index_documents.upload_id IS 'The identifier of the upload that provided this SCIP index.';
+
+COMMENT ON COLUMN codeintel_scip_index_documents.document_path IS 'The root-relative file path to the document.';
+
+COMMENT ON COLUMN codeintel_scip_index_documents.document_id IS 'The foreign key to the shared document payload (see the table [`codeintel_scip_documents`](#codeintel_scip_documents)).';
+
+CREATE SEQUENCE codeintel_scip_index_documents_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE codeintel_scip_index_documents_id_seq OWNED BY codeintel_scip_index_documents.id;
+
+CREATE TABLE codeintel_scip_index_documents_schema_versions (
+    upload_id integer NOT NULL,
+    min_schema_version integer,
+    max_schema_version integer
+);
+
+COMMENT ON TABLE codeintel_scip_index_documents_schema_versions IS 'Tracks the range of schema_versions for each index in the `codeintel_scip_index_documents` table.';
+
+COMMENT ON COLUMN codeintel_scip_index_documents_schema_versions.upload_id IS 'The identifier of the associated `upload_id` in the `codeintel_scip_index_documents` table.';
+
+COMMENT ON COLUMN codeintel_scip_index_documents_schema_versions.min_schema_version IS 'A lower-bound on the `codeintel_scip_index_documents.schema_version` where `codeintel_scip_index_documents.upload_id = upload_id`.';
+
+COMMENT ON COLUMN codeintel_scip_index_documents_schema_versions.max_schema_version IS 'An upper-bound on the `codeintel_scip_index_documents.schema_version` where `codeintel_scip_index_documents.upload_id = upload_id`.';
+
+CREATE TABLE codeintel_scip_symbols (
+    upload_id integer NOT NULL,
+    symbol_name text NOT NULL,
+    index_document_id bigint NOT NULL,
+    schema_version integer NOT NULL,
+    definition_ranges bytea,
+    reference_ranges bytea,
+    implementation_ranges bytea,
+    type_definition_ranges bytea
+);
+
+COMMENT ON TABLE codeintel_scip_symbols IS 'A mapping from SCIP [Symbol names]([Symbol name](https://sourcegraph.com/search?q=context:%40sourcegraph/all+repo:%5Egithub%5C.com/sourcegraph/scip%24+file:%5Escip%5C.proto+message+Symbol&patternType=standard)) to path and ranges where that symbol occurs within a particular SCIP index.';
+
+COMMENT ON COLUMN codeintel_scip_symbols.upload_id IS 'The identifier of the upload that provided this SCIP index.';
+
+COMMENT ON COLUMN codeintel_scip_symbols.symbol_name IS 'The SCIP Symbol name.';
+
+COMMENT ON COLUMN codeintel_scip_symbols.index_document_id IS 'Refers to the corresponding `codeintel_scip_index_documents.id` record (see `document_path`).';
+
+COMMENT ON COLUMN codeintel_scip_symbols.schema_version IS 'The schema version of this row - used to determine presence and encoding of data.';
+
+COMMENT ON COLUMN codeintel_scip_symbols.definition_ranges IS 'An encoded set of ranges within the associated document that have a **definition** relationship to the associated symbol.';
+
+COMMENT ON COLUMN codeintel_scip_symbols.reference_ranges IS 'An encoded set of ranges within the associated document that have a **reference** relationship to the associated symbol.';
+
+COMMENT ON COLUMN codeintel_scip_symbols.implementation_ranges IS 'An encoded set of ranges within the associated document that have a **implementation** relationship to the associated symbol.';
+
+COMMENT ON COLUMN codeintel_scip_symbols.type_definition_ranges IS 'An encoded set of ranges within the associated document that have a **type definition** relationship to the associated symbol.';
+
+CREATE TABLE codeintel_scip_symbols_schema_versions (
+    upload_id integer NOT NULL,
+    min_schema_version integer,
+    max_schema_version integer
+);
+
+COMMENT ON TABLE codeintel_scip_symbols_schema_versions IS 'Tracks the range of schema_versions for each index in the `codeintel_scip_symbols` table.';
+
+COMMENT ON COLUMN codeintel_scip_symbols_schema_versions.upload_id IS 'The identifier of the associated `upload_id` in the `codeintel_scip_symbols` table.';
+
+COMMENT ON COLUMN codeintel_scip_symbols_schema_versions.min_schema_version IS 'A lower-bound on the `codeintel_scip_symbols.schema_version` where `codeintel_scip_symbols.upload_id = upload_id`.';
+
+COMMENT ON COLUMN codeintel_scip_symbols_schema_versions.max_schema_version IS 'An upper-bound on the `codeintel_scip_symbols.schema_version` where `codeintel_scip_symbols.upload_id = upload_id`.';
 
 CREATE TABLE lsif_data_apidocs_num_dumps (
     count bigint
@@ -820,6 +964,10 @@ CREATE SEQUENCE rockskip_symbols_id_seq
 
 ALTER SEQUENCE rockskip_symbols_id_seq OWNED BY rockskip_symbols.id;
 
+ALTER TABLE ONLY codeintel_scip_documents ALTER COLUMN id SET DEFAULT nextval('codeintel_scip_documents_id_seq'::regclass);
+
+ALTER TABLE ONLY codeintel_scip_index_documents ALTER COLUMN id SET DEFAULT nextval('codeintel_scip_index_documents_id_seq'::regclass);
+
 ALTER TABLE ONLY lsif_data_docs_search_current_private ALTER COLUMN id SET DEFAULT nextval('lsif_data_docs_search_current_private_id_seq'::regclass);
 
 ALTER TABLE ONLY lsif_data_docs_search_current_public ALTER COLUMN id SET DEFAULT nextval('lsif_data_docs_search_current_public_id_seq'::regclass);
@@ -845,6 +993,27 @@ ALTER TABLE ONLY rockskip_ancestry ALTER COLUMN id SET DEFAULT nextval('rockskip
 ALTER TABLE ONLY rockskip_repos ALTER COLUMN id SET DEFAULT nextval('rockskip_repos_id_seq'::regclass);
 
 ALTER TABLE ONLY rockskip_symbols ALTER COLUMN id SET DEFAULT nextval('rockskip_symbols_id_seq'::regclass);
+
+ALTER TABLE ONLY codeintel_scip_documents
+    ADD CONSTRAINT codeintel_scip_documents_payload_hash_key UNIQUE (payload_hash);
+
+ALTER TABLE ONLY codeintel_scip_documents
+    ADD CONSTRAINT codeintel_scip_documents_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY codeintel_scip_index_documents
+    ADD CONSTRAINT codeintel_scip_index_documents_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY codeintel_scip_index_documents_schema_versions
+    ADD CONSTRAINT codeintel_scip_index_documents_schema_versions_pkey PRIMARY KEY (upload_id);
+
+ALTER TABLE ONLY codeintel_scip_index_documents
+    ADD CONSTRAINT codeintel_scip_index_documents_upload_id_document_path_key UNIQUE (upload_id, document_path);
+
+ALTER TABLE ONLY codeintel_scip_symbols
+    ADD CONSTRAINT codeintel_scip_symbols_pkey PRIMARY KEY (upload_id, symbol_name, index_document_id);
+
+ALTER TABLE ONLY codeintel_scip_symbols_schema_versions
+    ADD CONSTRAINT codeintel_scip_symbols_schema_versions_pkey PRIMARY KEY (upload_id);
 
 ALTER TABLE ONLY lsif_data_definitions
     ADD CONSTRAINT lsif_data_definitions_pkey PRIMARY KEY (dump_id, scheme, identifier);
@@ -1030,6 +1199,10 @@ CREATE INDEX rockskip_symbols_gin ON rockskip_symbols USING gin (singleton_integ
 
 CREATE INDEX rockskip_symbols_repo_id_path_name ON rockskip_symbols USING btree (repo_id, path, name);
 
+CREATE TRIGGER codeintel_scip_index_documents_schema_versions_insert AFTER INSERT ON codeintel_scip_index_documents_schema_versions REFERENCING NEW TABLE AS newtab FOR EACH STATEMENT EXECUTE FUNCTION update_codeintel_scip_index_documents_schema_versions_insert();
+
+CREATE TRIGGER codeintel_scip_symbols_schema_versions_insert AFTER INSERT ON codeintel_scip_symbols_schema_versions REFERENCING NEW TABLE AS newtab FOR EACH STATEMENT EXECUTE FUNCTION update_codeintel_scip_symbols_schema_versions_insert();
+
 CREATE TRIGGER lsif_data_definitions_schema_versions_insert AFTER INSERT ON lsif_data_definitions REFERENCING NEW TABLE AS newtab FOR EACH STATEMENT EXECUTE FUNCTION update_lsif_data_definitions_schema_versions_insert();
 
 CREATE TRIGGER lsif_data_docs_search_private_delete AFTER DELETE ON lsif_data_docs_search_private REFERENCING OLD TABLE AS oldtbl FOR EACH STATEMENT EXECUTE FUNCTION lsif_data_docs_search_private_delete();
@@ -1051,6 +1224,12 @@ CREATE TRIGGER lsif_data_documents_schema_versions_insert AFTER INSERT ON lsif_d
 CREATE TRIGGER lsif_data_implementations_schema_versions_insert AFTER INSERT ON lsif_data_implementations REFERENCING NEW TABLE AS newtab FOR EACH STATEMENT EXECUTE FUNCTION update_lsif_data_implementations_schema_versions_insert();
 
 CREATE TRIGGER lsif_data_references_schema_versions_insert AFTER INSERT ON lsif_data_references REFERENCING NEW TABLE AS newtab FOR EACH STATEMENT EXECUTE FUNCTION update_lsif_data_references_schema_versions_insert();
+
+ALTER TABLE ONLY codeintel_scip_index_documents
+    ADD CONSTRAINT codeintel_scip_index_documents_document_id_fk FOREIGN KEY (document_id) REFERENCES codeintel_scip_documents(id);
+
+ALTER TABLE ONLY codeintel_scip_symbols
+    ADD CONSTRAINT codeintel_scip_symbols_index_document_id_fk FOREIGN KEY (index_document_id) REFERENCES codeintel_scip_index_documents(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY lsif_data_docs_search_private
     ADD CONSTRAINT lsif_data_docs_search_private_lang_name_id_fk FOREIGN KEY (lang_name_id) REFERENCES lsif_data_docs_search_lang_names_private(id);
