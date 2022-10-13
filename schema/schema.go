@@ -68,12 +68,12 @@ type ApiRatelimit struct {
 
 // AuditLog description: EXPERIMENTAL: Configuration for audit logging (specially formatted log entries for tracking sensitive events)
 type AuditLog struct {
+	// BackgroundJobs description: Capture security events performed by the background jobs (adds significant noise).
+	BackgroundJobs bool `json:"backgroundJobs"`
 	// GitserverAccess description: Capture gitserver access logs as part of the audit log.
 	GitserverAccess bool `json:"gitserverAccess"`
 	// GraphQL description: Capture GraphQL requests and responses as part of the audit log.
 	GraphQL bool `json:"graphQL"`
-	// SecurityEvents description: Capture security events as part of the audit log.
-	SecurityEvents bool `json:"securityEvents"`
 }
 
 // AuthAccessTokens description: Settings for access tokens, which enable external tools to access the Sourcegraph API with the privileges of the user.
@@ -632,6 +632,8 @@ type ExperimentalFeatures struct {
 	GitServerPinnedRepos map[string]string `json:"gitServerPinnedRepos,omitempty"`
 	// GoPackages description: Allow adding Go package host connections
 	GoPackages string `json:"goPackages,omitempty"`
+	// HideSourcegraphOperatorLogin description: Enables hiding Sourcegraph operator auth provider on login page.
+	HideSourcegraphOperatorLogin bool `json:"hideSourcegraphOperatorLogin,omitempty"`
 	// InsightsAlternateLoadingStrategy description: Use an in-memory strategy of loading Code Insights. Should only be used for benchmarking on large instances, not for customer use currently.
 	InsightsAlternateLoadingStrategy bool `json:"insightsAlternateLoadingStrategy,omitempty"`
 	// JvmPackages description: Allow adding JVM package host connections
