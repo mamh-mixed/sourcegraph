@@ -2,11 +2,9 @@ package zoektrepos
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/sourcegraph/log"
-	"github.com/sourcegraph/zoekt"
 
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/backend"
 	"github.com/sourcegraph/sourcegraph/cmd/worker/job"
@@ -76,29 +74,12 @@ func (h *handler) Handle(ctx context.Context) error {
 		return err
 	}
 
-	if err := h.db.ZoektRepos().UpsertIndexable(ctx, indexable); err != nil {
-		return nil
-	}
-
-	repos, err := search.ListAllIndexed(ctx)
+	indexed, err := search.ListAllIndexed(ctx)
 	if err != nil {
 		return err
 	}
 
-	for repoID, branches := range repos.Minimal {
-		fmt.Printf("indexed: %d. %+v\n", repoID, branches)
-	}
-	diff := make(map[uint32]*zoekt.MinimalRepoListEntry, len(repos.Minimal))
-	for id, minimal := range repos.Minimal {
-		diff[id] = minimal
-	}
-	for _, repo := range indexable {
-		delete(diff, uint32(repo.ID))
-	}
-	fmt.Printf("diff=%+v\n", diff)
-	fmt.Printf("len(indexable)=%d, len(indexed)=%d\n", len(indexable), len(repos.Minimal))
-
-	return h.db.ZoektRepos().Update(ctx, repos)
+	return h.db.ZoektRepos().UpsertIndexable(ctx, indexable, indexed.Minimal)
 }
 
 func (h *handler) HandleError(err error) {

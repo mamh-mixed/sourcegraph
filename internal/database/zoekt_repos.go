@@ -11,7 +11,6 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/database/basestore"
 	"github.com/sourcegraph/sourcegraph/internal/database/batch"
 	"github.com/sourcegraph/sourcegraph/internal/types"
-	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 type ZoektReposStore interface {
@@ -20,10 +19,9 @@ type ZoektReposStore interface {
 	With(other basestore.ShareableStore) ZoektReposStore
 
 	// UpsertIndexable is a horse
-	UpsertIndexable(ctx context.Context, repos types.MinimalRepos) error
+	UpsertIndexable(ctx context.Context, repos types.MinimalRepos, indexed map[uint32]*zoekt.MinimalRepoListEntry) error
 
 	// Update updates the given rows with the GitServer status of a repo.
-	Update(ctx context.Context, zoektRepos *zoekt.RepoList) error
 	GetStatistics(ctx context.Context) (ZoektRepoStatistics, error)
 }
 
@@ -49,58 +47,48 @@ func (s *zoektReposStore) Transact(ctx context.Context) (ZoektReposStore, error)
 	return &zoektReposStore{Store: txBase}, err
 }
 
-func (s *zoektReposStore) Update(ctx context.Context, repos *zoekt.RepoList) error {
-	values := make([]*sqlf.Query, 0, len(repos.Minimal))
-	for id, zoektRepo := range repos.Minimal {
-		for i, branch := range zoektRepo.Branches {
-			if i > 0 {
-				fmt.Println("TODO: handle more than 1 commit/branch being indexed")
-				continue
-			}
-
-			values = append(values, sqlf.Sprintf("(%s::integer, %s::text, %s::text)",
-				id,
-				branch.Version,
-				"indexed",
-			))
-		}
-	}
-
-	err := s.Exec(ctx, sqlf.Sprintf(updateZoektReposQueryFmtstr, sqlf.Join(values, ",")))
-
-	return errors.Wrap(err, "updating ZoektRepos")
-}
-
-const updateZoektReposQueryFmtstr = `
--- source: internal/database/zoekt_repos.go:zoektReposStore.Update
-UPDATE zoekt_repos AS zr
-SET
-	commit = tmp.commit,
-	index_status = tmp.index_status,
-	updated_at = NOW()
-FROM (VALUES -- (<repo_id>, <commit>, <index_status>),
-		%s
-	) AS tmp(repo_id, commit, index_status)
-WHERE
-	tmp.repo_id = zr.repo_id
-`
-
-func (s *zoektReposStore) UpsertIndexable(ctx context.Context, repos types.MinimalRepos) error {
+func (s *zoektReposStore) UpsertIndexable(ctx context.Context, repos types.MinimalRepos, indexed map[uint32]*zoekt.MinimalRepoListEntry) error {
 	tx, err := s.Store.Transact(ctx)
 	if err != nil {
 		return err
 	}
 	defer func() { err = tx.Done(err) }()
 
-	tempTableQuery := `CREATE TEMPORARY TABLE temp_table (repo_id integer NOT NULL) ON COMMIT DROP`
+	tempTableQuery := `CREATE TEMPORARY TABLE temp_table (
+		repo_id integer NOT NULL,
+		index_status text NOT NULL,
+		commit text
+	) ON COMMIT DROP`
 	if err := tx.Exec(ctx, sqlf.Sprintf(tempTableQuery)); err != nil {
 		return err
 	}
 
-	inserter := batch.NewInserter(ctx, tx.Handle(), "temp_table", batch.MaxNumPostgresParameters, "repo_id")
+	inserter := batch.NewInserter(ctx, tx.Handle(), "temp_table", batch.MaxNumPostgresParameters, "repo_id", "index_status", "commit")
 
 	for _, r := range repos {
-		if err := inserter.Insert(ctx, r.ID); err != nil {
+		indexStatus := "not_indexed"
+		commit := ""
+
+		indexedEntry, ok := indexed[uint32(r.ID)]
+		if ok {
+			indexStatus = "indexed"
+			for i, branch := range indexedEntry.Branches {
+				if i != 0 {
+					fmt.Printf("TODO: only persisting one branch, ignoring: %+v\n", branch)
+					continue
+				}
+				commit = branch.Version
+			}
+		}
+
+		commitColumn := func() *string {
+			if commit == "" {
+				return nil
+			}
+			return &commit
+		}
+
+		if err := inserter.Insert(ctx, r.ID, indexStatus, commitColumn()); err != nil {
 			return err
 		}
 	}
@@ -111,13 +99,12 @@ func (s *zoektReposStore) UpsertIndexable(ctx context.Context, repos types.Minim
 
 	insertQuery := `
     INSERT INTO zoekt_repos
-    SELECT source.repo_id, 'not_indexed' AS index_status
+    SELECT source.repo_id, source.index_status, source.commit
     FROM temp_table source
     WHERE NOT EXISTS (
         -- Skip insertion of any rows that already exist in the table
         SELECT 1 FROM zoekt_repos t WHERE t.repo_id = source.repo_id
-    )
-`
+    )`
 	if err := tx.Exec(ctx, sqlf.Sprintf(insertQuery)); err != nil {
 		return err
 	}
@@ -126,38 +113,26 @@ func (s *zoektReposStore) UpsertIndexable(ctx context.Context, repos types.Minim
     DELETE FROM zoekt_repos
     WHERE NOT EXISTS (
         SELECT 1 FROM temp_table t WHERE t.repo_id = zoekt_repos.repo_id
-    )
-`
+    )`
 	if err := tx.Exec(ctx, sqlf.Sprintf(deleteQuery)); err != nil {
 		return err
 	}
 
-	// updateQuery := `
-	//     UPDATE table t SET col4 = source.col4
-	//     FROM temp_table source
-	//     -- Update rows with matching identity but distinct col4 values
-	//     WHERE t.col1 = %s AND t.col2 = %s AND t.col3 = source.col3 AND t.col4 != source.col4
-	// `
-	// if err := db.Exec(ctx, sqlf.Sprintf(updateQuery, val1, val2)); err != nil {
-	//     return err
-	// }
+	updateQuery := `
+    UPDATE zoekt_repos t
+	SET
+		index_status = source.index_status,
+		commit = source.commit,
+		updated_at = now()
+    FROM temp_table source
+    WHERE t.repo_id = source.repo_id AND (t.index_status != source.index_status OR t.commit != source.commit)
+	`
+	if err := tx.Exec(ctx, sqlf.Sprintf(updateQuery)); err != nil {
+		return err
+	}
 
 	return nil
 }
-
-const upsertIndexableReposQueryFmtstr = `
--- source: internal/database/zoekt_repos.go:zoektReposStore.UpsertIndexable
-UPDATE zoekt_repos AS zr
-SET
-	commit = tmp.commit,
-	index_status = tmp.index_status,
-	updated_at = NOW()
-FROM (VALUES -- (<repo_id>, <commit>, <index_status>),
-		%s
-	) AS tmp(repo_id, commit, index_status)
-WHERE
-	tmp.repo_id = zr.repo_id
-`
 
 type ZoektRepoStatistics struct {
 	Total      int
