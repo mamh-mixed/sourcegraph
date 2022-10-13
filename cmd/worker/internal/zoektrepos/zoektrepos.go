@@ -6,10 +6,12 @@ import (
 	"time"
 
 	"github.com/sourcegraph/log"
+	"github.com/sourcegraph/zoekt"
 
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/backend"
 	"github.com/sourcegraph/sourcegraph/cmd/worker/job"
 	workerdb "github.com/sourcegraph/sourcegraph/cmd/worker/shared/init/db"
+	"github.com/sourcegraph/sourcegraph/internal/actor"
 	"github.com/sourcegraph/sourcegraph/internal/conf"
 	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/env"
@@ -66,16 +68,35 @@ func (h *handler) Handle(ctx context.Context) error {
 		return nil
 	}
 
+	// IMPORTANTE!!
+	ctx = actor.WithInternalActor(ctx)
+
 	indexable, err := backend.NewRepos(h.logger, h.db, h.gitserverClient).ListIndexable(ctx)
 	if err != nil {
+		return err
 	}
 
-	fmt.Printf("len(indexable)=%d\n", len(indexable))
+	if err := h.db.ZoektRepos().UpsertIndexable(ctx, indexable); err != nil {
+		return nil
+	}
 
 	repos, err := search.ListAllIndexed(ctx)
 	if err != nil {
 		return err
 	}
+
+	for repoID, branches := range repos.Minimal {
+		fmt.Printf("indexed: %d. %+v\n", repoID, branches)
+	}
+	diff := make(map[uint32]*zoekt.MinimalRepoListEntry, len(repos.Minimal))
+	for id, minimal := range repos.Minimal {
+		diff[id] = minimal
+	}
+	for _, repo := range indexable {
+		delete(diff, uint32(repo.ID))
+	}
+	fmt.Printf("diff=%+v\n", diff)
+	fmt.Printf("len(indexable)=%d, len(indexed)=%d\n", len(indexable), len(repos.Minimal))
 
 	return h.db.ZoektRepos().Update(ctx, repos)
 }
