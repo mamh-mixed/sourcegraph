@@ -8,15 +8,14 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/codeintel/autoindexing"
 	"github.com/sourcegraph/sourcegraph/internal/codeintel/shared/types"
 	"github.com/sourcegraph/sourcegraph/internal/observation"
-	"github.com/sourcegraph/sourcegraph/internal/workerutil"
 )
 
-func QueueOptions(autoIndexingSvc *autoindexing.Service, accessToken func() string, observationContext *observation.Context) handler.QueueOptions {
-	recordTransformer := func(ctx context.Context, record workerutil.Record) (apiclient.Job, error) {
-		return transformRecord(record.(types.Index), accessToken())
+func QueueOptions(autoIndexingSvc *autoindexing.Service, accessToken func() string, observationContext *observation.Context) handler.QueueOptions[types.Index] {
+	recordTransformer := func(ctx context.Context, record types.Index) (apiclient.Job, error) {
+		return transformRecord(record, accessToken())
 	}
 
-	return handler.QueueOptions{
+	return handler.QueueOptions[types.Index]{
 		Name:              "codeintel",
 		Store:             autoindexing.GetWorkerutilStore(autoIndexingSvc),
 		RecordTransformer: recordTransformer,

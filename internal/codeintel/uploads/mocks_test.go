@@ -479,7 +479,7 @@ func NewMockStore() *MockStore {
 			},
 		},
 		WorkerutilStoreFunc: &StoreWorkerutilStoreFunc{
-			defaultHook: func(*observation.Context) (r0 store1.Store) {
+			defaultHook: func(*observation.Context) (r0 store1.Store[types.Upload]) {
 				return
 			},
 		},
@@ -751,7 +751,7 @@ func NewStrictMockStore() *MockStore {
 			},
 		},
 		WorkerutilStoreFunc: &StoreWorkerutilStoreFunc{
-			defaultHook: func(*observation.Context) store1.Store {
+			defaultHook: func(*observation.Context) store1.Store[types.Upload] {
 				panic("unexpected invocation of MockStore.WorkerutilStore")
 			},
 		},
@@ -6758,15 +6758,15 @@ func (c StoreUpdateUploadsVisibleToCommitsFuncCall) Results() []interface{} {
 // StoreWorkerutilStoreFunc describes the behavior when the WorkerutilStore
 // method of the parent MockStore instance is invoked.
 type StoreWorkerutilStoreFunc struct {
-	defaultHook func(*observation.Context) store1.Store
-	hooks       []func(*observation.Context) store1.Store
+	defaultHook func(*observation.Context) store1.Store[types.Upload]
+	hooks       []func(*observation.Context) store1.Store[types.Upload]
 	history     []StoreWorkerutilStoreFuncCall
 	mutex       sync.Mutex
 }
 
 // WorkerutilStore delegates to the next hook function in the queue and
 // stores the parameter and result values of this invocation.
-func (m *MockStore) WorkerutilStore(v0 *observation.Context) store1.Store {
+func (m *MockStore) WorkerutilStore(v0 *observation.Context) store1.Store[types.Upload] {
 	r0 := m.WorkerutilStoreFunc.nextHook()(v0)
 	m.WorkerutilStoreFunc.appendCall(StoreWorkerutilStoreFuncCall{v0, r0})
 	return r0
@@ -6775,7 +6775,7 @@ func (m *MockStore) WorkerutilStore(v0 *observation.Context) store1.Store {
 // SetDefaultHook sets function that is called when the WorkerutilStore
 // method of the parent MockStore instance is invoked and the hook queue is
 // empty.
-func (f *StoreWorkerutilStoreFunc) SetDefaultHook(hook func(*observation.Context) store1.Store) {
+func (f *StoreWorkerutilStoreFunc) SetDefaultHook(hook func(*observation.Context) store1.Store[types.Upload]) {
 	f.defaultHook = hook
 }
 
@@ -6783,7 +6783,7 @@ func (f *StoreWorkerutilStoreFunc) SetDefaultHook(hook func(*observation.Context
 // WorkerutilStore method of the parent MockStore instance invokes the hook
 // at the front of the queue and discards it. After the queue is empty, the
 // default hook function is invoked for any future action.
-func (f *StoreWorkerutilStoreFunc) PushHook(hook func(*observation.Context) store1.Store) {
+func (f *StoreWorkerutilStoreFunc) PushHook(hook func(*observation.Context) store1.Store[types.Upload]) {
 	f.mutex.Lock()
 	f.hooks = append(f.hooks, hook)
 	f.mutex.Unlock()
@@ -6791,20 +6791,20 @@ func (f *StoreWorkerutilStoreFunc) PushHook(hook func(*observation.Context) stor
 
 // SetDefaultReturn calls SetDefaultHook with a function that returns the
 // given values.
-func (f *StoreWorkerutilStoreFunc) SetDefaultReturn(r0 store1.Store) {
-	f.SetDefaultHook(func(*observation.Context) store1.Store {
+func (f *StoreWorkerutilStoreFunc) SetDefaultReturn(r0 store1.Store[types.Upload]) {
+	f.SetDefaultHook(func(*observation.Context) store1.Store[types.Upload] {
 		return r0
 	})
 }
 
 // PushReturn calls PushHook with a function that returns the given values.
-func (f *StoreWorkerutilStoreFunc) PushReturn(r0 store1.Store) {
-	f.PushHook(func(*observation.Context) store1.Store {
+func (f *StoreWorkerutilStoreFunc) PushReturn(r0 store1.Store[types.Upload]) {
+	f.PushHook(func(*observation.Context) store1.Store[types.Upload] {
 		return r0
 	})
 }
 
-func (f *StoreWorkerutilStoreFunc) nextHook() func(*observation.Context) store1.Store {
+func (f *StoreWorkerutilStoreFunc) nextHook() func(*observation.Context) store1.Store[types.Upload] {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
 
@@ -6842,7 +6842,7 @@ type StoreWorkerutilStoreFuncCall struct {
 	Arg0 *observation.Context
 	// Result0 is the value of the 1st result returned from this method
 	// invocation.
-	Result0 store1.Store
+	Result0 store1.Store[types.Upload]
 }
 
 // Args returns an interface slice containing the arguments of this
@@ -11401,7 +11401,7 @@ func NewMockUploadServiceForCleanup() *MockUploadServiceForCleanup {
 			},
 		},
 		WorkerutilStoreFunc: &UploadServiceForCleanupWorkerutilStoreFunc{
-			defaultHook: func() (r0 store1.Store) {
+			defaultHook: func() (r0 store1.Store[types.Upload]) {
 				return
 			},
 		},
@@ -11454,7 +11454,7 @@ func NewStrictMockUploadServiceForCleanup() *MockUploadServiceForCleanup {
 			},
 		},
 		WorkerutilStoreFunc: &UploadServiceForCleanupWorkerutilStoreFunc{
-			defaultHook: func() store1.Store {
+			defaultHook: func() store1.Store[types.Upload] {
 				panic("unexpected invocation of MockUploadServiceForCleanup.WorkerutilStore")
 			},
 		},
@@ -12420,15 +12420,15 @@ func (c UploadServiceForCleanupUpdateSourcedCommitsFuncCall) Results() []interfa
 // the WorkerutilStore method of the parent MockUploadServiceForCleanup
 // instance is invoked.
 type UploadServiceForCleanupWorkerutilStoreFunc struct {
-	defaultHook func() store1.Store
-	hooks       []func() store1.Store
+	defaultHook func() store1.Store[types.Upload]
+	hooks       []func() store1.Store[types.Upload]
 	history     []UploadServiceForCleanupWorkerutilStoreFuncCall
 	mutex       sync.Mutex
 }
 
 // WorkerutilStore delegates to the next hook function in the queue and
 // stores the parameter and result values of this invocation.
-func (m *MockUploadServiceForCleanup) WorkerutilStore() store1.Store {
+func (m *MockUploadServiceForCleanup) WorkerutilStore() store1.Store[types.Upload] {
 	r0 := m.WorkerutilStoreFunc.nextHook()()
 	m.WorkerutilStoreFunc.appendCall(UploadServiceForCleanupWorkerutilStoreFuncCall{r0})
 	return r0
@@ -12437,7 +12437,7 @@ func (m *MockUploadServiceForCleanup) WorkerutilStore() store1.Store {
 // SetDefaultHook sets function that is called when the WorkerutilStore
 // method of the parent MockUploadServiceForCleanup instance is invoked and
 // the hook queue is empty.
-func (f *UploadServiceForCleanupWorkerutilStoreFunc) SetDefaultHook(hook func() store1.Store) {
+func (f *UploadServiceForCleanupWorkerutilStoreFunc) SetDefaultHook(hook func() store1.Store[types.Upload]) {
 	f.defaultHook = hook
 }
 
@@ -12446,7 +12446,7 @@ func (f *UploadServiceForCleanupWorkerutilStoreFunc) SetDefaultHook(hook func() 
 // invokes the hook at the front of the queue and discards it. After the
 // queue is empty, the default hook function is invoked for any future
 // action.
-func (f *UploadServiceForCleanupWorkerutilStoreFunc) PushHook(hook func() store1.Store) {
+func (f *UploadServiceForCleanupWorkerutilStoreFunc) PushHook(hook func() store1.Store[types.Upload]) {
 	f.mutex.Lock()
 	f.hooks = append(f.hooks, hook)
 	f.mutex.Unlock()
@@ -12454,20 +12454,20 @@ func (f *UploadServiceForCleanupWorkerutilStoreFunc) PushHook(hook func() store1
 
 // SetDefaultReturn calls SetDefaultHook with a function that returns the
 // given values.
-func (f *UploadServiceForCleanupWorkerutilStoreFunc) SetDefaultReturn(r0 store1.Store) {
-	f.SetDefaultHook(func() store1.Store {
+func (f *UploadServiceForCleanupWorkerutilStoreFunc) SetDefaultReturn(r0 store1.Store[types.Upload]) {
+	f.SetDefaultHook(func() store1.Store[types.Upload] {
 		return r0
 	})
 }
 
 // PushReturn calls PushHook with a function that returns the given values.
-func (f *UploadServiceForCleanupWorkerutilStoreFunc) PushReturn(r0 store1.Store) {
-	f.PushHook(func() store1.Store {
+func (f *UploadServiceForCleanupWorkerutilStoreFunc) PushReturn(r0 store1.Store[types.Upload]) {
+	f.PushHook(func() store1.Store[types.Upload] {
 		return r0
 	})
 }
 
-func (f *UploadServiceForCleanupWorkerutilStoreFunc) nextHook() func() store1.Store {
+func (f *UploadServiceForCleanupWorkerutilStoreFunc) nextHook() func() store1.Store[types.Upload] {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
 
@@ -12504,7 +12504,7 @@ func (f *UploadServiceForCleanupWorkerutilStoreFunc) History() []UploadServiceFo
 type UploadServiceForCleanupWorkerutilStoreFuncCall struct {
 	// Result0 is the value of the 1st result returned from this method
 	// invocation.
-	Result0 store1.Store
+	Result0 store1.Store[types.Upload]
 }
 
 // Args returns an interface slice containing the arguments of this

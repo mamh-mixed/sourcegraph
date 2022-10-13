@@ -3,10 +3,12 @@ package handler
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/sourcegraph/log"
 
 	apiclient "github.com/sourcegraph/sourcegraph/enterprise/internal/executor"
+	codeintel "github.com/sourcegraph/sourcegraph/internal/codeintel/shared/types"
 	metricsstore "github.com/sourcegraph/sourcegraph/internal/metrics/store"
 	executor "github.com/sourcegraph/sourcegraph/internal/services/executors/store"
 	"github.com/sourcegraph/sourcegraph/internal/types"
@@ -15,27 +17,40 @@ import (
 	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
-type handler struct {
-	QueueOptions
+type PubHandler interface {
+	handleDequeue(w http.ResponseWriter, r *http.Request)
+	handleAddExecutionLogEntry(w http.ResponseWriter, r *http.Request)
+	handleUpdateExecutionLogEntry(w http.ResponseWriter, r *http.Request)
+	handleMarkComplete(w http.ResponseWriter, r *http.Request)
+	handleMarkErrored(w http.ResponseWriter, r *http.Request)
+	handleMarkFailed(w http.ResponseWriter, r *http.Request)
+	handleHeartbeat(w http.ResponseWriter, r *http.Request)
+	handleCanceledJobs(w http.ResponseWriter, r *http.Request)
+}
+
+var _ PubHandler = &handler[codeintel.Index]{}
+
+type handler[T workerutil.Record] struct {
+	QueueOptions[T]
 	executorStore executor.Store
 	metricsStore  metricsstore.DistributedStore
 	logger        log.Logger
 }
 
-type QueueOptions struct {
+type QueueOptions[T workerutil.Record] struct {
 	// Name signifies the type of work the queue serves to executors.
 	Name string
 
 	// Store is a required dbworker store store for each registered queue.
-	Store store.Store[workerutil.Record]
+	Store store.Store[T]
 
 	// RecordTransformer is a required hook for each registered queue that transforms a generic
 	// record from that queue into the job to be given to an executor.
-	RecordTransformer func(ctx context.Context, record workerutil.Record) (apiclient.Job, error)
+	RecordTransformer func(ctx context.Context, record T) (apiclient.Job, error)
 }
 
-func newHandler(executorStore executor.Store, metricsStore metricsstore.DistributedStore, queueOptions QueueOptions) *handler {
-	return &handler{
+func NewHandler[T workerutil.Record](executorStore executor.Store, metricsStore metricsstore.DistributedStore, queueOptions QueueOptions[T]) *handler[T] {
+	return &handler[T]{
 		executorStore: executorStore,
 		metricsStore:  metricsStore,
 		logger:        log.Scoped("executor-queue-handler", "The route handler for all executor dbworker API tunnel endpoints"),
@@ -48,7 +63,7 @@ var ErrUnknownJob = errors.New("unknown job")
 // dequeue selects a job record from the database and stashes metadata including
 // the job record and the locking transaction. If no job is available for processing,
 // a false-valued flag is returned.
-func (h *handler) dequeue(ctx context.Context, executorName string) (_ apiclient.Job, dequeued bool, _ error) {
+func (h *handler[T]) dequeue(ctx context.Context, executorName string) (_ apiclient.Job, dequeued bool, _ error) {
 	// executorName is supposed to be unique.
 	record, dequeued, err := h.Store.Dequeue(ctx, executorName, nil)
 	if err != nil {
@@ -74,7 +89,7 @@ func (h *handler) dequeue(ctx context.Context, executorName string) (_ apiclient
 }
 
 // addExecutionLogEntry calls AddExecutionLogEntry for the given job.
-func (h *handler) addExecutionLogEntry(ctx context.Context, executorName string, jobID int, entry workerutil.ExecutionLogEntry) (entryID int, err error) {
+func (h *handler[T]) addExecutionLogEntry(ctx context.Context, executorName string, jobID int, entry workerutil.ExecutionLogEntry) (entryID int, err error) {
 	entryID, err = h.Store.AddExecutionLogEntry(ctx, jobID, entry, store.ExecutionLogEntryOptions{
 		// We pass the WorkerHostname, so the store enforces the record to be owned by this executor. When
 		// the previous executor didn't report heartbeats anymore, but is still alive and reporting logs,
@@ -90,7 +105,7 @@ func (h *handler) addExecutionLogEntry(ctx context.Context, executorName string,
 }
 
 // updateExecutionLogEntry calls UpdateExecutionLogEntry for the given job and entry.
-func (h *handler) updateExecutionLogEntry(ctx context.Context, executorName string, jobID int, entryID int, entry workerutil.ExecutionLogEntry) error {
+func (h *handler[T]) updateExecutionLogEntry(ctx context.Context, executorName string, jobID int, entryID int, entry workerutil.ExecutionLogEntry) error {
 	err := h.Store.UpdateExecutionLogEntry(ctx, jobID, entryID, entry, store.ExecutionLogEntryOptions{
 		// We pass the WorkerHostname, so the store enforces the record to be owned by this executor. When
 		// the previous executor didn't report heartbeats anymore, but is still alive and reporting logs,
@@ -106,7 +121,7 @@ func (h *handler) updateExecutionLogEntry(ctx context.Context, executorName stri
 }
 
 // markComplete calls MarkComplete for the given job.
-func (h *handler) markComplete(ctx context.Context, executorName string, jobID int) error {
+func (h *handler[T]) markComplete(ctx context.Context, executorName string, jobID int) error {
 	ok, err := h.Store.MarkComplete(ctx, jobID, store.MarkFinalOptions{
 		// We pass the WorkerHostname, so the store enforces the record to be owned by this executor. When
 		// the previous executor didn't report heartbeats anymore, but is still alive and reporting state,
@@ -123,7 +138,7 @@ func (h *handler) markComplete(ctx context.Context, executorName string, jobID i
 }
 
 // markErrored calls MarkErrored for the given job.
-func (h *handler) markErrored(ctx context.Context, executorName string, jobID int, errorMessage string) error {
+func (h *handler[T]) markErrored(ctx context.Context, executorName string, jobID int, errorMessage string) error {
 	ok, err := h.Store.MarkErrored(ctx, jobID, errorMessage, store.MarkFinalOptions{
 		// We pass the WorkerHostname, so the store enforces the record to be owned by this executor. When
 		// the previous executor didn't report heartbeats anymore, but is still alive and reporting state,
@@ -140,7 +155,7 @@ func (h *handler) markErrored(ctx context.Context, executorName string, jobID in
 }
 
 // markFailed calls MarkFailed for the given job.
-func (h *handler) markFailed(ctx context.Context, executorName string, jobID int, errorMessage string) error {
+func (h *handler[T]) markFailed(ctx context.Context, executorName string, jobID int, errorMessage string) error {
 	ok, err := h.Store.MarkFailed(ctx, jobID, errorMessage, store.MarkFinalOptions{
 		// We pass the WorkerHostname, so the store enforces the record to be owned by this executor. When
 		// the previous executor didn't report heartbeats anymore, but is still alive and reporting state,
@@ -157,7 +172,7 @@ func (h *handler) markFailed(ctx context.Context, executorName string, jobID int
 }
 
 // heartbeat calls Heartbeat for the given jobs.
-func (h *handler) heartbeat(ctx context.Context, executor types.Executor, ids []int) (knownIDs []int, err error) {
+func (h *handler[T]) heartbeat(ctx context.Context, executor types.Executor, ids []int) (knownIDs []int, err error) {
 	logger := log.Scoped("heartbeat", "Write this heartbeat to the database")
 
 	// Write this heartbeat to the database so that we can populate the UI with recent executor activity.
@@ -176,7 +191,7 @@ func (h *handler) heartbeat(ctx context.Context, executor types.Executor, ids []
 
 // canceled reaches to the queueOptions.FetchCanceled to determine jobs that need
 // to be canceled.
-func (h *handler) canceled(ctx context.Context, executorName string, knownIDs []int) (canceledIDs []int, err error) {
+func (h *handler[T]) canceled(ctx context.Context, executorName string, knownIDs []int) (canceledIDs []int, err error) {
 	canceledIDs, err = h.Store.CanceledJobs(ctx, knownIDs, store.CanceledJobsOptions{})
 	return canceledIDs, errors.Wrap(err, "dbworkerstore.CanceledJobs")
 }
