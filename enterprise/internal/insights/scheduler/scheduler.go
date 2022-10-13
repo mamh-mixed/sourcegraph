@@ -16,6 +16,7 @@ import (
 
 	"github.com/lib/pq"
 	log "github.com/sourcegraph/log"
+
 	"github.com/sourcegraph/sourcegraph/internal/database/dbutil"
 	dbworkerstore "github.com/sourcegraph/sourcegraph/internal/workerutil/dbworker/store"
 
@@ -90,9 +91,9 @@ func scanBaseJob(s dbutil.Scanner) (*BaseJob, error) {
 }
 
 type scheduler struct {
-	workerStore dbworkerstore.Store
-	worker      *workerutil.Worker
-	resetter    *dbworker.Resetter
+	workerStore dbworkerstore.Store[*BaseJob]
+	worker      *workerutil.Worker[*BaseJob]
+	resetter    *dbworker.Resetter[*BaseJob]
 }
 
 func NewScheduler(ctx context.Context, db edb.InsightsDB, obsContext *observation.Context) *scheduler {
@@ -114,8 +115,8 @@ func (s *scheduler) Routines() []goroutine.BackgroundRoutine {
 	}
 }
 
-func makeStore(db basestore.TransactableHandle, obsContext *observation.Context) dbworkerstore.Store {
-	return dbworkerstore.NewWithMetrics(db, dbworkerstore.Options{
+func makeStore(db basestore.TransactableHandle, obsContext *observation.Context) dbworkerstore.Store[*BaseJob] {
+	return dbworkerstore.NewWithMetrics(db, dbworkerstore.Options[*BaseJob]{
 		Name:              "insights_background_job_worker_store",
 		TableName:         "insights_background_jobs",
 		ColumnExpressions: baseJobColumns,
@@ -128,10 +129,10 @@ func makeStore(db basestore.TransactableHandle, obsContext *observation.Context)
 
 const jobName = "insights_background_job_scheduler"
 
-func makeWorker(ctx context.Context, store dbworkerstore.Store, obsContext *observation.Context) *workerutil.Worker {
+func makeWorker(ctx context.Context, store dbworkerstore.Store[*BaseJob], obsContext *observation.Context) *workerutil.Worker[*BaseJob] {
 	task := &handler{}
 	name := fmt.Sprintf("%s_worker", jobName)
-	return dbworker.NewWorker(ctx, store, task, workerutil.WorkerOptions{
+	return dbworker.NewWorker[*BaseJob](ctx, store, task, workerutil.WorkerOptions{
 		Name:        name,
 		NumHandlers: 1,
 		Interval:    5 * time.Second,
@@ -139,7 +140,7 @@ func makeWorker(ctx context.Context, store dbworkerstore.Store, obsContext *obse
 	})
 }
 
-func makeResetter(store dbworkerstore.Store, obsContext *observation.Context) *dbworker.Resetter {
+func makeResetter(store dbworkerstore.Store[*BaseJob], obsContext *observation.Context) *dbworker.Resetter[*BaseJob] {
 	name := fmt.Sprintf("%s_resetter", jobName)
 	return dbworker.NewResetter(log.Scoped("", ""), store, dbworker.ResetterOptions{
 		Name:     name,
@@ -149,12 +150,12 @@ func makeResetter(store dbworkerstore.Store, obsContext *observation.Context) *d
 }
 
 type handler struct {
-	store dbworkerstore.Store
+	store dbworkerstore.Store[*BaseJob]
 }
 
-var _ workerutil.Handler = &handler{}
+var _ workerutil.Handler[*BaseJob] = &handler{}
 
-func (h *handler) Handle(ctx context.Context, logger log.Logger, record workerutil.Record) error {
+func (h *handler) Handle(ctx context.Context, logger log.Logger, record *BaseJob) error {
 	logger.Info("handler called", log.String("job", jobName), log.Int("recordId", record.RecordID()))
 	return nil
 }

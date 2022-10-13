@@ -92,7 +92,7 @@ type UploadServiceForCleanup interface {
 	DeleteOldAuditLogs(ctx context.Context, maxAge time.Duration, now time.Time) (int, error)
 
 	// Workerutil
-	WorkerutilStore() dbworkerstore.Store
+	WorkerutilStore() dbworkerstore.Store[codeinteltypes.Upload]
 }
 
 type AutoIndexingService interface {

@@ -3,6 +3,7 @@ package cleanup
 import (
 	"time"
 
+	"github.com/sourcegraph/sourcegraph/internal/codeintel/shared/types"
 	"github.com/sourcegraph/sourcegraph/internal/goroutine"
 	"github.com/sourcegraph/sourcegraph/internal/workerutil/dbworker"
 )
@@ -17,5 +18,5 @@ type UploadService interface {
 		commitResolverMaximumCommitLag time.Duration,
 	) goroutine.BackgroundRoutine
 
-	NewUploadResetter(interval time.Duration) *dbworker.Resetter
+	NewUploadResetter(interval time.Duration) *dbworker.Resetter[types.Upload]
 }

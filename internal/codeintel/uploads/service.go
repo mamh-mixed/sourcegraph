@@ -27,7 +27,7 @@ import (
 type Service struct {
 	store             store.Store
 	repoStore         RepoStore
-	workerutilStore   dbworkerstore.Store
+	workerutilStore   dbworkerstore.Store[types.Upload]
 	lsifstore         lsifstore.LsifStore
 	gitserverClient   GitserverClient
 	policySvc         PolicyService

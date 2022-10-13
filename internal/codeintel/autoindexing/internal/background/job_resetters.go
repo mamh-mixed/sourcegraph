@@ -3,13 +3,15 @@ package background
 import (
 	"time"
 
+	"github.com/sourcegraph/sourcegraph/internal/codeintel/autoindexing/shared"
+	"github.com/sourcegraph/sourcegraph/internal/codeintel/shared/types"
 	"github.com/sourcegraph/sourcegraph/internal/workerutil/dbworker"
 )
 
 // NewIndexResetter returns a background routine that periodically resets index
 // records that are marked as being processed but are no longer being processed
 // by a worker.
-func (b backgroundJob) NewIndexResetter(interval time.Duration) *dbworker.Resetter {
+func (b backgroundJob) NewIndexResetter(interval time.Duration) *dbworker.Resetter[types.Index] {
 	return dbworker.NewResetter(b.logger, b.workerutilStore, dbworker.ResetterOptions{
 		Name:     "precise_code_intel_index_worker_resetter",
 		Interval: interval,
@@ -24,7 +26,7 @@ func (b backgroundJob) NewIndexResetter(interval time.Duration) *dbworker.Resett
 // NewDependencyIndexResetter returns a background routine that periodically resets
 // dependency index records that are marked as being processed but are no longer being
 // processed by a worker.
-func (b backgroundJob) NewDependencyIndexResetter(interval time.Duration) *dbworker.Resetter {
+func (b backgroundJob) NewDependencyIndexResetter(interval time.Duration) *dbworker.Resetter[shared.DependencyIndexingJob] {
 	return dbworker.NewResetter(b.logger, b.dependencyIndexingStore, dbworker.ResetterOptions{
 		Name:     "precise_code_intel_dependency_index_worker_resetter",
 		Interval: interval,

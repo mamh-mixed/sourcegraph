@@ -27,7 +27,7 @@ type QueueOptions struct {
 	Name string
 
 	// Store is a required dbworker store store for each registered queue.
-	Store store.Store
+	Store store.Store[workerutil.Record]
 
 	// RecordTransformer is a required hook for each registered queue that transforms a generic
 	// record from that queue into the job to be given to an executor.

@@ -68,12 +68,15 @@ func newService(
 }
 
 func GetBackgroundJobs(s *Service) background.BackgroundJob { return s.backgroundJobs }
-func GetWorkerutilStore(s *Service) dbworkerstore.Store     { return s.backgroundJobs.WorkerutilStore() }
-func GetDependencySyncStore(s *Service) dbworkerstore.Store {
+func GetWorkerutilStore(s *Service) dbworkerstore.Store[types.Index] {
+	return s.backgroundJobs.WorkerutilStore()
+}
+
+func GetDependencySyncStore(s *Service) dbworkerstore.Store[shared.DependencySyncingJob] {
 	return s.backgroundJobs.DependencySyncStore()
 }
 
-func GetDependencyIndexingStore(s *Service) dbworkerstore.Store {
+func GetDependencyIndexingStore(s *Service) dbworkerstore.Store[shared.DependencyIndexingJob] {
 	return s.backgroundJobs.DependencyIndexingStore()
 }
 

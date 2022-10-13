@@ -8,6 +8,8 @@ import (
 	"github.com/sourcegraph/log"
 
 	"github.com/sourcegraph/sourcegraph/internal/codeintel/autoindexing/internal/store"
+	"github.com/sourcegraph/sourcegraph/internal/codeintel/autoindexing/shared"
+	"github.com/sourcegraph/sourcegraph/internal/codeintel/shared/types"
 	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/goroutine"
 	"github.com/sourcegraph/sourcegraph/internal/observation"
@@ -17,10 +19,10 @@ import (
 )
 
 type BackgroundJob interface {
-	NewDependencyIndexingScheduler(pollInterval time.Duration, numHandlers int) *workerutil.Worker
-	NewDependencySyncScheduler(pollInterval time.Duration) *workerutil.Worker
-	NewDependencyIndexResetter(interval time.Duration) *dbworker.Resetter
-	NewIndexResetter(interval time.Duration) *dbworker.Resetter
+	NewDependencyIndexingScheduler(pollInterval time.Duration, numHandlers int) *workerutil.Worker[shared.DependencyIndexingJob]
+	NewDependencySyncScheduler(pollInterval time.Duration) *workerutil.Worker[shared.DependencySyncingJob]
+	NewDependencyIndexResetter(interval time.Duration) *dbworker.Resetter[shared.DependencyIndexingJob]
+	NewIndexResetter(interval time.Duration) *dbworker.Resetter[types.Index]
 	NewOnDemandScheduler(interval time.Duration, batchSize int) goroutine.BackgroundRoutine
 	NewScheduler(interval time.Duration, repositoryProcessDelay time.Duration, repositoryBatchSize int, policyBatchSize int) goroutine.BackgroundRoutine
 	NewJanitor(
@@ -31,9 +33,9 @@ type BackgroundJob interface {
 	) goroutine.BackgroundRoutine
 
 	SetService(service AutoIndexingService)
-	WorkerutilStore() dbworkerstore.Store
-	DependencySyncStore() dbworkerstore.Store
-	DependencyIndexingStore() dbworkerstore.Store
+	WorkerutilStore() dbworkerstore.Store[types.Index]
+	DependencySyncStore() dbworkerstore.Store[shared.DependencySyncingJob]
+	DependencyIndexingStore() dbworkerstore.Store[shared.DependencyIndexingJob]
 }
 
 type backgroundJob struct {
@@ -48,11 +50,11 @@ type backgroundJob struct {
 
 	store                   store.Store
 	repoStore               ReposStore
-	workerutilStore         dbworkerstore.Store
+	workerutilStore         dbworkerstore.Store[types.Index]
 	gitserverRepoStore      GitserverRepoStore
-	dependencySyncStore     dbworkerstore.Store
+	dependencySyncStore     dbworkerstore.Store[shared.DependencySyncingJob]
 	externalServiceStore    ExternalServiceStore
-	dependencyIndexingStore dbworkerstore.Store
+	dependencyIndexingStore dbworkerstore.Store[shared.DependencyIndexingJob]
 
 	operations *operations
 	clock      glock.Clock
@@ -114,8 +116,11 @@ func (b *backgroundJob) SetService(service AutoIndexingService) {
 	b.autoindexingSvc = service
 }
 
-func (b backgroundJob) WorkerutilStore() dbworkerstore.Store     { return b.workerutilStore }
-func (b backgroundJob) DependencySyncStore() dbworkerstore.Store { return b.dependencySyncStore }
-func (b backgroundJob) DependencyIndexingStore() dbworkerstore.Store {
+func (b backgroundJob) WorkerutilStore() dbworkerstore.Store[types.Index] { return b.workerutilStore }
+func (b backgroundJob) DependencySyncStore() dbworkerstore.Store[shared.DependencySyncingJob] {
+	return b.dependencySyncStore
+}
+
+func (b backgroundJob) DependencyIndexingStore() dbworkerstore.Store[shared.DependencyIndexingJob] {
 	return b.dependencyIndexingStore
 }

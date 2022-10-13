@@ -38,7 +38,7 @@ func (s *Service) NewWorker(
 	workerBudget int64,
 	workerPollInterval time.Duration,
 	maximumRuntimePerJob time.Duration,
-) *workerutil.Worker {
+) *workerutil.Worker[codeinteltypes.Upload] {
 	rootContext := actor.WithInternalActor(context.Background())
 
 	handler := s.WorkerutilHandler(
@@ -56,7 +56,7 @@ func (s *Service) NewWorker(
 	})
 }
 
-func (s *Service) WorkerutilStore() dbworkerstore.Store {
+func (s *Service) WorkerutilStore() dbworkerstore.Store[codeinteltypes.Upload] {
 	return s.workerutilStore
 }
 
@@ -64,7 +64,7 @@ func (s *Service) WorkerutilHandler(
 	uploadStore uploadstore.Store,
 	numProcessorRoutines int,
 	budgetMax int64,
-) workerutil.Handler {
+) workerutil.Handler[codeinteltypes.Upload] {
 	return &handler{
 		dbStore:           s.store,
 		repoStore:         s.repoStore,
@@ -83,7 +83,7 @@ func (s *Service) WorkerutilHandler(
 type handler struct {
 	dbStore         store.Store
 	repoStore       RepoStore
-	workerStore     dbworkerstore.Store
+	workerStore     dbworkerstore.Store[codeinteltypes.Upload]
 	lsifStore       lsifstore.LsifStore
 	uploadStore     uploadstore.Store
 	gitserverClient GitserverClient
@@ -98,20 +98,15 @@ type handler struct {
 }
 
 var (
-	_ workerutil.Handler        = &handler{}
-	_ workerutil.WithPreDequeue = &handler{}
-	_ workerutil.WithHooks      = &handler{}
+	_ workerutil.Handler[codeinteltypes.Upload]   = &handler{}
+	_ workerutil.WithPreDequeue                   = &handler{}
+	_ workerutil.WithHooks[codeinteltypes.Upload] = &handler{}
 )
 
 // errCommitDoesNotExist occurs when gitserver does not recognize the commit attached to the upload.
 var errCommitDoesNotExist = errors.Errorf("commit does not exist")
 
-func (h *handler) Handle(ctx context.Context, logger log.Logger, record workerutil.Record) (err error) {
-	upload, ok := record.(codeinteltypes.Upload)
-	if !ok {
-		return errors.Newf("unexpected record type %T", record)
-	}
-
+func (h *handler) Handle(ctx context.Context, logger log.Logger, upload codeinteltypes.Upload) (err error) {
 	var requeued bool
 
 	ctx, otLogger, endObservation := h.handleOp.With(ctx, &err, observation.Args{})
@@ -142,12 +137,7 @@ func (h *handler) PreDequeue(ctx context.Context, logger log.Logger) (bool, any,
 	return true, []*sqlf.Query{sqlf.Sprintf("(upload_size IS NULL OR upload_size <= %s)", budgetRemaining)}, nil
 }
 
-func (h *handler) PreHandle(ctx context.Context, logger log.Logger, record workerutil.Record) {
-	upload, ok := record.(codeinteltypes.Upload)
-	if !ok {
-		return
-	}
-
+func (h *handler) PreHandle(ctx context.Context, logger log.Logger, upload codeinteltypes.Upload) {
 	uncompressedSize := h.getUploadSize(upload.UncompressedSize)
 	h.uploadSizeGuage.Add(float64(uncompressedSize))
 
@@ -155,12 +145,7 @@ func (h *handler) PreHandle(ctx context.Context, logger log.Logger, record worke
 	atomic.AddInt64(&h.budgetRemaining, -gzipSize)
 }
 
-func (h *handler) PostHandle(ctx context.Context, logger log.Logger, record workerutil.Record) {
-	upload, ok := record.(codeinteltypes.Upload)
-	if !ok {
-		return
-	}
-
+func (h *handler) PostHandle(ctx context.Context, logger log.Logger, upload codeinteltypes.Upload) {
 	uncompressedSize := h.getUploadSize(upload.UncompressedSize)
 	h.uploadSizeGuage.Sub(float64(uncompressedSize))
 
@@ -314,7 +299,7 @@ const requeueDelay = time.Minute
 // cloning or if the commit does not exist, then the upload will be requeued and this function returns a true
 // valued flag. Otherwise, the repo does not exist or there is an unexpected infrastructure error, which we'll
 // fail on.
-func requeueIfCloningOrCommitUnknown(ctx context.Context, logger log.Logger, repoStore RepoStore, workerStore dbworkerstore.Store, upload codeinteltypes.Upload, repo *types.Repo) (requeued bool, _ error) {
+func requeueIfCloningOrCommitUnknown(ctx context.Context, logger log.Logger, repoStore RepoStore, workerStore dbworkerstore.Store[codeinteltypes.Upload], upload codeinteltypes.Upload, repo *types.Repo) (requeued bool, _ error) {
 	_, err := repoStore.ResolveRev(ctx, repo, upload.Commit)
 	if err == nil {
 		// commit is resolvable
