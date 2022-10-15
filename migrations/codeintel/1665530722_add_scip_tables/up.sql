@@ -1,5 +1,3 @@
--- TODO: reference counting for expiration
-
 CREATE TABLE IF NOT EXISTS codeintel_scip_documents(
     id bigserial,
     payload_hash bytea NOT NULL UNIQUE,
@@ -23,6 +21,8 @@ CREATE TABLE IF NOT EXISTS codeintel_scip_index_documents(
     UNIQUE (upload_id, document_path),
     CONSTRAINT codeintel_scip_index_documents_document_id_fk FOREIGN KEY(document_id) REFERENCES codeintel_scip_documents(id)
 );
+
+CREATE INDEX codeintel_scip_index_documents_document_id ON codeintel_scip_index_documents USING hash(document_id);
 
 COMMENT ON TABLE codeintel_scip_index_documents IS 'A mapping from file paths to document references within a particular SCIP index.';
 COMMENT ON COLUMN codeintel_scip_index_documents.id IS 'An auto-generated identifier. This column is used as a foreign key target to reduce occurrences of the full document path value.';

@@ -581,6 +581,8 @@ ALTER TABLE ONLY rockskip_repos
 ALTER TABLE ONLY rockskip_symbols
     ADD CONSTRAINT rockskip_symbols_pkey PRIMARY KEY (id);
 
+CREATE INDEX codeintel_scip_index_documents_document_id ON codeintel_scip_index_documents USING hash (document_id);
+
 CREATE INDEX lsif_data_definitions_dump_id_schema_version ON lsif_data_definitions USING btree (dump_id, schema_version);
 
 CREATE INDEX lsif_data_definitions_schema_versions_dump_id_schema_version_bo ON lsif_data_definitions_schema_versions USING btree (dump_id, min_schema_version, max_schema_version);

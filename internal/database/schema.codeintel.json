@@ -263,6 +263,16 @@
           "IndexDefinition": "CREATE UNIQUE INDEX codeintel_scip_index_documents_upload_id_document_path_key ON codeintel_scip_index_documents USING btree (upload_id, document_path)",
           "ConstraintType": "u",
           "ConstraintDefinition": "UNIQUE (upload_id, document_path)"
+        },
+        {
+          "Name": "codeintel_scip_index_documents_document_id",
+          "IsPrimaryKey": false,
+          "IsUnique": false,
+          "IsExclusion": false,
+          "IsDeferrable": false,
+          "IndexDefinition": "CREATE INDEX codeintel_scip_index_documents_document_id ON codeintel_scip_index_documents USING hash (document_id)",
+          "ConstraintType": "",
+          "ConstraintDefinition": ""
         }
       ],
       "Constraints": [

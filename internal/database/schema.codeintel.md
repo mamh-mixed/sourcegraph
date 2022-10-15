@@ -35,6 +35,7 @@ A lookup of SCIP [Document](https://sourcegraph.com/search?q=context:%40sourcegr
 Indexes:
     "codeintel_scip_index_documents_pkey" PRIMARY KEY, btree (id)
     "codeintel_scip_index_documents_upload_id_document_path_key" UNIQUE CONSTRAINT, btree (upload_id, document_path)
+    "codeintel_scip_index_documents_document_id" hash (document_id)
 Foreign-key constraints:
     "codeintel_scip_index_documents_document_id_fk" FOREIGN KEY (document_id) REFERENCES codeintel_scip_documents(id)
 Referenced by:
