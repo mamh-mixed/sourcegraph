@@ -66,23 +66,32 @@ func (s *zoektReposStore) GetZoektRepo(ctx context.Context, repo api.RepoID) (*Z
 
 func scanZoektRepo(sc dbutil.Scanner) (*ZoektRepo, error) {
 	var zr ZoektRepo
-	return &zr, sc.Scan(
+	var commit string
+
+	err := sc.Scan(
 		&zr.RepoID,
-		&zr.Commit,
+		&dbutil.NullString{S: &commit},
 		&zr.IndexStatus,
 		&zr.UpdatedAt,
 		&zr.CreatedAt,
 	)
+	if err != nil {
+		return nil, err
+	}
+
+	zr.Commit = api.CommitID(commit)
+
+	return &zr, nil
 }
 
 const getZoektRepoQueryFmtstr = `
 -- source: internal/database/zoekt_repos.go:zoektReposStore.GetZoektRepo
 SELECT
-	repo_id,
-	commit,
-	index_status,
-	updated_at,
-	created_at
+	zr.repo_id,
+	zr.commit,
+	zr.index_status,
+	zr.updated_at,
+	zr.created_at
 FROM zoekt_repos zr
 JOIN repo ON repo.id = zr.repo_id
 WHERE
