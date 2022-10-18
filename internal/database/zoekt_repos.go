@@ -3,14 +3,18 @@ package database
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/keegancsmith/sqlf"
 
 	"github.com/sourcegraph/zoekt"
 
+	"github.com/sourcegraph/sourcegraph/internal/api"
 	"github.com/sourcegraph/sourcegraph/internal/database/basestore"
 	"github.com/sourcegraph/sourcegraph/internal/database/batch"
+	"github.com/sourcegraph/sourcegraph/internal/database/dbutil"
 	"github.com/sourcegraph/sourcegraph/internal/types"
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
 type ZoektReposStore interface {
@@ -46,6 +50,49 @@ func (s *zoektReposStore) Transact(ctx context.Context) (ZoektReposStore, error)
 	txBase, err := s.Store.Transact(ctx)
 	return &zoektReposStore{Store: txBase}, err
 }
+
+type ZoektRepo struct {
+	RepoID      api.RepoID
+	Commit      api.CommitID
+	IndexStatus string
+
+	UpdatedAt time.Time
+	CreatedAt time.Time
+}
+
+func (s *zoektReposStore) GetZoektRepo(ctx context.Context, repo api.RepoID) (*ZoektRepo, error) {
+	return scanZoektRepo(s.QueryRow(ctx, sqlf.Sprintf(getZoektRepoQueryFmtstr, repo)))
+}
+
+func scanZoektRepo(sc dbutil.Scanner) (*ZoektRepo, error) {
+	var zr ZoektRepo
+	return &zr, sc.Scan(
+		&zr.RepoID,
+		&zr.Commit,
+		&zr.IndexStatus,
+		&zr.UpdatedAt,
+		&zr.CreatedAt,
+	)
+}
+
+const getZoektRepoQueryFmtstr = `
+-- source: internal/database/zoekt_repos.go:zoektReposStore.GetZoektRepo
+SELECT
+	repo_id,
+	commit,
+	index_status,
+	updated_at,
+	created_at
+FROM zoekt_repos zr
+JOIN repo ON repo.id = zr.repo_id
+WHERE
+	repo.deleted_at is NULL
+AND
+	repo.blocked IS NULL
+AND
+	zr.repo_id = %s
+;
+`
 
 func (s *zoektReposStore) UpsertIndexable(ctx context.Context, repos types.MinimalRepos, indexed map[uint32]*zoekt.MinimalRepoListEntry) error {
 	tx, err := s.Store.Transact(ctx)
@@ -98,7 +145,7 @@ func (s *zoektReposStore) UpsertIndexable(ctx context.Context, repos types.Minim
 	}
 
 	insertQuery := `
-    INSERT INTO zoekt_repos
+    INSERT INTO zoekt_repos (repo_id, index_status, commit)
     SELECT source.repo_id, source.index_status, source.commit
     FROM temp_table source
     WHERE NOT EXISTS (
@@ -106,7 +153,7 @@ func (s *zoektReposStore) UpsertIndexable(ctx context.Context, repos types.Minim
         SELECT 1 FROM zoekt_repos t WHERE t.repo_id = source.repo_id
     )`
 	if err := tx.Exec(ctx, sqlf.Sprintf(insertQuery)); err != nil {
-		return err
+		return errors.Wrap(err, "inserting zoekt_repos failed")
 	}
 
 	deleteQuery := `
@@ -115,20 +162,20 @@ func (s *zoektReposStore) UpsertIndexable(ctx context.Context, repos types.Minim
         SELECT 1 FROM temp_table t WHERE t.repo_id = zoekt_repos.repo_id
     )`
 	if err := tx.Exec(ctx, sqlf.Sprintf(deleteQuery)); err != nil {
-		return err
+		return errors.Wrap(err, "deleting zoekt_repos failed")
 	}
 
 	updateQuery := `
     UPDATE zoekt_repos t
 	SET
 		index_status = source.index_status,
-		commit = source.commit,
-		updated_at = now()
+		commit       = source.commit,
+		updated_at   = now()
     FROM temp_table source
     WHERE t.repo_id = source.repo_id AND (t.index_status != source.index_status OR t.commit != source.commit)
 	`
 	if err := tx.Exec(ctx, sqlf.Sprintf(updateQuery)); err != nil {
-		return err
+		return errors.Wrap(err, "updating zoekt repos failed")
 	}
 
 	return nil

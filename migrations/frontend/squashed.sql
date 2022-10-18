@@ -3608,6 +3608,14 @@ CREATE SEQUENCE webhooks_id_seq
 
 ALTER SEQUENCE webhooks_id_seq OWNED BY webhooks.id;
 
+CREATE TABLE zoekt_repos (
+    repo_id integer NOT NULL,
+    commit text,
+    index_status text DEFAULT 'not_indexed'::text NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
 ALTER TABLE ONLY access_tokens ALTER COLUMN id SET DEFAULT nextval('access_tokens_id_seq'::regclass);
 
 ALTER TABLE ONLY batch_changes ALTER COLUMN id SET DEFAULT nextval('batch_changes_id_seq'::regclass);
@@ -4030,6 +4038,9 @@ ALTER TABLE ONLY registry_extension_releases
 ALTER TABLE ONLY registry_extensions
     ADD CONSTRAINT registry_extensions_pkey PRIMARY KEY (id);
 
+ALTER TABLE ONLY zoekt_repos
+    ADD CONSTRAINT repo_id_commit_unique UNIQUE (repo_id, commit);
+
 ALTER TABLE ONLY repo_kvps
     ADD CONSTRAINT repo_kvps_pkey PRIMARY KEY (repo_id, key) INCLUDE (value);
 
@@ -4107,6 +4118,9 @@ ALTER TABLE ONLY webhooks
 
 ALTER TABLE ONLY webhooks
     ADD CONSTRAINT webhooks_uuid_key UNIQUE (uuid);
+
+ALTER TABLE ONLY zoekt_repos
+    ADD CONSTRAINT zoekt_repos_pkey PRIMARY KEY (repo_id);
 
 CREATE INDEX access_tokens_lookup ON access_tokens USING hash (value_sha256) WHERE (deleted_at IS NULL);
 

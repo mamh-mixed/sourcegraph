@@ -3148,6 +3148,20 @@ Webhooks registered in Sourcegraph instance.
 **secret**: Secret used to decrypt webhook payload (if supported by the code host).
 
 **updated_by_user_id**: ID of a user, who updated the webhook. If NULL, then the user does not exist (never existed or was deleted).
+# Table "public.zoekt_repos"
+```
+    Column    |           Type           | Collation | Nullable |       Default       
+--------------+--------------------------+-----------+----------+---------------------
+ repo_id      | integer                  |           | not null | 
+ commit       | text                     |           |          | 
+ index_status | text                     |           | not null | 'not_indexed'::text
+ updated_at   | timestamp with time zone |           | not null | now()
+ created_at   | timestamp with time zone |           | not null | now()
+Indexes:
+    "zoekt_repos_pkey" PRIMARY KEY, btree (repo_id)
+    "repo_id_commit_unique" UNIQUE CONSTRAINT, btree (repo_id, commit)
+
+```
 
 # View "public.batch_spec_workspace_execution_jobs_with_rank"
 
