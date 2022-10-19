@@ -352,7 +352,7 @@ func checkUserPerms(t *testing.T, userName string) {
 
 func checkSiteConfig(t *testing.T) {
 	t.Helper()
-	cfg, err := client.SiteConfiguration()
+	cfg, _, err := client.SiteConfiguration()
 	if err != nil {
 		t.Errorf("error getting site config: %s", err)
 	}
