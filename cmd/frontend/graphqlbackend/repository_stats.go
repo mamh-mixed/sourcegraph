@@ -2,6 +2,7 @@ package graphqlbackend
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/sourcegraph/sourcegraph/internal/auth"
@@ -29,6 +30,7 @@ type repositoryStatsResolver struct {
 }
 
 func (r *repositoryStatsResolver) GitDirBytes(ctx context.Context) (BigInt, error) {
+	fmt.Printf("here?")
 	gitDirBytes, err := r.computeGitDirBytes(ctx)
 	if err != nil {
 		return BigInt{}, err
@@ -41,6 +43,7 @@ func (r *repositoryStatsResolver) computeGitDirBytes(ctx context.Context) (int64
 	r.gitDirBytesOnce.Do(func() {
 		stats, err := gitserver.NewClient(r.db).ReposStats(ctx)
 		if err != nil {
+			fmt.Printf("err=%s\n", err)
 			r.gitDirBytesErr = err
 			return
 		}

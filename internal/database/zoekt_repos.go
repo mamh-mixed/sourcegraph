@@ -13,7 +13,6 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/database/basestore"
 	"github.com/sourcegraph/sourcegraph/internal/database/batch"
 	"github.com/sourcegraph/sourcegraph/internal/database/dbutil"
-	"github.com/sourcegraph/sourcegraph/internal/types"
 	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
@@ -22,8 +21,8 @@ type ZoektReposStore interface {
 
 	With(other basestore.ShareableStore) ZoektReposStore
 
-	// UpsertIndexable is a horse
-	UpsertIndexable(ctx context.Context, repos types.MinimalRepos, indexed map[uint32]*zoekt.MinimalRepoListEntry) error
+	// UpdateIndexStatuses is a horse
+	UpdateIndexStatuses(ctx context.Context, indexed map[uint32]*zoekt.MinimalRepoListEntry) error
 
 	// Update updates the given rows with the GitServer status of a repo.
 	GetStatistics(ctx context.Context) (ZoektRepoStatistics, error)
@@ -103,48 +102,32 @@ AND
 ;
 `
 
-func (s *zoektReposStore) UpsertIndexable(ctx context.Context, repos types.MinimalRepos, indexed map[uint32]*zoekt.MinimalRepoListEntry) error {
+func (s *zoektReposStore) UpdateIndexStatuses(ctx context.Context, indexed map[uint32]*zoekt.MinimalRepoListEntry) error {
 	tx, err := s.Store.Transact(ctx)
 	if err != nil {
 		return err
 	}
 	defer func() { err = tx.Done(err) }()
 
-	tempTableQuery := `CREATE TEMPORARY TABLE temp_table (
-		repo_id integer NOT NULL,
-		index_status text NOT NULL,
-		commit text
-	) ON COMMIT DROP`
-	if err := tx.Exec(ctx, sqlf.Sprintf(tempTableQuery)); err != nil {
+	if err := tx.Exec(ctx, sqlf.Sprintf(updateIndexStatusesCreateTempTableQuery)); err != nil {
 		return err
 	}
 
-	inserter := batch.NewInserter(ctx, tx.Handle(), "temp_table", batch.MaxNumPostgresParameters, "repo_id", "index_status", "commit")
+	inserter := batch.NewInserter(ctx, tx.Handle(), "temp_table", batch.MaxNumPostgresParameters, tempTableColumns...)
 
-	for _, r := range repos {
-		indexStatus := "not_indexed"
+	for repoID, entry := range indexed {
 		commit := ""
+		indexStatus := "indexed"
 
-		indexedEntry, ok := indexed[uint32(r.ID)]
-		if ok {
-			indexStatus = "indexed"
-			for i, branch := range indexedEntry.Branches {
-				if i != 0 {
-					fmt.Printf("TODO: only persisting one branch, ignoring: %+v\n", branch)
-					continue
-				}
-				commit = branch.Version
+		for i, branch := range entry.Branches {
+			if i != 0 {
+				fmt.Printf("TODO: only persisting one branch, ignoring: %+v\n", branch)
+				continue
 			}
+			commit = branch.Version
 		}
 
-		commitColumn := func() *string {
-			if commit == "" {
-				return nil
-			}
-			return &commit
-		}
-
-		if err := inserter.Insert(ctx, r.ID, indexStatus, commitColumn()); err != nil {
+		if err := inserter.Insert(ctx, repoID, indexStatus, dbutil.NullStringColumn(commit)); err != nil {
 			return err
 		}
 	}
@@ -153,42 +136,39 @@ func (s *zoektReposStore) UpsertIndexable(ctx context.Context, repos types.Minim
 		return err
 	}
 
-	insertQuery := `
-    INSERT INTO zoekt_repos (repo_id, index_status, commit)
-    SELECT source.repo_id, source.index_status, source.commit
-    FROM temp_table source
-    WHERE NOT EXISTS (
-        -- Skip insertion of any rows that already exist in the table
-        SELECT 1 FROM zoekt_repos t WHERE t.repo_id = source.repo_id
-    )`
-	if err := tx.Exec(ctx, sqlf.Sprintf(insertQuery)); err != nil {
-		return errors.Wrap(err, "inserting zoekt_repos failed")
-	}
-
-	deleteQuery := `
-    DELETE FROM zoekt_repos
-    WHERE NOT EXISTS (
-        SELECT 1 FROM temp_table t WHERE t.repo_id = zoekt_repos.repo_id
-    )`
-	if err := tx.Exec(ctx, sqlf.Sprintf(deleteQuery)); err != nil {
-		return errors.Wrap(err, "deleting zoekt_repos failed")
-	}
-
-	updateQuery := `
-    UPDATE zoekt_repos t
-	SET
-		index_status = source.index_status,
-		commit       = source.commit,
-		updated_at   = now()
-    FROM temp_table source
-    WHERE t.repo_id = source.repo_id AND (t.index_status != source.index_status OR t.commit != source.commit)
-	`
-	if err := tx.Exec(ctx, sqlf.Sprintf(updateQuery)); err != nil {
+	if err := tx.Exec(ctx, sqlf.Sprintf(updateIndexStatusesUpdateQuery)); err != nil {
 		return errors.Wrap(err, "updating zoekt repos failed")
 	}
 
 	return nil
 }
+
+var tempTableColumns = []string{
+	"repo_id",
+	"index_status",
+	"commit",
+}
+
+const updateIndexStatusesCreateTempTableQuery = `
+CREATE TEMPORARY TABLE temp_table (
+	repo_id integer NOT NULL,
+	index_status text NOT NULL,
+	commit text
+) ON COMMIT DROP
+`
+
+const updateIndexStatusesUpdateQuery = `
+UPDATE zoekt_repos t
+SET
+	index_status = source.index_status,
+	commit       = source.commit,
+	updated_at   = now()
+FROM temp_table source
+WHERE
+	t.repo_id = source.repo_id
+AND
+	(t.index_status != source.index_status OR t.commit != source.commit)
+`
 
 type ZoektRepoStatistics struct {
 	Total      int
