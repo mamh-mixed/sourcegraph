@@ -752,6 +752,37 @@ Indexes:
 
 ```
 
+# Table "public.codeintel_commit_dates"
+```
+    Column     |           Type           | Collation | Nullable | Default 
+---------------+--------------------------+-----------+----------+---------
+ repository_id | integer                  |           | not null | 
+ commit_bytea  | bytea                    |           | not null | 
+ committed_at  | timestamp with time zone |           |          | 
+Indexes:
+    "codeintel_commit_dates_pkey" PRIMARY KEY, btree (repository_id, commit_bytea)
+
+```
+
+Maps commits within a repository to the commit date as reported by gitserver.
+
+**commit_bytea**: Identifies the 40-character commit hash.
+
+**committed_at**: The commit date (may be -infinity if unresolvable).
+
+**repository_id**: Identifies a row in the `repo` table.
+
+# Table "public.codeintel_inference_scripts"
+```
+      Column      |           Type           | Collation | Nullable | Default 
+------------------+--------------------------+-----------+----------+---------
+ insert_timestamp | timestamp with time zone |           | not null | now()
+ script           | text                     |           | not null | 
+
+```
+
+Contains auto-index job inference Lua scripts as an alternative to setting via environment variables.
+
 # Table "public.codeintel_langugage_support_requests"
 ```
    Column    |  Type   | Collation | Nullable |                             Default                              
@@ -848,6 +879,17 @@ Associates a repository-commit pair with the set of repository-level dependencie
 **lockfile**: Relative path of a lockfile in the given repository and the given commit.
 
 **updated_at**: Time when lockfile index was updated
+
+# Table "public.codeintel_path_ranks"
+```
+    Column     |  Type   | Collation | Nullable | Default 
+---------------+---------+-----------+----------+---------
+ repository_id | integer |           | not null | 
+ payload       | text    |           | not null | 
+Indexes:
+    "codeintel_path_ranks_repository_id_key" UNIQUE CONSTRAINT, btree (repository_id)
+
+```
 
 # Table "public.configuration_policies_audit_logs"
 ```
@@ -1167,12 +1209,30 @@ Foreign-key constraints:
  last_heartbeat_at   | timestamp with time zone |           |          | 
  queued_at           | timestamp with time zone |           |          | now()
  cancel              | boolean                  |           | not null | false
+ repos_synced        | integer                  |           | not null | 0
+ repo_sync_errors    | integer                  |           | not null | 0
+ repos_added         | integer                  |           | not null | 0
+ repos_deleted       | integer                  |           | not null | 0
+ repos_modified      | integer                  |           | not null | 0
+ repos_unmodified    | integer                  |           | not null | 0
 Indexes:
     "external_service_sync_jobs_state_external_service_id" btree (state, external_service_id) INCLUDE (finished_at)
 Foreign-key constraints:
     "external_services_id_fk" FOREIGN KEY (external_service_id) REFERENCES external_services(id) ON DELETE CASCADE
 
 ```
+
+**repo_sync_errors**: The number of times an error occurred syncing a repo during this sync job.
+
+**repos_added**: The number of new repos discovered during this sync job.
+
+**repos_deleted**: The number of repos deleted as a result of this sync job.
+
+**repos_modified**: The number of existing repos whose metadata has changed during this sync job.
+
+**repos_synced**: The number of repos synced during this sync job.
+
+**repos_unmodified**: The number of existing repos whose metadata did not change during this sync job.
 
 # Table "public.external_services"
 ```
@@ -1314,6 +1374,7 @@ Indexes:
  last_fetched    | timestamp with time zone |           | not null | now()
  last_changed    | timestamp with time zone |           | not null | now()
  repo_size_bytes | bigint                   |           |          | 
+ repo_status     | text                     |           |          | 
 Indexes:
     "gitserver_repos_pkey" PRIMARY KEY, btree (repo_id)
     "gitserver_repos_cloned_status_idx" btree (repo_id) WHERE clone_status = 'cloned'::text
@@ -1867,38 +1928,39 @@ Stores the retention policy of code intellience data for a repository.
 
 # Table "public.lsif_uploads"
 ```
-         Column         |           Type           | Collation | Nullable |                Default                 
-------------------------+--------------------------+-----------+----------+----------------------------------------
- id                     | integer                  |           | not null | nextval('lsif_dumps_id_seq'::regclass)
- commit                 | text                     |           | not null | 
- root                   | text                     |           | not null | ''::text
- uploaded_at            | timestamp with time zone |           | not null | now()
- state                  | text                     |           | not null | 'queued'::text
- failure_message        | text                     |           |          | 
- started_at             | timestamp with time zone |           |          | 
- finished_at            | timestamp with time zone |           |          | 
- repository_id          | integer                  |           | not null | 
- indexer                | text                     |           | not null | 
- num_parts              | integer                  |           | not null | 
- uploaded_parts         | integer[]                |           | not null | 
- process_after          | timestamp with time zone |           |          | 
- num_resets             | integer                  |           | not null | 0
- upload_size            | bigint                   |           |          | 
- num_failures           | integer                  |           | not null | 0
- associated_index_id    | bigint                   |           |          | 
- committed_at           | timestamp with time zone |           |          | 
- commit_last_checked_at | timestamp with time zone |           |          | 
- worker_hostname        | text                     |           | not null | ''::text
- last_heartbeat_at      | timestamp with time zone |           |          | 
- execution_logs         | json[]                   |           |          | 
- num_references         | integer                  |           |          | 
- expired                | boolean                  |           | not null | false
- last_retention_scan_at | timestamp with time zone |           |          | 
- reference_count        | integer                  |           |          | 
- indexer_version        | text                     |           |          | 
- queued_at              | timestamp with time zone |           |          | 
- cancel                 | boolean                  |           | not null | false
- uncompressed_size      | bigint                   |           |          | 
+         Column          |           Type           | Collation | Nullable |                Default                 
+-------------------------+--------------------------+-----------+----------+----------------------------------------
+ id                      | integer                  |           | not null | nextval('lsif_dumps_id_seq'::regclass)
+ commit                  | text                     |           | not null | 
+ root                    | text                     |           | not null | ''::text
+ uploaded_at             | timestamp with time zone |           | not null | now()
+ state                   | text                     |           | not null | 'queued'::text
+ failure_message         | text                     |           |          | 
+ started_at              | timestamp with time zone |           |          | 
+ finished_at             | timestamp with time zone |           |          | 
+ repository_id           | integer                  |           | not null | 
+ indexer                 | text                     |           | not null | 
+ num_parts               | integer                  |           | not null | 
+ uploaded_parts          | integer[]                |           | not null | 
+ process_after           | timestamp with time zone |           |          | 
+ num_resets              | integer                  |           | not null | 0
+ upload_size             | bigint                   |           |          | 
+ num_failures            | integer                  |           | not null | 0
+ associated_index_id     | bigint                   |           |          | 
+ committed_at            | timestamp with time zone |           |          | 
+ commit_last_checked_at  | timestamp with time zone |           |          | 
+ worker_hostname         | text                     |           | not null | ''::text
+ last_heartbeat_at       | timestamp with time zone |           |          | 
+ execution_logs          | json[]                   |           |          | 
+ num_references          | integer                  |           |          | 
+ expired                 | boolean                  |           | not null | false
+ last_retention_scan_at  | timestamp with time zone |           |          | 
+ reference_count         | integer                  |           |          | 
+ indexer_version         | text                     |           |          | 
+ queued_at               | timestamp with time zone |           |          | 
+ cancel                  | boolean                  |           | not null | false
+ uncompressed_size       | bigint                   |           |          | 
+ last_referenced_scan_at | timestamp with time zone |           |          | 
 Indexes:
     "lsif_uploads_pkey" PRIMARY KEY, btree (id)
     "lsif_uploads_repository_id_commit_root_indexer" UNIQUE, btree (repository_id, commit, root, indexer) WHERE state = 'completed'::text
@@ -1911,11 +1973,11 @@ Indexes:
 Check constraints:
     "lsif_uploads_commit_valid_chars" CHECK (commit ~ '^[a-z0-9]{40}$'::text)
 Referenced by:
-    TABLE "lsif_uploads_reference_counts" CONSTRAINT "lsif_data_docs_search_private_repo_name_id_fk" FOREIGN KEY (upload_id) REFERENCES lsif_uploads(id) ON DELETE CASCADE
     TABLE "lsif_dependency_syncing_jobs" CONSTRAINT "lsif_dependency_indexing_jobs_upload_id_fkey" FOREIGN KEY (upload_id) REFERENCES lsif_uploads(id) ON DELETE CASCADE
     TABLE "lsif_dependency_indexing_jobs" CONSTRAINT "lsif_dependency_indexing_jobs_upload_id_fkey1" FOREIGN KEY (upload_id) REFERENCES lsif_uploads(id) ON DELETE CASCADE
     TABLE "lsif_packages" CONSTRAINT "lsif_packages_dump_id_fkey" FOREIGN KEY (dump_id) REFERENCES lsif_uploads(id) ON DELETE CASCADE
     TABLE "lsif_references" CONSTRAINT "lsif_references_dump_id_fkey" FOREIGN KEY (dump_id) REFERENCES lsif_uploads(id) ON DELETE CASCADE
+    TABLE "lsif_uploads_reference_counts" CONSTRAINT "lsif_uploads_reference_counts_upload_id_fk" FOREIGN KEY (upload_id) REFERENCES lsif_uploads(id) ON DELETE CASCADE
 Triggers:
     trigger_lsif_uploads_delete AFTER DELETE ON lsif_uploads REFERENCING OLD TABLE AS old FOR EACH STATEMENT EXECUTE FUNCTION func_lsif_uploads_delete()
     trigger_lsif_uploads_insert AFTER INSERT ON lsif_uploads FOR EACH ROW EXECUTE FUNCTION func_lsif_uploads_insert()
@@ -1934,6 +1996,8 @@ Stores metadata about an LSIF index uploaded by a user.
 **indexer**: The name of the indexer that produced the index file. If not supplied by the user it will be pulled from the index metadata.
 
 **indexer_version**: The version of the indexer that produced the index file. If not supplied by the user it will be pulled from the index metadata.
+
+**last_referenced_scan_at**: The last time this upload was known to be referenced by another (possibly expired) index.
 
 **last_retention_scan_at**: The last time this upload was checked against data retention policies.
 
@@ -1991,7 +2055,7 @@ Indexes:
 Indexes:
     "lsif_uploads_reference_counts_upload_id_key" UNIQUE CONSTRAINT, btree (upload_id)
 Foreign-key constraints:
-    "lsif_data_docs_search_private_repo_name_id_fk" FOREIGN KEY (upload_id) REFERENCES lsif_uploads(id) ON DELETE CASCADE
+    "lsif_uploads_reference_counts_upload_id_fk" FOREIGN KEY (upload_id) REFERENCES lsif_uploads(id) ON DELETE CASCADE
 
 ```
 
@@ -2976,6 +3040,8 @@ Referenced by:
     TABLE "user_emails" CONSTRAINT "user_emails_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id)
     TABLE "user_external_accounts" CONSTRAINT "user_external_accounts_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id)
     TABLE "user_public_repos" CONSTRAINT "user_public_repos_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    TABLE "webhooks" CONSTRAINT "webhooks_created_by_user_id_fkey" FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+    TABLE "webhooks" CONSTRAINT "webhooks_updated_by_user_id_fkey" FOREIGN KEY (updated_by_user_id) REFERENCES users(id) ON DELETE SET NULL
 Triggers:
     trig_invalidate_session_on_password_change BEFORE UPDATE OF passwd ON users FOR EACH ROW EXECUTE FUNCTION invalidate_session_for_userid_on_password_change()
     trig_soft_delete_user_reference_on_external_service AFTER UPDATE OF deleted_at ON users FOR EACH ROW EXECUTE FUNCTION soft_delete_user_reference_on_external_service()
@@ -3043,6 +3109,41 @@ Foreign-key constraints:
     "webhook_logs_external_service_id_fkey" FOREIGN KEY (external_service_id) REFERENCES external_services(id) ON UPDATE CASCADE ON DELETE CASCADE
 
 ```
+
+# Table "public.webhooks"
+```
+       Column       |           Type           | Collation | Nullable |               Default                
+--------------------+--------------------------+-----------+----------+--------------------------------------
+ id                 | integer                  |           | not null | nextval('webhooks_id_seq'::regclass)
+ code_host_kind     | text                     |           | not null | 
+ code_host_urn      | text                     |           | not null | 
+ secret             | text                     |           |          | 
+ created_at         | timestamp with time zone |           | not null | now()
+ updated_at         | timestamp with time zone |           | not null | now()
+ encryption_key_id  | text                     |           |          | 
+ uuid               | uuid                     |           | not null | gen_random_uuid()
+ created_by_user_id | integer                  |           |          | 
+ updated_by_user_id | integer                  |           |          | 
+Indexes:
+    "webhooks_pkey" PRIMARY KEY, btree (id)
+    "webhooks_uuid_key" UNIQUE CONSTRAINT, btree (uuid)
+Foreign-key constraints:
+    "webhooks_created_by_user_id_fkey" FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+    "webhooks_updated_by_user_id_fkey" FOREIGN KEY (updated_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+
+```
+
+Webhooks registered in Sourcegraph instance.
+
+**code_host_kind**: Kind of an external service for which webhooks are registered.
+
+**code_host_urn**: URN of a code host. This column maps to external_service_id column of repo table.
+
+**created_by_user_id**: ID of a user, who created the webhook. If NULL, then the user does not exist (never existed or was deleted).
+
+**secret**: Secret used to decrypt webhook payload (if supported by the code host).
+
+**updated_by_user_id**: ID of a user, who updated the webhook. If NULL, then the user does not exist (never existed or was deleted).
 
 # View "public.batch_spec_workspace_execution_jobs_with_rank"
 

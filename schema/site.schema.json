@@ -246,6 +246,12 @@
           "enum": ["enabled", "disabled"],
           "default": "disabled"
         },
+        "rubyPackages": {
+          "description": "Allow adding Ruby package host connections",
+          "type": "string",
+          "enum": ["enabled", "disabled"],
+          "default": "disabled"
+        },
         "pagure": {
           "description": "Allow adding Pagure code host connections",
           "type": "string",
@@ -303,7 +309,7 @@
           }
         },
         "customGitFetch": {
-          "description": "JSON array of configuration that maps from Git clone URL domain/path to custom git fetch command.",
+          "description": "JSON array of configuration that maps from Git clone URL domain/path to custom git fetch command. To enable this feature set environment variable `ENABLE_CUSTOM_GIT_FETCH` as `true` on gitserver.",
           "type": "array",
           "items": {
             "title": "CustomGitFetchMapping",
@@ -544,6 +550,11 @@
         },
         "insightsAlternateLoadingStrategy": {
           "description": "Use an in-memory strategy of loading Code Insights. Should only be used for benchmarking on large instances, not for customer use currently.",
+          "type": "boolean",
+          "default": false
+        },
+        "hideSourcegraphOperatorLogin": {
+          "description": "Enables hiding Sourcegraph operator auth provider on login page.",
           "type": "boolean",
           "default": false
         }
@@ -1210,10 +1221,10 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "securityEvents": {
-              "description": "Capture security events as part of the audit log.",
+            "internalTraffic": {
+              "description": "Capture security events performed by the internal traffic (adds significant noise).",
               "type": "boolean",
-              "default": true
+              "default": false
             },
             "graphQL": {
               "description": "Capture GraphQL requests and responses as part of the audit log.",
@@ -1224,14 +1235,21 @@
               "description": "Capture gitserver access logs as part of the audit log.",
               "type": "boolean",
               "default": false
+            },
+            "severityLevel": {
+              "description": "Severity logging level for the audit log.",
+              "type": "string",
+              "enum": ["DEBUG", "INFO", "WARN", "ERROR"],
+              "default": "INFO"
             }
           },
-          "required": ["securityEvents", "graphQL", "gitserverAccess"],
+          "required": ["internalTraffic", "graphQL", "gitserverAccess"],
           "examples": [
             {
-              "securityEvents": true,
+              "internalTraffic": false,
               "graphQL": false,
-              "gitserverAccess": false
+              "gitserverAccess": false,
+              "severityLevel": "INFO"
             }
           ]
         }
@@ -1666,13 +1684,15 @@
       "description": "The site wide maximum number of repos that can be added by non site admins",
       "type": "integer",
       "default": 200000,
-      "group": "Misc."
+      "group": "Misc.",
+      "deprecationMessage": "Deprecated as we no longer support user added code"
     },
     "userRepos.maxPerUser": {
       "description": "The per user maximum number of repos that can be added by non site admins",
       "type": "integer",
       "default": 2000,
-      "group": "Misc."
+      "group": "Misc.",
+      "deprecationMessage": "Deprecated as we no longer support user added code"
     },
     "productResearchPage.enabled": {
       "description": "Enables users access to the product research page in their settings.",
@@ -1705,6 +1725,9 @@
           "$ref": "#/definitions/EncryptionKey"
         },
         "webhookLogKey": {
+          "$ref": "#/definitions/EncryptionKey"
+        },
+        "webhookKey": {
           "$ref": "#/definitions/EncryptionKey"
         }
       }

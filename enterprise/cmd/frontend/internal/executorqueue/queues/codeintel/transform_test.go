@@ -6,7 +6,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	apiclient "github.com/sourcegraph/sourcegraph/enterprise/internal/executor"
-	"github.com/sourcegraph/sourcegraph/internal/codeintel/types"
+	"github.com/sourcegraph/sourcegraph/internal/codeintel/shared/types"
 	"github.com/sourcegraph/sourcegraph/internal/conf"
 	"github.com/sourcegraph/sourcegraph/schema"
 )
@@ -23,10 +23,14 @@ func TestTransformRecord(t *testing.T) {
 				Root:     "web",
 			},
 		},
-		Root:        "web",
-		Indexer:     "lsif-node",
-		IndexerArgs: []string{"-p", "."},
-		Outfile:     "",
+		Root:    "web",
+		Indexer: "lsif-node",
+		IndexerArgs: []string{
+			"-p", ".",
+			// Verify args are properly shell quoted.
+			"-author", "Test User",
+		},
+		Outfile: "",
 	}
 	conf.Mock(&conf.Unified{SiteConfiguration: schema.SiteConfiguration{ExternalURL: "https://test.io"}})
 	t.Cleanup(func() {
@@ -42,7 +46,8 @@ func TestTransformRecord(t *testing.T) {
 		ID:                  42,
 		Commit:              "deadbeef",
 		RepositoryName:      "linux",
-		FetchTags:           true,
+		ShallowClone:        true,
+		FetchTags:           false,
 		VirtualMachineFiles: nil,
 		DockerSteps: []apiclient.DockerStep{
 			{
@@ -52,7 +57,7 @@ func TestTransformRecord(t *testing.T) {
 			},
 			{
 				Image:    "lsif-node",
-				Commands: []string{"-p ."},
+				Commands: []string{"-p . -author 'Test User'"},
 				Dir:      "web",
 			},
 		},
@@ -121,7 +126,8 @@ func TestTransformRecordWithoutIndexer(t *testing.T) {
 		ID:                  42,
 		Commit:              "deadbeef",
 		RepositoryName:      "linux",
-		FetchTags:           true,
+		ShallowClone:        true,
+		FetchTags:           false,
 		VirtualMachineFiles: nil,
 		DockerSteps: []apiclient.DockerStep{
 			{
