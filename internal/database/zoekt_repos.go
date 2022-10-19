@@ -117,7 +117,6 @@ func (s *zoektReposStore) UpdateIndexStatuses(ctx context.Context, indexed map[u
 
 	for repoID, entry := range indexed {
 		commit := ""
-		indexStatus := "indexed"
 
 		for i, branch := range entry.Branches {
 			if i != 0 {
@@ -127,7 +126,7 @@ func (s *zoektReposStore) UpdateIndexStatuses(ctx context.Context, indexed map[u
 			commit = branch.Version
 		}
 
-		if err := inserter.Insert(ctx, repoID, indexStatus, dbutil.NullStringColumn(commit)); err != nil {
+		if err := inserter.Insert(ctx, repoID, "indexed", dbutil.NullStringColumn(commit)); err != nil {
 			return err
 		}
 	}

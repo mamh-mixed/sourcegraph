@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/sourcegraph/sourcegraph/cmd/frontend/envvar"
 	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
@@ -68,17 +69,23 @@ func FetchStatusMessages(ctx context.Context, db database.DB) ([]StatusMessage, 
 		})
 	}
 
-	zoektRepoStats, err := db.ZoektRepos().GetStatistics(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "loading repo statistics")
-	}
-	if zoektRepoStats.NotIndexed > 0 {
-		messages = append(messages, StatusMessage{
-			Indexing: &IndexingProgress{
-				NotIndexed: zoektRepoStats.NotIndexed,
-				Indexed:    zoektRepoStats.Indexed,
-			},
-		})
+	// On Sourcegraph.com we don't index all repositories, which makes
+	// determining the index status a bit more complicated than for other
+	// instances.
+	// So for now we don't return the indexing message on sourcegraph.com.
+	if !envvar.SourcegraphDotComMode() {
+		zoektRepoStats, err := db.ZoektRepos().GetStatistics(ctx)
+		if err != nil {
+			return nil, errors.Wrap(err, "loading repo statistics")
+		}
+		if zoektRepoStats.NotIndexed > 0 {
+			messages = append(messages, StatusMessage{
+				Indexing: &IndexingProgress{
+					NotIndexed: zoektRepoStats.NotIndexed,
+					Indexed:    zoektRepoStats.Indexed,
+				},
+			})
+		}
 	}
 
 	return messages, nil
