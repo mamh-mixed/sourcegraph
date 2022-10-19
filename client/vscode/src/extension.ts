@@ -61,22 +61,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         initialAccessToken ? { Authorization: `token ${initialAccessToken}`, ...customHeaders } : {},
         getProxyAgent()
     )
-    // Update `EventSource` Authorization header on access token / headers change.
-    context.subscriptions.push(
-        vscode.workspace.onDidChangeConfiguration(config => {
-            if (
-                config.affectsConfiguration('sourcegraph.accessToken') ||
-                config.affectsConfiguration('sourcegraph.requestHeaders')
-            ) {
-                const newAccessToken = accessTokenSetting()
-                const newCustomHeaders = endpointRequestHeadersSetting()
-                polyfillEventSource(
-                    newAccessToken ? { Authorization: `token ${newAccessToken}`, ...newCustomHeaders } : {},
-                    getProxyAgent()
-                )
-            }
-        })
-    )
+
     // For search panel webview to signal that it is ready for messages.
     // Replay subject with large buffer size just in case panels are opened in quick succession.
     const initializedPanelIDs = new ReplaySubject<string>(7)
