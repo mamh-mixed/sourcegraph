@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sourcegraph/sourcegraph/internal/authz"
+
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/sourcegraph/sourcegraph/internal/gqltestutil"
@@ -51,6 +53,7 @@ func TestSubRepoPermissionsPerforce(t *testing.T) {
 		wantBlob := ``
 
 		if diff := cmp.Diff(wantBlob, blob); diff != "" {
+			checkProviders()
 			checkUserPerms(t, aliceUsername)
 			checkSiteConfig(t)
 			t.Fatalf("Blob mismatch (-want +got):\n%s", diff)
@@ -71,6 +74,7 @@ func TestSubRepoPermissionsPerforce(t *testing.T) {
 		}
 
 		if diff := cmp.Diff(wantFiles, files); diff != "" {
+			checkProviders()
 			checkUserPerms(t, aliceUsername)
 			checkSiteConfig(t)
 			t.Fatalf("fileNames mismatch (-want +got):\n%s", diff)
@@ -308,6 +312,7 @@ func createTestUserAndWaitForRepo(t *testing.T) (*gqltestutil.Client, string) {
 	}
 
 	syncUserPerms(t, aliceID, aliceUsername)
+	checkProviders()
 	return userClient, perforceRepoName
 }
 
@@ -332,6 +337,13 @@ func syncUserPerms(t *testing.T, userID, userName string) {
 	})
 	if err != nil {
 		t.Fatal("Waiting for user permissions to be synced:", err)
+	}
+}
+
+func checkProviders() {
+	_, providers := authz.GetProviders()
+	for _, p := range providers {
+		fmt.Printf("Provider: %s", p.URN())
 	}
 }
 
