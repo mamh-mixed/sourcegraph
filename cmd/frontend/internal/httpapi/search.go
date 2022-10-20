@@ -332,3 +332,29 @@ func serveRank[T []float64 | map[string][]float64](
 	_, _ = w.Write(b)
 	return nil
 }
+
+func (h *searchIndexerServer) handleIndexStatusUpdate(w http.ResponseWriter, r *http.Request) error {
+	var body struct {
+		RepoID   uint32
+		Branches []struct {
+			Name    string
+			Version string
+		}
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&body)
+	if err != nil {
+		return err
+	}
+
+	err = h.db.ZoektRepos().UpdateIndexStatuses(r.Context(), map[uint32]*zoekt.MinimalRepoListEntry{
+		body.RepoID: {
+			Branches: body.Branches,
+		},
+	})
+	if err != nil {
+		return err
+	}
+	w.WriteHeader(http.StatusOK)
+	return nil
+}
