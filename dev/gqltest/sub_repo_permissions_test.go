@@ -53,7 +53,6 @@ func TestSubRepoPermissionsPerforce(t *testing.T) {
 		wantBlob := ``
 
 		if diff := cmp.Diff(wantBlob, blob); diff != "" {
-			checkProviders()
 			checkUserPerms(t, aliceUsername)
 			checkSiteConfig(t)
 			t.Fatalf("Blob mismatch (-want +got):\n%s", diff)
@@ -74,7 +73,6 @@ func TestSubRepoPermissionsPerforce(t *testing.T) {
 		}
 
 		if diff := cmp.Diff(wantFiles, files); diff != "" {
-			checkProviders()
 			checkUserPerms(t, aliceUsername)
 			checkSiteConfig(t)
 			t.Fatalf("fileNames mismatch (-want +got):\n%s", diff)
@@ -311,8 +309,12 @@ func createTestUserAndWaitForRepo(t *testing.T) (*gqltestutil.Client, string) {
 		t.Fatal(err)
 	}
 
+	start := time.Now()
 	syncUserPerms(t, aliceID, aliceUsername)
-	checkProviders()
+	fmt.Printf("synced user perms in %v\n", time.Now().Sub(start))
+	start = time.Now()
+	checkProviders(t)
+	fmt.Printf("waited for provider for %v\n", time.Now().Sub(start))
 	return userClient, perforceRepoName
 }
 
@@ -340,10 +342,21 @@ func syncUserPerms(t *testing.T, userID, userName string) {
 	}
 }
 
-func checkProviders() {
-	_, providers := authz.GetProviders()
-	for _, p := range providers {
-		fmt.Printf("Provider: %s", p.URN())
+func checkProviders(t *testing.T) {
+	// Wait up to 10 seconds for the user to have permissions synced
+	// from the code host at least once.
+	err := gqltestutil.Retry(30*time.Second, func() error {
+		_, providers := authz.GetProviders()
+		if len(providers) == 0 {
+			return gqltestutil.ErrContinueRetry
+		}
+		for _, p := range providers {
+			fmt.Printf("provider URN: %s, service id: %s, service type: %s\n", p.URN(), p.ServiceID(), p.ServiceType())
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal("Waiting for user permissions to be synced:", err)
 	}
 }
 
