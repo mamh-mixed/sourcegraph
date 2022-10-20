@@ -50,7 +50,8 @@ type Test struct {
 	ExpectedTrailers http.Header
 }
 
-func withHeaderXRequestWith(r *http.Request) *http.Request {
+func newRequest(method, path string, body io.Reader) *http.Request {
+	r := httptest.NewRequest(method, path, body)
 	r.Header.Add("X-Requested-With", "Sourcegraph")
 	return r
 }
@@ -58,20 +59,14 @@ func withHeaderXRequestWith(r *http.Request) *http.Request {
 func TestExecRequest(t *testing.T) {
 	tests := []Test{
 		{
-			Name: "HTTP GET",
-			Request: withHeaderXRequestWith(httptest.NewRequest(
-				"GET", "/exec", strings.NewReader("{}")),
-			),
+			Name:         "HTTP GET",
+			Request:      newRequest("GET", "/exec", strings.NewReader("{}")),
 			ExpectedCode: http.StatusMethodNotAllowed,
 			ExpectedBody: "",
 		},
 		{
-			Name: "Command",
-			Request: withHeaderXRequestWith(httptest.NewRequest(
-				"POST", "/exec", strings.NewReader(
-					`{"repo": "github.com/gorilla/mux", "args": ["testcommand"]}`,
-				),
-			)),
+			Name:         "Command",
+			Request:      newRequest("POST", "/exec", strings.NewReader(`{"repo": "github.com/gorilla/mux", "args": ["testcommand"]}`)),
 			ExpectedCode: http.StatusOK,
 			ExpectedBody: "teststdout",
 			ExpectedTrailers: http.Header{
@@ -81,12 +76,8 @@ func TestExecRequest(t *testing.T) {
 			},
 		},
 		{
-			Name: "CommandWithURL",
-			Request: withHeaderXRequestWith(httptest.NewRequest(
-				"POST", "/exec", strings.NewReader(
-					`{"repo": "my-mux", "url": "https://github.com/gorilla/mux.git", "args": ["testcommand"]}`,
-				),
-			)),
+			Name:         "CommandWithURL",
+			Request:      newRequest("POST", "/exec", strings.NewReader(`{"repo": "my-mux", "url": "https://github.com/gorilla/mux.git", "args": ["testcommand"]}`)),
 			ExpectedCode: http.StatusOK,
 			ExpectedBody: "teststdout",
 			ExpectedTrailers: http.Header{
@@ -96,52 +87,34 @@ func TestExecRequest(t *testing.T) {
 			},
 		},
 		{
-			Name: "NonexistingRepo",
-			Request: withHeaderXRequestWith(httptest.NewRequest(
-				"POST", "/exec", strings.NewReader(
-					`{"repo": "github.com/gorilla/doesnotexist", "args": ["testcommand"]}`,
-				),
-			)),
+			Name:         "NonexistingRepo",
+			Request:      newRequest("POST", "/exec", strings.NewReader(`{"repo": "github.com/gorilla/doesnotexist", "args": ["testcommand"]}`)),
 			ExpectedCode: http.StatusNotFound,
 			ExpectedBody: `{"cloneInProgress":false}`,
 		},
 		{
 			Name: "NonexistingRepoWithURL",
-			Request: withHeaderXRequestWith(httptest.NewRequest(
-				"POST", "/exec", strings.NewReader(
-					`{"repo": "my-doesnotexist", "url": "https://github.com/gorilla/doesntexist.git", "args": ["testcommand"]}`,
-				),
-			)),
+			Request: newRequest(
+				"POST", "/exec", strings.NewReader(`{"repo": "my-doesnotexist", "url": "https://github.com/gorilla/doesntexist.git", "args": ["testcommand"]}`)),
 			ExpectedCode: http.StatusNotFound,
 			ExpectedBody: `{"cloneInProgress":false}`,
 		},
 		{
-			Name: "UnclonedRepoWithoutURL",
-			Request: withHeaderXRequestWith(httptest.NewRequest(
-				"POST", "/exec", strings.NewReader(
-					`{"repo": "github.com/nicksnyder/go-i18n", "args": ["testcommand"]}`,
-				),
-			)),
+			Name:         "UnclonedRepoWithoutURL",
+			Request:      newRequest("POST", "/exec", strings.NewReader(`{"repo": "github.com/nicksnyder/go-i18n", "args": ["testcommand"]}`)),
 			ExpectedCode: http.StatusNotFound,
 			ExpectedBody: `{"cloneInProgress":true}`, // we now fetch the URL from GetRemoteURL so it works.
 		},
 		{
-			Name: "UnclonedRepoWithURL",
-			Request: withHeaderXRequestWith(httptest.NewRequest(
-				"POST", "/exec", strings.NewReader(
-					`{"repo": "github.com/nicksnyder/go-i18n", "url": "https://github.com/nicksnyder/go-i18n.git", "args": ["testcommand"]}`,
-				),
-			)),
+			Name:         "UnclonedRepoWithURL",
+			Request:      newRequest("POST", "/exec", strings.NewReader(`{"repo": "github.com/nicksnyder/go-i18n", "url": "https://github.com/nicksnyder/go-i18n.git", "args": ["testcommand"]}`)),
 			ExpectedCode: http.StatusNotFound,
 			ExpectedBody: `{"cloneInProgress":true}`,
 		},
 		{
 			Name: "Error",
-			Request: withHeaderXRequestWith(httptest.NewRequest(
-				"POST", "/exec", strings.NewReader(
-					`{"repo": "github.com/gorilla/mux", "args": ["testerror"]}`,
-				),
-			)),
+			Request: newRequest(
+				"POST", "/exec", strings.NewReader(`{"repo": "github.com/gorilla/mux", "args": ["testerror"]}`)),
 			ExpectedCode: http.StatusOK,
 			ExpectedTrailers: http.Header{
 				"X-Exec-Error":       {"testerror"},
@@ -151,19 +124,15 @@ func TestExecRequest(t *testing.T) {
 		},
 		{
 			Name: "EmptyInput",
-			Request: withHeaderXRequestWith(httptest.NewRequest(
+			Request: newRequest(
 				"POST", "/exec", strings.NewReader("{}")),
-			),
 			ExpectedCode: http.StatusBadRequest,
 			ExpectedBody: "invalid command",
 		},
 		{
 			Name: "BadCommand",
-			Request: withHeaderXRequestWith(httptest.NewRequest(
-				"POST", "/exec", strings.NewReader(
-					`{"repo":"github.com/sourcegraph/sourcegraph", "args": ["invalid-command"]}`,
-				),
-			)),
+			Request: newRequest(
+				"POST", "/exec", strings.NewReader(`{"repo":"github.com/sourcegraph/sourcegraph", "args": ["invalid-command"]}`)),
 			ExpectedCode: http.StatusBadRequest,
 			ExpectedBody: "invalid command",
 		},
@@ -244,7 +213,7 @@ func TestServer_handleP4Exec(t *testing.T) {
 	tests := []Test{
 		{
 			Name:         "Command",
-			Request:      withHeaderXRequestWith(httptest.NewRequest("POST", "/p4-exec", strings.NewReader(`{"args": ["users"]}`))),
+			Request:      newRequest("POST", "/p4-exec", strings.NewReader(`{"args": ["users"]}`)),
 			ExpectedCode: http.StatusOK,
 			ExpectedBody: "admin <admin@joe-perforce-server> (admin) accessed 2021/01/31",
 			ExpectedTrailers: http.Header{
@@ -255,19 +224,19 @@ func TestServer_handleP4Exec(t *testing.T) {
 		},
 		{
 			Name:         "Error",
-			Request:      withHeaderXRequestWith(httptest.NewRequest("POST", "/p4-exec", strings.NewReader(`{"args": ["bad_command"]}`))),
+			Request:      newRequest("POST", "/p4-exec", strings.NewReader(`{"args": ["bad_command"]}`)),
 			ExpectedCode: http.StatusBadRequest,
 			ExpectedBody: "subcommand \"bad_command\" is not allowed",
 		},
 		{
 			Name:         "EmptyBody",
-			Request:      withHeaderXRequestWith(httptest.NewRequest("POST", "/p4-exec", nil)),
+			Request:      newRequest("POST", "/p4-exec", nil),
 			ExpectedCode: http.StatusBadRequest,
 			ExpectedBody: `EOF`,
 		},
 		{
 			Name:         "EmptyInput",
-			Request:      withHeaderXRequestWith(httptest.NewRequest("POST", "/p4-exec", strings.NewReader("{}"))),
+			Request:      newRequest("POST", "/p4-exec", strings.NewReader("{}")),
 			ExpectedCode: http.StatusBadRequest,
 			ExpectedBody: `args must be greater than or equal to 1`,
 		},
@@ -784,7 +753,7 @@ func testHandleRepoDelete(t *testing.T, deletedInDB bool) {
 	}
 
 	// This will perform an initial clone
-	req := withHeaderXRequestWith(httptest.NewRequest("GET", "/repo-update", bytes.NewReader(body)))
+	req := newRequest("GET", "/repo-update", bytes.NewReader(body))
 	s.handleRepoUpdate(rr, req)
 
 	size := dirSize(s.dir(repoName).Path("."))
@@ -828,7 +797,7 @@ func testHandleRepoDelete(t *testing.T, deletedInDB bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	req = withHeaderXRequestWith(httptest.NewRequest("GET", "/delete", bytes.NewReader(body)))
+	req = newRequest("GET", "/delete", bytes.NewReader(body))
 	s.handleRepoDelete(rr, req)
 
 	size = dirSize(s.dir(repoName).Path("."))
@@ -905,7 +874,7 @@ func TestHandleRepoUpdate(t *testing.T) {
 	s.GetRemoteURLFunc = func(ctx context.Context, name api.RepoName) (string, error) {
 		return "https://invalid.example.com/", nil
 	}
-	req := withHeaderXRequestWith(httptest.NewRequest("GET", "/repo-update", bytes.NewReader(body)))
+	req := newRequest("GET", "/repo-update", bytes.NewReader(body))
 	s.handleRepoUpdate(rr, req)
 
 	size := dirSize(s.dir(repoName).Path("."))
@@ -935,7 +904,7 @@ func TestHandleRepoUpdate(t *testing.T) {
 
 	// This will perform an initial clone
 	s.GetRemoteURLFunc = oldRemoveURLFunc
-	req = withHeaderXRequestWith(httptest.NewRequest("GET", "/repo-update", bytes.NewReader(body)))
+	req = newRequest("GET", "/repo-update", bytes.NewReader(body))
 	s.handleRepoUpdate(rr, req)
 
 	size = dirSize(s.dir(repoName).Path("."))
@@ -965,7 +934,7 @@ func TestHandleRepoUpdate(t *testing.T) {
 	t.Cleanup(func() { doBackgroundRepoUpdateMock = nil })
 
 	// This will trigger an update since the repo is already cloned
-	req = withHeaderXRequestWith(httptest.NewRequest("GET", "/repo-update", bytes.NewReader(body)))
+	req = newRequest("GET", "/repo-update", bytes.NewReader(body))
 	s.handleRepoUpdate(rr, req)
 
 	want = &types.GitserverRepo{
@@ -989,7 +958,7 @@ func TestHandleRepoUpdate(t *testing.T) {
 	doBackgroundRepoUpdateMock = nil
 
 	// This will trigger an update since the repo is already cloned
-	req = withHeaderXRequestWith(httptest.NewRequest("GET", "/repo-update", bytes.NewReader(body)))
+	req = newRequest("GET", "/repo-update", bytes.NewReader(body))
 	s.handleRepoUpdate(rr, req)
 
 	want = &types.GitserverRepo{
@@ -1458,13 +1427,13 @@ func TestHandleBatchLog(t *testing.T) {
 	tests := []BatchLogTest{
 		{
 			Name:         "bad request",
-			Request:      withHeaderXRequestWith(httptest.NewRequest("POST", "/batch-log", strings.NewReader(``))),
+			Request:      newRequest("POST", "/batch-log", strings.NewReader(``)),
 			ExpectedCode: http.StatusBadRequest,
 			ExpectedBody: "EOF", // the particular error when parsing empty payload
 		},
 		{
 			Name:         "empty",
-			Request:      withHeaderXRequestWith(httptest.NewRequest("POST", "/batch-log", strings.NewReader(`{}`))),
+			Request:      newRequest("POST", "/batch-log", strings.NewReader(`{}`)),
 			ExpectedCode: http.StatusOK,
 			ExpectedBody: mustEncodeJSONResponse(protocol.BatchLogResponse{
 				Results: []protocol.BatchLogResult{},
@@ -1472,14 +1441,14 @@ func TestHandleBatchLog(t *testing.T) {
 		},
 		{
 			Name: "all resolved",
-			Request: withHeaderXRequestWith(httptest.NewRequest("POST", "/batch-log", strings.NewReader(`{
+			Request: newRequest("POST", "/batch-log", strings.NewReader(`{
 				"repoCommits": [
 					{"repo": "github.com/foo/bar", "commitId": "deadbeef1"},
 					{"repo": "github.com/foo/baz", "commitId": "deadbeef2"},
 					{"repo": "github.com/foo/bonk", "commitId": "deadbeef3"}
 				],
 				"format": "--format=test"
-			}`))),
+			}`)),
 			ExpectedCode: http.StatusOK,
 			ExpectedBody: mustEncodeJSONResponse(protocol.BatchLogResponse{
 				Results: []protocol.BatchLogResult{
@@ -1503,14 +1472,14 @@ func TestHandleBatchLog(t *testing.T) {
 		},
 		{
 			Name: "partially resolved",
-			Request: withHeaderXRequestWith(httptest.NewRequest("POST", "/batch-log", strings.NewReader(`{
+			Request: newRequest("POST", "/batch-log", strings.NewReader(`{
 				"repoCommits": [
 					{"repo": "github.com/foo/bar", "commitId": "deadbeef1"},
 					{"repo": "github.com/foo/baz", "commitId": "dumbmilk1"},
 					{"repo": "github.com/foo/honk", "commitId": "deadbeef3"}
 				],
 				"format": "--format=test"
-			}`))),
+			}`)),
 			ExpectedCode: http.StatusOK,
 			ExpectedBody: mustEncodeJSONResponse(protocol.BatchLogResponse{
 				Results: []protocol.BatchLogResult{
