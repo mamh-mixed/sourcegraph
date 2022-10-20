@@ -100,7 +100,7 @@ func NewInternal(base *mux.Router) *mux.Router {
 	base.Path("/ranks/{RepoName:.*}/documents").Methods("GET").Name(DocumentRanks)
 	base.Path("/ranks/{RepoName:.*}").Methods("GET").Name(RepoRank)
 	base.Path("/search/configuration").Methods("GET", "POST").Name(SearchConfiguration)
-	base.Path("/search/index-status").Methods("GET", "POST").Name(UpdateIndexStatus)
+	base.Path("/search/index-status").Methods("POST").Name(UpdateIndexStatus)
 	base.Path("/telemetry").Methods("POST").Name(Telemetry)
 	base.Path("/lsif/upload").Methods("POST").Name(LSIFUpload)
 	base.Path("/search/stream").Methods("GET").Name(StreamingSearch)

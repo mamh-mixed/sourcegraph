@@ -41,8 +41,7 @@ func (j *updater) Routines(startupCtx context.Context, logger log.Logger) ([]gor
 	gitserverclient := gitserver.NewClient(db)
 
 	return []goroutine.BackgroundRoutine{
-		// TODO: Fix the time here
-		goroutine.NewPeriodicGoroutine(context.Background(), 3*time.Second, &handler{
+		goroutine.NewPeriodicGoroutine(context.Background(), 1*time.Hour, &handler{
 			db:              db,
 			logger:          logger,
 			gitserverClient: gitserverclient,

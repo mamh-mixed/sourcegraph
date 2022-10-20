@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/sourcegraph/log"
 	"github.com/sourcegraph/zoekt"
 
 	"github.com/sourcegraph/sourcegraph/internal/api"
@@ -336,25 +337,20 @@ func serveRank[T []float64 | map[string][]float64](
 func (h *searchIndexerServer) handleIndexStatusUpdate(w http.ResponseWriter, r *http.Request) error {
 	var body struct {
 		RepoID   uint32
-		Branches []struct {
-			Name    string
-			Version string
-		}
+		Branches []zoekt.RepositoryBranch
 	}
 
-	err := json.NewDecoder(r.Body).Decode(&body)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		return err
 	}
 
-	err = h.db.ZoektRepos().UpdateIndexStatuses(r.Context(), map[uint32]*zoekt.MinimalRepoListEntry{
-		body.RepoID: {
-			Branches: body.Branches,
-		},
-	})
-	if err != nil {
+	log.Scoped("searchIndexerServer", "").Info("updating index status", log.Uint32("repo", body.RepoID))
+	indexed := map[uint32]*zoekt.MinimalRepoListEntry{body.RepoID: {Branches: body.Branches}}
+
+	if err := h.db.ZoektRepos().UpdateIndexStatuses(r.Context(), indexed); err != nil {
 		return err
 	}
+
 	w.WriteHeader(http.StatusOK)
 	return nil
 }
