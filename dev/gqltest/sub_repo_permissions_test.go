@@ -356,7 +356,7 @@ func checkProviders(t *testing.T) {
 		return nil
 	})
 	if err != nil {
-		t.Fatal("Waiting for user permissions to be synced:", err)
+		t.Fatal("Waiting for providers to be added:", err)
 	}
 }
 
