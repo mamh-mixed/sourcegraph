@@ -7,8 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sourcegraph/sourcegraph/internal/authz"
-
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/sourcegraph/sourcegraph/internal/gqltestutil"
@@ -309,12 +307,9 @@ func createTestUserAndWaitForRepo(t *testing.T) (*gqltestutil.Client, string) {
 		t.Fatal(err)
 	}
 
-	start := time.Now()
 	syncUserPerms(t, aliceID, aliceUsername)
-	fmt.Printf("synced user perms in %v\n", time.Now().Sub(start))
-	start = time.Now()
-	checkProviders(t)
-	fmt.Printf("waited for provider for %v\n", time.Now().Sub(start))
+	// need to sleep 5 seconds to ensure perforce has been added as an authz provider
+	time.Sleep(5 * time.Second)
 	return userClient, perforceRepoName
 }
 
@@ -339,24 +334,6 @@ func syncUserPerms(t *testing.T, userID, userName string) {
 	})
 	if err != nil {
 		t.Fatal("Waiting for user permissions to be synced:", err)
-	}
-}
-
-func checkProviders(t *testing.T) {
-	// Wait up to 10 seconds for the user to have permissions synced
-	// from the code host at least once.
-	err := gqltestutil.Retry(30*time.Second, func() error {
-		_, providers := authz.GetProviders()
-		if len(providers) == 0 {
-			return gqltestutil.ErrContinueRetry
-		}
-		for _, p := range providers {
-			fmt.Printf("provider URN: %s, service id: %s, service type: %s\n", p.URN(), p.ServiceID(), p.ServiceType())
-		}
-		return nil
-	})
-	if err != nil {
-		t.Fatal("Waiting for providers to be added:", err)
 	}
 }
 

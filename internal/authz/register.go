@@ -1,7 +1,6 @@
 package authz
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -56,9 +55,6 @@ func SetProviders(authzAllowByDefault bool, z []Provider) {
 //
 // It blocks until SetProviders has been called at least once.
 func GetProviders() (authzAllowByDefault bool, providers []Provider) {
-	fmt.Println("getting providers...")
-	fmt.Printf("is test? %v\n", isTest)
-	fmt.Printf("how many auth providers currently? %d\n", len(authzProviders))
 	if !isTest {
 		<-authzProvidersReady
 	}
