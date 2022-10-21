@@ -3155,13 +3155,12 @@ Webhooks registered in Sourcegraph instance.
     Column    |           Type           | Collation | Nullable |       Default       
 --------------+--------------------------+-----------+----------+---------------------
  repo_id      | integer                  |           | not null | 
- commit       | text                     |           |          | 
+ branches     | jsonb                    |           | not null | '[]'::jsonb
  index_status | text                     |           | not null | 'not_indexed'::text
  updated_at   | timestamp with time zone |           | not null | now()
  created_at   | timestamp with time zone |           | not null | now()
 Indexes:
     "zoekt_repos_pkey" PRIMARY KEY, btree (repo_id)
-    "repo_id_commit_unique" UNIQUE CONSTRAINT, btree (repo_id, commit)
 
 ```
 

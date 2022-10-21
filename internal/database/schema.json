@@ -19832,11 +19832,11 @@
       "Comment": "",
       "Columns": [
         {
-          "Name": "commit",
+          "Name": "branches",
           "Index": 2,
-          "TypeName": "text",
-          "IsNullable": true,
-          "Default": "",
+          "TypeName": "jsonb",
+          "IsNullable": false,
+          "Default": "'[]'::jsonb",
           "CharacterMaximumLength": 0,
           "IsIdentity": false,
           "IdentityGeneration": "",
@@ -19898,16 +19898,6 @@
         }
       ],
       "Indexes": [
-        {
-          "Name": "repo_id_commit_unique",
-          "IsPrimaryKey": false,
-          "IsUnique": true,
-          "IsExclusion": false,
-          "IsDeferrable": false,
-          "IndexDefinition": "CREATE UNIQUE INDEX repo_id_commit_unique ON zoekt_repos USING btree (repo_id, commit)",
-          "ConstraintType": "u",
-          "ConstraintDefinition": "UNIQUE (repo_id, commit)"
-        },
         {
           "Name": "zoekt_repos_pkey",
           "IsPrimaryKey": true,

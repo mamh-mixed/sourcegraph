@@ -3620,7 +3620,7 @@ ALTER SEQUENCE webhooks_id_seq OWNED BY webhooks.id;
 
 CREATE TABLE zoekt_repos (
     repo_id integer NOT NULL,
-    commit text,
+    branches jsonb DEFAULT '[]'::jsonb NOT NULL,
     index_status text DEFAULT 'not_indexed'::text NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL
@@ -4047,9 +4047,6 @@ ALTER TABLE ONLY registry_extension_releases
 
 ALTER TABLE ONLY registry_extensions
     ADD CONSTRAINT registry_extensions_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY zoekt_repos
-    ADD CONSTRAINT repo_id_commit_unique UNIQUE (repo_id, commit);
 
 ALTER TABLE ONLY repo_kvps
     ADD CONSTRAINT repo_kvps_pkey PRIMARY KEY (repo_id, key) INCLUDE (value);
