@@ -1,8 +1,6 @@
 CREATE TABLE IF NOT EXISTS zoekt_repos (
     repo_id integer NOT NULL PRIMARY KEY,
-    commit text,
-
-    CONSTRAINT repo_id_commit_unique UNIQUE (repo_id, commit),
+    branches jsonb DEFAULT '[]'::jsonb NOT NULL,
 
     index_status text DEFAULT 'not_indexed'::text NOT NULL,
 

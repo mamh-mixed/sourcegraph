@@ -30,9 +30,9 @@ func TestZoektRepos_GetZoektRepo(t *testing.T) {
 	repo3, _ := createTestRepo(ctx, t, db, &createTestRepoPayload{Name: "repo3"})
 
 	assertZoektRepos(t, ctx, s, map[api.RepoID]*ZoektRepo{
-		repo1.ID: {RepoID: repo1.ID, IndexStatus: "not_indexed", Commit: ""},
-		repo2.ID: {RepoID: repo2.ID, IndexStatus: "not_indexed", Commit: ""},
-		repo3.ID: {RepoID: repo3.ID, IndexStatus: "not_indexed", Commit: ""},
+		repo1.ID: {RepoID: repo1.ID, IndexStatus: "not_indexed", Branches: []zoekt.RepositoryBranch{}},
+		repo2.ID: {RepoID: repo2.ID, IndexStatus: "not_indexed", Branches: []zoekt.RepositoryBranch{}},
+		repo3.ID: {RepoID: repo3.ID, IndexStatus: "not_indexed", Branches: []zoekt.RepositoryBranch{}},
 	})
 }
 
@@ -57,15 +57,12 @@ func TestZoektRepos_UpdateIndexStatuses(t *testing.T) {
 	}
 
 	// No repo is indexed
-	assertZoektRepoStatistics(t, ctx, s, ZoektRepoStatistics{
-		Total:      3,
-		NotIndexed: 3,
-	})
+	assertZoektRepoStatistics(t, ctx, s, ZoektRepoStatistics{Total: 3, NotIndexed: 3})
 
 	assertZoektRepos(t, ctx, s, map[api.RepoID]*ZoektRepo{
-		repos[0].ID: {RepoID: repos[0].ID, IndexStatus: "not_indexed"},
-		repos[1].ID: {RepoID: repos[1].ID, IndexStatus: "not_indexed"},
-		repos[2].ID: {RepoID: repos[2].ID, IndexStatus: "not_indexed"},
+		repos[0].ID: {RepoID: repos[0].ID, IndexStatus: "not_indexed", Branches: []zoekt.RepositoryBranch{}},
+		repos[1].ID: {RepoID: repos[1].ID, IndexStatus: "not_indexed", Branches: []zoekt.RepositoryBranch{}},
+		repos[2].ID: {RepoID: repos[2].ID, IndexStatus: "not_indexed", Branches: []zoekt.RepositoryBranch{}},
 	})
 
 	// 1/3 repo is indexed
@@ -77,16 +74,12 @@ func TestZoektRepos_UpdateIndexStatuses(t *testing.T) {
 		t.Fatalf("unexpected error: %s", err)
 	}
 
-	assertZoektRepoStatistics(t, ctx, s, ZoektRepoStatistics{
-		Total:      3,
-		Indexed:    1,
-		NotIndexed: 2,
-	})
+	assertZoektRepoStatistics(t, ctx, s, ZoektRepoStatistics{Total: 3, Indexed: 1, NotIndexed: 2})
 
 	assertZoektRepos(t, ctx, s, map[api.RepoID]*ZoektRepo{
-		repos[0].ID: {RepoID: repos[0].ID, IndexStatus: "indexed", Commit: "d34db33f"},
-		repos[1].ID: {RepoID: repos[1].ID, IndexStatus: "not_indexed"},
-		repos[2].ID: {RepoID: repos[2].ID, IndexStatus: "not_indexed"},
+		repos[0].ID: {RepoID: repos[0].ID, IndexStatus: "indexed", Branches: []zoekt.RepositoryBranch{{Name: "main", Version: "d34db33f"}}},
+		repos[1].ID: {RepoID: repos[1].ID, IndexStatus: "not_indexed", Branches: []zoekt.RepositoryBranch{}},
+		repos[2].ID: {RepoID: repos[2].ID, IndexStatus: "not_indexed", Branches: []zoekt.RepositoryBranch{}},
 	})
 
 	// Index all repositories
@@ -103,15 +96,58 @@ func TestZoektRepos_UpdateIndexStatuses(t *testing.T) {
 		t.Fatalf("unexpected error: %s", err)
 	}
 
-	assertZoektRepoStatistics(t, ctx, s, ZoektRepoStatistics{
-		Total:   3,
-		Indexed: 3,
-	})
+	assertZoektRepoStatistics(t, ctx, s, ZoektRepoStatistics{Total: 3, Indexed: 3})
 
 	assertZoektRepos(t, ctx, s, map[api.RepoID]*ZoektRepo{
-		repos[0].ID: {RepoID: repos[0].ID, IndexStatus: "indexed", Commit: "f00b4r"},
-		repos[1].ID: {RepoID: repos[1].ID, IndexStatus: "indexed", Commit: "b4rf00"},
-		repos[2].ID: {RepoID: repos[2].ID, IndexStatus: "indexed", Commit: "d00d00"},
+		repos[0].ID: {
+			RepoID:      repos[0].ID,
+			IndexStatus: "indexed",
+			Branches:    []zoekt.RepositoryBranch{{Name: "main", Version: "f00b4r"}},
+		},
+		repos[1].ID: {
+			RepoID:      repos[1].ID,
+			IndexStatus: "indexed",
+			Branches:    []zoekt.RepositoryBranch{{Name: "main-2", Version: "b4rf00"}},
+		},
+		repos[2].ID: {
+			RepoID:      repos[2].ID,
+			IndexStatus: "indexed",
+			Branches:    []zoekt.RepositoryBranch{{Name: "main", Version: "d00d00"}},
+		},
+	})
+
+	// Add an additional branch to a single repository
+	indexed = map[uint32]*zoekt.MinimalRepoListEntry{
+		// additional branch
+		uint32(repos[2].ID): {Branches: []zoekt.RepositoryBranch{
+			{Name: "main", Version: "d00d00"},
+			{Name: "v15.3.1", Version: "b4rf00"},
+		}},
+	}
+
+	if err := s.UpdateIndexStatuses(ctx, indexed); err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+
+	assertZoektRepos(t, ctx, s, map[api.RepoID]*ZoektRepo{
+		repos[0].ID: {
+			RepoID:      repos[0].ID,
+			IndexStatus: "indexed",
+			Branches:    []zoekt.RepositoryBranch{{Name: "main", Version: "f00b4r"}},
+		},
+		repos[1].ID: {
+			RepoID:      repos[1].ID,
+			IndexStatus: "indexed",
+			Branches:    []zoekt.RepositoryBranch{{Name: "main-2", Version: "b4rf00"}},
+		},
+		repos[2].ID: {
+			RepoID:      repos[2].ID,
+			IndexStatus: "indexed",
+			Branches: []zoekt.RepositoryBranch{
+				{Name: "main", Version: "d00d00"},
+				{Name: "v15.3.1", Version: "b4rf00"},
+			},
+		},
 	})
 }
 

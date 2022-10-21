@@ -2,7 +2,7 @@ package database
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
 	"time"
 
 	"github.com/keegancsmith/sqlf"
@@ -52,8 +52,8 @@ func (s *zoektReposStore) Transact(ctx context.Context) (ZoektReposStore, error)
 
 type ZoektRepo struct {
 	RepoID      api.RepoID
-	Commit      api.CommitID
 	IndexStatus string
+	Branches    []zoekt.RepositoryBranch
 
 	UpdatedAt time.Time
 	CreatedAt time.Time
@@ -65,11 +65,11 @@ func (s *zoektReposStore) GetZoektRepo(ctx context.Context, repo api.RepoID) (*Z
 
 func scanZoektRepo(sc dbutil.Scanner) (*ZoektRepo, error) {
 	var zr ZoektRepo
-	var commit string
+	var branches json.RawMessage
 
 	err := sc.Scan(
 		&zr.RepoID,
-		&dbutil.NullString{S: &commit},
+		&branches,
 		&zr.IndexStatus,
 		&zr.UpdatedAt,
 		&zr.CreatedAt,
@@ -78,7 +78,9 @@ func scanZoektRepo(sc dbutil.Scanner) (*ZoektRepo, error) {
 		return nil, err
 	}
 
-	zr.Commit = api.CommitID(commit)
+	if err = json.Unmarshal(branches, &zr.Branches); err != nil {
+		return nil, errors.Wrapf(err, "scanZoektRepo: failed to unmarshal branches")
+	}
 
 	return &zr, nil
 }
@@ -87,7 +89,7 @@ const getZoektRepoQueryFmtstr = `
 -- source: internal/database/zoekt_repos.go:zoektReposStore.GetZoektRepo
 SELECT
 	zr.repo_id,
-	zr.commit,
+	zr.branches,
 	zr.index_status,
 	zr.updated_at,
 	zr.created_at
@@ -116,17 +118,13 @@ func (s *zoektReposStore) UpdateIndexStatuses(ctx context.Context, indexed map[u
 	inserter := batch.NewInserter(ctx, tx.Handle(), "temp_table", batch.MaxNumPostgresParameters, tempTableColumns...)
 
 	for repoID, entry := range indexed {
-		commit := ""
 
-		for i, branch := range entry.Branches {
-			if i != 0 {
-				fmt.Printf("TODO: only persisting one branch, ignoring: %+v\n", branch)
-				continue
-			}
-			commit = branch.Version
+		branches, err := branchesColumn(entry.Branches)
+		if err != nil {
+			return err
 		}
 
-		if err := inserter.Insert(ctx, repoID, "indexed", dbutil.NullStringColumn(commit)); err != nil {
+		if err := inserter.Insert(ctx, repoID, "indexed", branches); err != nil {
 			return err
 		}
 	}
@@ -142,17 +140,26 @@ func (s *zoektReposStore) UpdateIndexStatuses(ctx context.Context, indexed map[u
 	return nil
 }
 
+func branchesColumn(branches []zoekt.RepositoryBranch) (msg json.RawMessage, err error) {
+	if len(branches) == 0 {
+		msg = json.RawMessage("[]")
+	} else {
+		msg, err = json.Marshal(branches)
+	}
+	return
+}
+
 var tempTableColumns = []string{
 	"repo_id",
 	"index_status",
-	"commit",
+	"branches",
 }
 
 const updateIndexStatusesCreateTempTableQuery = `
 CREATE TEMPORARY TABLE temp_table (
 	repo_id integer NOT NULL,
 	index_status text NOT NULL,
-	commit text
+	branches jsonb
 ) ON COMMIT DROP
 `
 
@@ -160,13 +167,13 @@ const updateIndexStatusesUpdateQuery = `
 UPDATE zoekt_repos t
 SET
 	index_status = source.index_status,
-	commit       = source.commit,
+	branches       = source.branches,
 	updated_at   = now()
 FROM temp_table source
 WHERE
 	t.repo_id = source.repo_id
 AND
-	(t.index_status != source.index_status OR t.commit != source.commit)
+	(t.index_status != source.index_status OR t.branches != source.branches)
 `
 
 type ZoektRepoStatistics struct {
