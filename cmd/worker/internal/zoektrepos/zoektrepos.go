@@ -11,7 +11,6 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/conf"
 	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/env"
-	"github.com/sourcegraph/sourcegraph/internal/gitserver"
 	"github.com/sourcegraph/sourcegraph/internal/goroutine"
 	"github.com/sourcegraph/sourcegraph/internal/search"
 )
@@ -25,7 +24,7 @@ func NewUpdater() job.Job {
 }
 
 func (j *updater) Description() string {
-	return ""
+	return "zoektrepos.Updater updates the zoekt_repos table periodically to reflect the search-index status of each repository."
 }
 
 func (j *updater) Config() []env.Config {
@@ -38,21 +37,17 @@ func (j *updater) Routines(startupCtx context.Context, logger log.Logger) ([]gor
 		return nil, err
 	}
 
-	gitserverclient := gitserver.NewClient(db)
-
 	return []goroutine.BackgroundRoutine{
 		goroutine.NewPeriodicGoroutine(context.Background(), 1*time.Hour, &handler{
-			db:              db,
-			logger:          logger,
-			gitserverClient: gitserverclient,
+			db:     db,
+			logger: logger,
 		}),
 	}, nil
 }
 
 type handler struct {
-	db              database.DB
-	logger          log.Logger
-	gitserverClient gitserver.Client
+	db     database.DB
+	logger log.Logger
 }
 
 var _ goroutine.Handler = &handler{}
@@ -60,6 +55,7 @@ var _ goroutine.ErrorHandler = &handler{}
 
 func (h *handler) Handle(ctx context.Context) error {
 	if !conf.SearchIndexEnabled() {
+		h.logger.Debug("Search indexing is disabled. Skipping update of index statuses.")
 		return nil
 	}
 

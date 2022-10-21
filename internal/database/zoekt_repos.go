@@ -21,11 +21,15 @@ type ZoektReposStore interface {
 
 	With(other basestore.ShareableStore) ZoektReposStore
 
-	// UpdateIndexStatuses is a horse
+	// UpdateIndexStatuses updates the index status of the rows in zoekt_repos
+	// whose repo_id matches an entry in the `indexed` map.
 	UpdateIndexStatuses(ctx context.Context, indexed map[uint32]*zoekt.MinimalRepoListEntry) error
 
-	// Update updates the given rows with the GitServer status of a repo.
+	// GetStatistics returns a summary of the zoekt_repos table.
 	GetStatistics(ctx context.Context) (ZoektRepoStatistics, error)
+
+	// GetZoektRepo returns the ZoektRepo for the given repository ID.
+	GetZoektRepo(ctx context.Context, repo api.RepoID) (*ZoektRepo, error)
 }
 
 var _ ZoektReposStore = (*zoektReposStore)(nil)
@@ -86,7 +90,6 @@ func scanZoektRepo(sc dbutil.Scanner) (*ZoektRepo, error) {
 }
 
 const getZoektRepoQueryFmtstr = `
--- source: internal/database/zoekt_repos.go:zoektReposStore.GetZoektRepo
 SELECT
 	zr.repo_id,
 	zr.branches,
@@ -118,7 +121,6 @@ func (s *zoektReposStore) UpdateIndexStatuses(ctx context.Context, indexed map[u
 	inserter := batch.NewInserter(ctx, tx.Handle(), "temp_table", batch.MaxNumPostgresParameters, tempTableColumns...)
 
 	for repoID, entry := range indexed {
-
 		branches, err := branchesColumn(entry.Branches)
 		if err != nil {
 			return err
@@ -157,23 +159,24 @@ var tempTableColumns = []string{
 
 const updateIndexStatusesCreateTempTableQuery = `
 CREATE TEMPORARY TABLE temp_table (
-	repo_id integer NOT NULL,
+	repo_id      integer NOT NULL,
 	index_status text NOT NULL,
-	branches jsonb
+	branches     jsonb
 ) ON COMMIT DROP
 `
 
 const updateIndexStatusesUpdateQuery = `
-UPDATE zoekt_repos t
+UPDATE zoekt_repos zr
 SET
 	index_status = source.index_status,
-	branches       = source.branches,
+	branches     = source.branches,
 	updated_at   = now()
 FROM temp_table source
 WHERE
-	t.repo_id = source.repo_id
+	zr.repo_id = source.repo_id
 AND
-	(t.index_status != source.index_status OR t.branches != source.branches)
+	(zr.index_status != source.index_status OR zr.branches != source.branches)
+;
 `
 
 type ZoektRepoStatistics struct {
